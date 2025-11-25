@@ -1,0 +1,32 @@
+{
+  "name": "workfitai",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint",
+    "sass": "sass --watch public/assets/scss/style.scss:public/assets/css/style.css"
+  },
+  "dependencies": {
+    "@reduxjs/toolkit": "^2.10.1",
+    "nanoid": "^5.1.6",
+    "next": "15.3.3",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "react-perfect-scrollbar": "^1.5.8",
+    "react-redux": "^9.2.0",
+    "sass": "^1.56.1",
+    "swiper": "^11.0.7"
+  },
+  "devDependencies": {
+    "@eslint/eslintrc": "^3",
+    "@types/node": "^20",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "15.3.3",
+    "typescript": "^5"
+  }
+}
