@@ -1,5 +1,4 @@
 /* eslint-disable @next/next/no-img-element */
-import Layout from "@/components/Layout/Layout";
 import CategorySlider from "@/components/sliders/Category";
 import TopRekruterSlider from "@/components/sliders/TopRekruter";
 import BlogSlider from "@/components/sliders/Blog";
@@ -9,35 +8,34 @@ import Link from "next/link";
 export default function Home() {
   return (
     <>
-      <Layout>
-        <div className="bg-homepage1" />
-        <section className="section-box">
-          <div className="banner-hero hero-1">
-            <div className="banner-inner">
-              <div className="row">
-                <div className="col-xl-8 col-lg-12">
-                  <div className="block-banner">
-                    <h1 className="heading-banner wow animate__animated animate__fadeInUp">
-                      The <span className="color-brand-2">Easiest Way</span>
-                      <br className="d-none d-lg-block" />
-                      to Get Your New Job
-                    </h1>
-                    <div
-                      className="banner-description mt-20 wow animate__animated animate__fadeInUp"
-                      data-wow-delay=".1s"
-                    >
-                      Each month, more than 3 million job seekers turn to{" "}
-                      <br className="d-none d-lg-block" />
-                      website in their search for work, making over 140,000{" "}
-                      <br className="d-none d-lg-block" />
-                      applications every single day
-                    </div>
-                    <div
-                      className="form-find mt-40 wow animate__animated animate__fadeIn"
-                      data-wow-delay=".2s"
-                    >
-                      <form>
-                        <div className="box-industry">
+      <div className="bg-homepage1" />
+      <section className="section-box">
+        <div className="banner-hero hero-1">
+          <div className="banner-inner">
+            <div className="row">
+              <div className="col-xl-8 col-lg-12">
+                <div className="block-banner">
+                  <h1 className="heading-banner wow animate__animated animate__fadeInUp">
+                    The <span className="color-brand-2">Easiest Way</span>
+                    <br className="d-none d-lg-block" />
+                    to Get Your New Job
+                  </h1>
+                  <div
+                    className="banner-description mt-20 wow animate__animated animate__fadeInUp"
+                    data-wow-delay=".1s"
+                  >
+                    Each month, more than 3 million job seekers turn to{" "}
+                    <br className="d-none d-lg-block" />
+                    website in their search for work, making over 140,000{" "}
+                    <br className="d-none d-lg-block" />
+                    applications every single day
+                  </div>
+                  <div
+                    className="form-find mt-40 wow animate__animated animate__fadeIn"
+                    data-wow-delay=".2s"
+                  >
+                    <form>
+                      <div className="box-industry">
                           <select className="form-input mr-10 select-active input-industry">
                             <option value={0}>Industry</option>
                             <option value={1}>Software</option>
@@ -852,7 +850,6 @@ export default function Home() {
             </div>
           </div>
         </section>
-      </Layout>
     </>
   );
 }

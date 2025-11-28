@@ -2,7 +2,6 @@
 
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @next/next/no-img-element */
-import Layout from "@/components/Layout/Layout";
 import {
   clearAuthError,
   loginUser,
@@ -53,7 +52,6 @@ export default function Signin() {
 
   return (
     <>
-      <Layout>
         <section className="pt-100 login-register">
           <div className="container">
             <div className="row login-register-cover">
@@ -64,15 +62,24 @@ export default function Signin() {
                   <p className="font-sm text-muted mb-30">
                     Access to all features. No credit card required.
                   </p>
-                  <button className="btn social-login hover-up mb-20" type="button">
-                    <img src="assets/imgs/template/icons/icon-google.svg" alt="workfitAI" />
+                  <button
+                    className="btn social-login hover-up mb-20"
+                    type="button"
+                  >
+                    <img
+                      src="assets/imgs/template/icons/icon-google.svg"
+                      alt="workfitAI"
+                    />
                     <strong>Sign in with Google</strong>
                   </button>
                   <div className="divider-text-center">
                     <span>Or continue with</span>
                   </div>
                 </div>
-                <form className="login-register text-start mt-20" onSubmit={handleSubmit}>
+                <form
+                  className="login-register text-start mt-20"
+                  onSubmit={handleSubmit}
+                >
                   <div className="form-group">
                     <label className="form-label" htmlFor="usernameOrEmail">
                       Username or Email address *
@@ -85,7 +92,9 @@ export default function Signin() {
                       name="usernameOrEmail"
                       placeholder="stevenjob"
                       value={usernameOrEmail}
-                      onChange={(event) => setUsernameOrEmail(event.target.value)}
+                      onChange={(event) =>
+                        setUsernameOrEmail(event.target.value)
+                      }
                       autoComplete="username"
                     />
                   </div>
@@ -112,7 +121,9 @@ export default function Signin() {
                     </Link>
                   </div>
                   {error ? <p className="text-danger mb-10">{error}</p> : null}
-                  {message ? <p className="text-success mb-10">{message}</p> : null}
+                  {message ? (
+                    <p className="text-success mb-10">{message}</p>
+                  ) : null}
                   <div className="form-group">
                     <button
                       className="btn btn-brand-1 hover-up w-100"
@@ -132,15 +143,21 @@ export default function Signin() {
                 </form>
               </div>
               <div className="img-1 d-none d-lg-block">
-                <img className="shape-1" src="assets/imgs/page/login-register/img-4.svg" alt="workfitAI" />
+                <img
+                  className="shape-1"
+                  src="assets/imgs/page/login-register/img-4.svg"
+                  alt="workfitAI"
+                />
               </div>
               <div className="img-2">
-                <img src="assets/imgs/page/login-register/img-3.svg" alt="workfitAI" />
+                <img
+                  src="assets/imgs/page/login-register/img-3.svg"
+                  alt="workfitAI"
+                />
               </div>
             </div>
           </div>
         </section>
-      </Layout>
     </>
   );
 }

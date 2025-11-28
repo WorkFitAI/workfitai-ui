@@ -83,7 +83,7 @@ export const initialAuthState = initialState;
 const persistSession = (session: StoredSession | null) => {
   if (typeof window === "undefined") return;
 
-  if (!session) {
+  if (!session) { 
     localStorage.removeItem(AUTH_STORAGE_KEY);
     return;
   }
@@ -106,7 +106,10 @@ export const isCompleteStoredSession = (session: unknown): session is StoredSess
   if (!session || typeof session !== "object") return false;
   const candidate = session as StoredSession;
   const hasToken = typeof candidate.accessToken === "string" && candidate.accessToken.length > 0;
-  const hasExpiry = typeof candidate.expiryInMinutes === "number" && Number.isFinite(candidate.expiryInMinutes);
+  // Backend can return null expiry; treat null as valid to avoid re-refreshing on every load.
+  const hasExpiry =
+    candidate.expiryInMinutes === null ||
+    (typeof candidate.expiryInMinutes === "number" && Number.isFinite(candidate.expiryInMinutes));
   const hasUsername = typeof candidate.username === "string" && candidate.username.length > 0;
   const hasRoles =
     Array.isArray(candidate.roles) && candidate.roles.every((role): role is string => typeof role === "string");
@@ -205,7 +208,7 @@ export const registerUser = createAsyncThunk<AuthSuccess, RegisterPayload, { rej
 
       const parsed = parseAuthResponse(response);
       const user = parsed.user ?? { username: payload.username, fullName: payload.fullName };
-      persistSession(toStoredSession({ ...parsed, user }));
+      // persistSession(toStoredSession({ ...parsed, user }));
       return { ...parsed, user };
     } catch (error) {
       return rejectWithValue(error instanceof Error ? error.message : "Unable to register");

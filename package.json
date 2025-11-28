@@ -10,6 +10,11 @@
     "sass": "sass --watch public/assets/scss/style.scss:public/assets/css/style.css"
   },
   "dependencies": {
+    "@headlessui/react": "^1.7.13",
+    "chart.js": "^4.2.1",
+    "react-chartjs-2": "^5.2.0",
+    "react-circular-progressbar": "^2.1.0",
+    "wowjs": "^1.1.3",
     "@reduxjs/toolkit": "^2.10.1",
     "nanoid": "^5.1.6",
     "next": "15.3.3",

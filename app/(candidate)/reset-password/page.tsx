@@ -1,12 +1,10 @@
 /* eslint-disable react/no-unescaped-entities */
 /* eslint-disable @next/next/no-img-element */
-import Layout from "@/components/Layout/Layout";
 import Link from "next/link";
 
 export default function Reset() {
   return (
     <>
-      <Layout>
         <section className="pt-100 login-register">
           <div className="container">
             <div className="row login-register-cover">
@@ -68,7 +66,6 @@ export default function Reset() {
             </div>
           </div>
         </section>
-      </Layout>
     </>
   );
 }

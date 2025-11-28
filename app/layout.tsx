@@ -9,13 +9,14 @@ const plusJakartaSans = Plus_Jakarta_Sans({
 });
 
 export const metadata: Metadata = {
-  title: "workfitAI - Job Portal HTML Template",
-  description: "workfitAI - Job Portal HTML Template",
+  title: "WorkfitAI - Job Portal",
+  description: "WorkfitAI - Job Portal",
   icons: {
-    icon: "/assets/imgs/template/workfitai.png",
+    icon: "/favicon.ico",
   },
 };
 
+// TODO: fix auth hydration issue
 export default function RootLayout({
   children,
 }: Readonly<{
