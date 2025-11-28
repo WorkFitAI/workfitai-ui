@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import "@/public/assets/css/style.css";
 import "@/styles/globals.css";
+import "@/styles/tailwind.css";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import Providers from "./providers";
 
