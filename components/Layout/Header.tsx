@@ -564,10 +564,6 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                   </li>
                 </ul>
               </div>
-              <div className="site-copyright">
-                Copyright 2022 © workfitAI. <br />
-                Designed by AliThemes.
-              </div>
             </div>
           </div>
         </div>
@@ -793,7 +789,7 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                 </ul>
               </div>
               <div className="site-copyright">
-                Copyright 2022 © workfitAI. <br />
+                WorkfitAI. <br />
                 Designed by AliThemes.
               </div>
             </div>

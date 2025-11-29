@@ -3,6 +3,31 @@ const AUTH_BASE_URL =
 
 type HttpMethod = "GET" | "POST" | "DELETE";
 
+// Custom error classes for different HTTP status codes
+export class ApiError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = "ApiError";
+    this.status = status;
+  }
+}
+
+export class UnauthorizedError extends ApiError {
+  constructor(message: string = "Unauthorized") {
+    super(message, 401);
+    this.name = "UnauthorizedError";
+  }
+}
+
+export class ForbiddenError extends ApiError {
+  constructor(message: string = "Access denied") {
+    super(message, 403);
+    this.name = "ForbiddenError";
+  }
+}
+
 export interface ApiResponse<T> {
   status: number;
   message?: string;
@@ -18,7 +43,7 @@ export interface AuthTokens {
   expiryInMinutes: number;
 }
 
-interface RequestOptions {
+export interface RequestOptions {
   method?: HttpMethod;
   body?: unknown;
   deviceId?: string;
@@ -39,7 +64,7 @@ const buildHeaders = (options?: RequestOptions): HeadersInit => {
   }
 
   if (options?.accessToken) {
-    headers.Authorization = `Bearer ${options.accessToken}`;
+    headers["Authorization"] = `Bearer ${options.accessToken}`;
   }
 
   return headers;
@@ -67,27 +92,37 @@ const parseErrors = (errors: unknown): string[] => {
   }
 };
 
-const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
+const handleResponse = async <T>(
+  response: Response
+): Promise<ApiResponse<T>> => {
   const contentType = response.headers.get("content-type") ?? "";
   const isJson = contentType.includes("application/json");
-  const parsed = (isJson
-    ? await response
-        .json()
-        .catch(() => null)
-    : null) as ApiResponse<T> | null;
+  const parsed = (
+    isJson ? await response.json().catch(() => null) : null
+  ) as ApiResponse<T> | null;
 
-  const apiResponse: ApiResponse<T> =
-    parsed ?? {
-      status: response.status,
-      message: response.statusText,
-    };
+  const apiResponse: ApiResponse<T> = parsed ?? {
+    status: response.status,
+    message: response.statusText,
+  };
 
   if (!response.ok) {
     const fallbackMessage = response.statusText || "Request failed";
     const message = apiResponse.message || fallbackMessage;
     const errorMessages = parseErrors(apiResponse.errors);
-    const combinedMessage = [message, ...errorMessages].filter(Boolean).join(" | ");
-    throw new Error(combinedMessage || fallbackMessage);
+    const combinedMessage = [message, ...errorMessages]
+      .filter(Boolean)
+      .join(" | ");
+    const errorMessage = combinedMessage || fallbackMessage;
+
+    // Throw specific error types based on HTTP status code
+    if (response.status === 401) {
+      throw new UnauthorizedError(errorMessage);
+    }
+    if (response.status === 403) {
+      throw new ForbiddenError(errorMessage);
+    }
+    throw new ApiError(errorMessage, response.status);
   }
 
   if (!apiResponse.message && response.ok) {
@@ -99,7 +134,7 @@ const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> =>
 
 export const authRequest = async <T>(
   path: string,
-  options?: RequestOptions,
+  options?: RequestOptions
 ): Promise<ApiResponse<T>> => {
   const response = await fetch(buildUrl(path), {
     method: options?.method ?? "GET",
