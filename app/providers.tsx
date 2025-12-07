@@ -13,7 +13,8 @@ import {
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch } from "@/redux/hooks";
 
-const useIsomorphicLayoutEffect = typeof window !== "undefined" ? useLayoutEffect : useEffect;
+const useIsomorphicLayoutEffect =
+  typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 const loadStoredSession = (): StoredSession | null => {
   if (typeof window === "undefined") return null;
@@ -33,12 +34,16 @@ const loadStoredSession = (): StoredSession | null => {
       return {
         accessToken: candidate.accessToken,
         expiryInMinutes:
-          typeof candidate.expiryInMinutes === "number" && Number.isFinite(candidate.expiryInMinutes)
+          typeof candidate.expiryInMinutes === "number" &&
+          Number.isFinite(candidate.expiryInMinutes)
             ? candidate.expiryInMinutes
             : null,
-        username: typeof candidate.username === "string" ? candidate.username : "",
+        username:
+          typeof candidate.username === "string" ? candidate.username : "",
         roles: Array.isArray(candidate.roles)
-          ? candidate.roles.filter((role): role is string => typeof role === "string")
+          ? candidate.roles.filter(
+              (role): role is string => typeof role === "string"
+            )
           : [],
       };
     }
@@ -75,14 +80,20 @@ const AuthHydrator = () => {
               restoreSessionFromStorage({
                 accessToken: candidate.accessToken,
                 expiryInMinutes:
-                  typeof candidate.expiryInMinutes === "number" && Number.isFinite(candidate.expiryInMinutes)
+                  typeof candidate.expiryInMinutes === "number" &&
+                  Number.isFinite(candidate.expiryInMinutes)
                     ? candidate.expiryInMinutes
                     : null,
-                username: typeof candidate.username === "string" ? candidate.username : "",
+                username:
+                  typeof candidate.username === "string"
+                    ? candidate.username
+                    : "",
                 roles: Array.isArray(candidate.roles)
-                  ? candidate.roles.filter((role): role is string => typeof role === "string")
+                  ? candidate.roles.filter(
+                      (role): role is string => typeof role === "string"
+                    )
                   : [],
-              }),
+              })
             );
             storageValid = true;
           } else {
@@ -108,7 +119,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
 
   if (!storeRef.current) {
     const storedSession = loadStoredSession();
-    const preloadedState = storedSession ? { auth: buildAuthStateFromStoredSession(storedSession) } : undefined;
+    const preloadedState = storedSession
+      ? { auth: buildAuthStateFromStoredSession(storedSession) }
+      : undefined;
     storeRef.current = makeStore(preloadedState);
   }
 
