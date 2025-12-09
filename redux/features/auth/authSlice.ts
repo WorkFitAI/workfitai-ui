@@ -1,7 +1,7 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import {
   postAuth,
-  AuthTokens,
+  authRequest,
   ApiResponse,
   UnauthorizedError,
   ForbiddenError,
@@ -25,6 +25,11 @@ export interface AuthState {
   errorType: AuthErrorType;
   message: string | null;
   lastUpdated: number | null;
+  // Role-specific state
+  pendingApproval: boolean;
+  approvalType: "hr-manager" | "admin" | null;
+  registrationRole: "CANDIDATE" | "HR" | "HR_MANAGER" | null;
+  userId: string | null; // For OTP verification after registration
 }
 
 interface AuthUserProfile {
@@ -33,14 +38,46 @@ interface AuthUserProfile {
   role?: string;
   roles?: string[];
   avatarUrl?: string;
+  // Role-specific data
+  companyName?: string;
+  department?: string;
+  isApproved?: boolean;
 }
 
 interface RegisterPayload {
   fullName: string;
   email: string;
-  username: string;
   password: string;
   phoneNumber: string;
+  deviceId?: string;
+  role?: "CANDIDATE" | "HR" | "HR_MANAGER";
+
+  // HR & HR_MANAGER specific
+  hrProfile?: {
+    department: string;
+    hrManagerEmail?: string; // Required for HR only
+    address: string;
+  };
+
+  // HR_MANAGER specific
+  company?: {
+    name: string;
+    logoUrl?: string;
+    websiteUrl?: string;
+    description?: string;
+    address: string;
+    size?: string;
+  };
+}
+
+interface OTPPayload {
+  email: string;
+  otp: string;
+  deviceId?: string;
+}
+
+interface ResendOTPPayload {
+  email: string;
   deviceId?: string;
 }
 
@@ -58,9 +95,11 @@ interface LogoutPayload {
   deviceId?: string;
 }
 
-interface AuthResponseData extends AuthTokens {
-  username?: string;
-  roles?: string[];
+interface AuthResponseData {
+  accessToken: string;
+  expiryInMinutes: number;
+  username: string;
+  roles: string[];
 }
 
 export interface StoredSession {
@@ -79,7 +118,7 @@ interface AuthSuccess {
   source?: string;
 }
 
-const initialState: AuthState = {
+const initialAuthState: AuthState = {
   accessToken: null,
   expiryInMinutes: null,
   user: null,
@@ -88,8 +127,11 @@ const initialState: AuthState = {
   errorType: null,
   message: null,
   lastUpdated: null,
+  pendingApproval: false,
+  approvalType: null,
+  registrationRole: null,
+  userId: null,
 };
-export const initialAuthState = initialState;
 
 // Helper to determine error type from caught error
 const getErrorType = (error: unknown): AuthErrorType => {
@@ -176,27 +218,30 @@ export const buildAuthStateFromStoredSession = (
   lastUpdated: Date.now(),
 });
 
-const normalizeExpiry = (rawExpiry: number | undefined): number | null => {
-  if (typeof rawExpiry !== "number" || Number.isNaN(rawExpiry)) {
+const normalizeExpiry = (expiry: number | undefined): number | null => {
+  if (
+    expiry === undefined ||
+    typeof expiry !== "number" ||
+    Number.isNaN(expiry)
+  ) {
     return null;
   }
-
-  // Field is named "expiryInMinutes" but backend returns milliseconds; keep raw to stay faithful.
-  return rawExpiry;
+  // API returns expiryInMinutes as number (in minutes, not milliseconds)
+  return expiry;
 };
 
 const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
-  if (!data) return null;
+  if (!data || !data.username) return null;
 
-  const roles = Array.isArray(data.roles)
-    ? data.roles.filter((role): role is string => typeof role === "string")
-    : undefined;
-  const role = roles?.[0];
   const username = data.username;
+  const roles = data.roles;
 
-  if (!username && !role && (!roles || roles.length === 0)) {
-    return null;
-  }
+  // Derive role from roles array
+  let role: string | undefined = undefined;
+  if (roles.includes("ROLE_CANDIDATE")) role = "CANDIDATE";
+  else if (roles.includes("ROLE_HR")) role = "HR";
+  else if (roles.includes("ROLE_HR_MANAGER")) role = "HR_MANAGER";
+  else if (roles.includes("ROLE_ADMIN")) role = "ADMIN";
 
   return { username, role, roles };
 };
@@ -204,8 +249,11 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
 const parseAuthResponse = (
   response: ApiResponse<AuthResponseData>
 ): AuthSuccess => {
-  const accessToken = response.data?.accessToken;
-  const expiryInMinutes = normalizeExpiry(response.data?.expiryInMinutes);
+  if (!response.data) {
+    throw new Error(response.message || "Missing response data");
+  }
+
+  const { accessToken, expiryInMinutes } = response.data;
   const user = normalizeUser(response.data);
 
   if (!accessToken) {
@@ -214,7 +262,7 @@ const parseAuthResponse = (
 
   return {
     accessToken,
-    expiryInMinutes,
+    expiryInMinutes: normalizeExpiry(expiryInMinutes),
     message: response.message ?? null,
     user,
     tokenType: response.tokenType,
@@ -229,32 +277,135 @@ interface AuthRejectPayload {
 }
 
 export const registerUser = createAsyncThunk<
-  AuthSuccess,
+  {
+    userId: string;
+    message: string;
+    user: AuthUserProfile;
+    role?: "CANDIDATE" | "HR" | "HR_MANAGER";
+  },
   RegisterPayload,
   { rejectValue: AuthRejectPayload }
 >("auth/register", async (payload, { rejectWithValue }) => {
   try {
-    const response = await postAuth<AuthResponseData>("/register", {
+    const response = await postAuth<string>("/register", {
       body: {
         fullName: payload.fullName,
         email: payload.email,
-        username: payload.username,
         password: payload.password,
         phoneNumber: payload.phoneNumber,
+        role: payload.role,
+        hrProfile: payload.hrProfile,
+        company: payload.company,
       },
       deviceId: payload.deviceId ?? getDeviceId(),
     });
 
-    const parsed = parseAuthResponse(response);
-    const user = parsed.user ?? {
-      username: payload.username,
-      fullName: payload.fullName,
+    const username = payload.email.split("@")[0];
+
+    // Registration returns userId as string in data field for OTP verification
+    return {
+      userId: response.data ?? "",
+      message:
+        response.message ?? "OTP has been sent to your email for verification",
+      user: {
+        username: username,
+        fullName: payload.fullName,
+      },
+      role: payload.role, // Pass role to fulfilled action to update state
     };
-    // persistSession(toStoredSession({ ...parsed, user }));
-    return { ...parsed, user };
   } catch (error) {
     return rejectWithValue({
       message: error instanceof Error ? error.message : "Unable to register",
+      errorType: getErrorType(error),
+    });
+  }
+});
+
+export const verifyOTP = createAsyncThunk<
+  {
+    success: boolean;
+    pendingApproval: boolean;
+    approvalType?: "hr-manager" | "admin";
+    message?: string;
+  },
+  OTPPayload,
+  { rejectValue: AuthRejectPayload }
+>("auth/verifyOTP", async (payload, { rejectWithValue }) => {
+  try {
+    const response = await postAuth<{
+      success: boolean;
+      pendingApproval: boolean;
+      approvalType?: "hr-manager" | "admin";
+    }>("/verify-otp", {
+      body: {
+        email: payload.email,
+        otp: payload.otp,
+      },
+      deviceId: payload.deviceId ?? getDeviceId(),
+    });
+
+    return {
+      success: response.data?.success ?? true,
+      pendingApproval: response.data?.pendingApproval ?? false,
+      approvalType: response.data?.approvalType,
+      message: response.message,
+    };
+  } catch (error) {
+    return rejectWithValue({
+      message:
+        error instanceof Error ? error.message : "OTP verification failed",
+      errorType: getErrorType(error),
+    });
+  }
+});
+
+export const resendOTP = createAsyncThunk<
+  { message: string },
+  ResendOTPPayload,
+  { rejectValue: AuthRejectPayload }
+>("auth/resendOTP", async (payload, { rejectWithValue }) => {
+  try {
+    const response = await postAuth<undefined>("/resend-otp", {
+      body: {
+        email: payload.email,
+      },
+      deviceId: payload.deviceId ?? getDeviceId(),
+    });
+
+    return {
+      message: response.message ?? "OTP resent successfully",
+    };
+  } catch (error) {
+    return rejectWithValue({
+      message: error instanceof Error ? error.message : "Failed to resend OTP",
+      errorType: getErrorType(error),
+    });
+  }
+});
+
+export const checkApprovalStatus = createAsyncThunk<
+  { isApproved: boolean; companyId?: string },
+  string,
+  { rejectValue: AuthRejectPayload }
+>("auth/checkApprovalStatus", async (userId, { rejectWithValue }) => {
+  try {
+    const response = await authRequest<{
+      isApproved: boolean;
+      companyId?: string;
+    }>(`/approval-status/${userId}`, {
+      deviceId: getDeviceId(),
+    });
+
+    return {
+      isApproved: response.data?.isApproved ?? false,
+      companyId: response.data?.companyId,
+    };
+  } catch (error) {
+    return rejectWithValue({
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to check approval status",
       errorType: getErrorType(error),
     });
   }
@@ -343,7 +494,7 @@ export const logoutUser = createAsyncThunk<
 
 const authSlice = createSlice({
   name: "auth",
-  initialState,
+  initialState: initialAuthState,
   reducers: {
     restoreSessionFromStorage: (
       state,
@@ -373,9 +524,9 @@ const authSlice = createSlice({
       })
       .addCase(registerUser.fulfilled, (state, action) => {
         state.status = "idle";
-        state.accessToken = action.payload.accessToken;
-        state.expiryInMinutes = action.payload.expiryInMinutes;
-        state.user = action.payload.user ?? state.user;
+        state.userId = action.payload.userId; // Store userId for OTP verification redirect
+        state.user = action.payload.user;
+        state.registrationRole = action.payload.role || "CANDIDATE";
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message;
@@ -386,6 +537,59 @@ const authSlice = createSlice({
         state.error = action.payload?.message ?? "Registration failed";
         state.errorType = action.payload?.errorType ?? "generic";
         state.message = null;
+      })
+      .addCase(verifyOTP.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.errorType = null;
+        state.message = null;
+      })
+      .addCase(verifyOTP.fulfilled, (state, action) => {
+        state.status = "idle";
+        state.pendingApproval = action.payload.pendingApproval;
+        state.approvalType = action.payload.approvalType ?? null;
+        state.error = null;
+        state.errorType = null;
+        state.message = action.payload.message ?? "OTP verified successfully";
+        state.lastUpdated = Date.now();
+      })
+      .addCase(verifyOTP.rejected, (state, action) => {
+        state.status = "idle";
+        state.error = action.payload?.message ?? "OTP verification failed";
+        state.errorType = action.payload?.errorType ?? "generic";
+        state.message = null;
+      })
+      .addCase(resendOTP.pending, (state) => {
+        state.status = "loading";
+        state.error = null;
+        state.errorType = null;
+      })
+      .addCase(resendOTP.fulfilled, (state, action) => {
+        state.status = "idle";
+        state.error = null;
+        state.errorType = null;
+        state.message = action.payload.message;
+      })
+      .addCase(resendOTP.rejected, (state, action) => {
+        state.status = "idle";
+        state.error = action.payload?.message ?? "Failed to resend OTP";
+        state.errorType = action.payload?.errorType ?? "generic";
+      })
+      .addCase(checkApprovalStatus.pending, (state) => {
+        state.status = "loading";
+      })
+      .addCase(checkApprovalStatus.fulfilled, (state, action) => {
+        state.status = "idle";
+        if (action.payload.isApproved) {
+          state.pendingApproval = false;
+          state.approvalType = null;
+        }
+      })
+      .addCase(checkApprovalStatus.rejected, (state, action) => {
+        state.status = "idle";
+        state.error =
+          action.payload?.message ?? "Failed to check approval status";
+        state.errorType = action.payload?.errorType ?? "generic";
       })
       .addCase(loginUser.pending, (state) => {
         state.status = "loading";
@@ -459,5 +663,14 @@ export const selectAuthError = (state: RootState) => state.auth.error;
 export const selectAuthErrorType = (state: RootState) => state.auth.errorType;
 export const selectAuthMessage = (state: RootState) => state.auth.message;
 export const selectAuthUser = (state: RootState) => state.auth.user;
+export const selectPendingApproval = (state: RootState) =>
+  state.auth.pendingApproval;
+export const selectApprovalType = (state: RootState) => state.auth.approvalType;
+export const selectUserRole = (state: RootState) => state.auth.user?.role;
+export const selectUserRoles = (state: RootState) =>
+  state.auth.user?.roles ?? [];
+export const selectUserId = (state: RootState) => state.auth.userId;
+export const selectRegistrationRole = (state: RootState) =>
+  state.auth.registrationRole;
 
 export default authSlice.reducer;

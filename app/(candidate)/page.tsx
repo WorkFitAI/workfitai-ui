@@ -344,28 +344,28 @@ export default function Home() {
                       <img
                         className="img-responsive"
                         alt="workfitAI"
-                        src="assets/imgs/page/homepage1/banner1.png"
+                        src="/assets/imgs/page/homepage1/banner1.png"
                       />
                     </div>
                     <div className="block-2 shape-2">
                       <img
                         className="img-responsive"
                         alt="workfitAI"
-                        src="assets/imgs/page/homepage1/banner2.png"
+                        src="/assets/imgs/page/homepage1/banner2.png"
                       />
                     </div>
                     <div className="block-3 shape-3">
                       <img
                         className="img-responsive"
                         alt="workfitAI"
-                        src="assets/imgs/page/homepage1/icon-top-banner.png"
+                        src="/assets/imgs/page/homepage1/icon-top-banner.png"
                       />
                     </div>
                     <div className="block-4 shape-3">
                       <img
                         className="img-responsive"
                         alt="workfitAI"
-                        src="assets/imgs/page/homepage1/icon-bottom-banner.png"
+                        src="/assets/imgs/page/homepage1/icon-bottom-banner.png"
                       />
                     </div>
                   </div>
@@ -440,17 +440,17 @@ export default function Home() {
                   <img
                     className="img-job-1"
                     alt="workfitAI"
-                    src="assets/imgs/page/homepage1/img-chart.png"
+                    src="/assets/imgs/page/homepage1/img-chart.png"
                   />
                   <img
                     className="img-job-2"
                     alt="workfitAI"
-                    src="assets/imgs/page/homepage1/controlcard.png"
+                    src="/assets/imgs/page/homepage1/controlcard.png"
                   />
                   <figure className="wow animate__animated animate__fadeIn">
                     <img
                       alt="workfitAI"
-                      src="assets/imgs/page/homepage1/img1.png"
+                      src="/assets/imgs/page/homepage1/img1.png"
                     />
                   </figure>
                 </div>
@@ -591,7 +591,7 @@ export default function Home() {
                       className="image"
                       style={{
                         backgroundImage:
-                          "url(assets/imgs/page/homepage1/location1.png)",
+                          "url(/assets/imgs/page/homepage1/location1.png)",
                       }}
                     >
                       <span className="lbl-hot">Hot</span>
@@ -625,7 +625,7 @@ export default function Home() {
                       className="image"
                       style={{
                         backgroundImage:
-                          "url(assets/imgs/page/homepage1/location2.png)",
+                          "url(/assets/imgs/page/homepage1/location2.png)",
                       }}
                     >
                       <span className="lbl-hot">Trending</span>
@@ -659,7 +659,7 @@ export default function Home() {
                       className="image"
                       style={{
                         backgroundImage:
-                          "url(assets/imgs/page/homepage1/location3.png)",
+                          "url(/assets/imgs/page/homepage1/location3.png)",
                       }}
                     >
                       <span className="lbl-hot">Hot</span>
@@ -693,7 +693,7 @@ export default function Home() {
                       className="image"
                       style={{
                         backgroundImage:
-                          "url(assets/imgs/page/homepage1/location4.png)",
+                          "url(/assets/imgs/page/homepage1/location4.png)",
                       }}
                     />
                   </Link>
@@ -725,7 +725,7 @@ export default function Home() {
                       className="image"
                       style={{
                         backgroundImage:
-                          "url(assets/imgs/page/homepage1/location5.png)",
+                          "url(/assets/imgs/page/homepage1/location5.png)",
                       }}
                     />
                   </Link>
@@ -757,7 +757,7 @@ export default function Home() {
                       className="image"
                       style={{
                         backgroundImage:
-                          "url(assets/imgs/page/homepage1/location6.png)",
+                          "url(/assets/imgs/page/homepage1/location6.png)",
                       }}
                     />
                   </Link>
@@ -818,7 +818,7 @@ export default function Home() {
               <div className="row">
                 <div className="col-xl-3 col-12 text-center d-none d-xl-block">
                   <img
-                    src="assets/imgs/template/newsletter-left.png"
+                    src="/assets/imgs/template/newsletter-left.png"
                     alt="WorkfitAI"
                   />
                 </div>
@@ -842,7 +842,7 @@ export default function Home() {
                 </div>
                 <div className="col-xl-3 col-12 text-center d-none d-xl-block">
                   <img
-                    src="assets/imgs/template/newsletter-right.png"
+                    src="/assets/imgs/template/newsletter-right.png"
                     alt="WorkfitAI"
                   />
                 </div>

@@ -1,39 +1,63 @@
-.login-register-cover{
-    border-bottom: 1px solid $border-color;
-    position: relative;
-    width: 100%;
-    .img-1 {
-        position: absolute;
-        right: 10%;
-        top: 20%;
-        width: unset;        
-    }
+.login-register-cover {
+  border-bottom: 1px solid $border-color;
+  position: relative;
+  width: 100%;
+  .img-1 {
+    position: absolute;
+    right: 10%;
+    top: 20%;
+    width: unset;
+  }
 }
 .divider-text-center {
+  position: relative;
+  text-align: center;
+  &::after {
+    content: "";
+    height: 1px;
+    width: 100%;
+    position: absolute;
+    background-color: $border-color;
+    top: 50%;
+    left: 0;
+    z-index: 1;
+  }
+  span {
+    display: inline-block;
+    background-color: #fff;
+    padding: 0 15px;
+    z-index: 2;
     position: relative;
-    text-align: center;
-    &::after {
-        content: "";
-        height: 1px;
-        width: 100%;
-        position: absolute;
-        background-color: $border-color;
-        top: 50%;
-        left: 0;
-        z-index: 1;
-    }
-    span {
-        display: inline-block;
-        background-color: #fff;
-        padding: 0 15px;
-        z-index: 2;
-        position: relative;
-    }
+  }
 }
-.login-register {    
-    input {
-        height: 53px;
-        line-height: 53px;
-        font-size: $font-sm;
-    }
+.login-register {
+  input {
+    height: 53px;
+    line-height: 53px;
+    font-size: $font-sm;
+  }
+}
+
+// Role Selector Styles
+.role-card {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08);
+
+  &:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+  }
+
+  &:active {
+    transform: translateY(-2px);
+  }
+
+  &.selected {
+    box-shadow: 0 8px 24px rgba(60, 101, 245, 0.15);
+  }
+
+  &:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(60, 101, 245, 0.1);
+  }
 }

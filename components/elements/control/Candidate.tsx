@@ -13,7 +13,7 @@ export default function Candidate({ item }: CandidateProps) {
         <div className="card-grid-2-image-rd online">
           <figure>
             <Link href="/">
-              <img src={`assets/imgs/page/candidates/${item.img}`} alt="jobBox" />
+              <img src={`/assets/imgs/page/candidates/${item.img}`} alt="jobBox" />
             </Link>
           </figure>
         </div>
@@ -24,19 +24,19 @@ export default function Candidate({ item }: CandidateProps) {
           <span className="font-xs color-text-mutted">{item.job}</span>
           <div className="rate-reviews-small pt-5">
             <span>
-              <img src="assets/imgs/template/icons/star.svg" alt="jobBox" />
+              <img src="/assets/imgs/template/icons/star.svg" alt="jobBox" />
             </span>
             <span>
-              <img src="assets/imgs/template/icons/star.svg" alt="jobBox" />
+              <img src="/assets/imgs/template/icons/star.svg" alt="jobBox" />
             </span>
             <span>
-              <img src="assets/imgs/template/icons/star.svg" alt="jobBox" />
+              <img src="/assets/imgs/template/icons/star.svg" alt="jobBox" />
             </span>
             <span>
-              <img src="assets/imgs/template/icons/star.svg" alt="jobBox" />
+              <img src="/assets/imgs/template/icons/star.svg" alt="jobBox" />
             </span>
             <span>
-              <img src="assets/imgs/template/icons/star.svg" alt="jobBox" />
+              <img src="/assets/imgs/template/icons/star.svg" alt="jobBox" />
             </span>
             <span className="ml-10 color-text-mutted font-xs">({item.rating})</span>
           </div>

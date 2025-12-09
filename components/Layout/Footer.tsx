@@ -12,7 +12,7 @@ const Footer = () => {
               <span className="d-flex align-items-center">
                 <img
                   alt="WorkfitAI"
-                  src="assets/imgs/template/workfitai.png"
+                  src="/assets/imgs/template/workfitai.png"
                   style={{ width: 42, height: 42, objectFit: "contain" }}
                 />
                 <span
@@ -115,13 +115,13 @@ const Footer = () => {
             <div className="mt-15">
               <a className="mr-5" href="#">
                 <img
-                  src="assets/imgs/template/icons/app-store.png"
+                  src="/assets/imgs/template/icons/app-store.png"
                   alt="WorkfitAI"
                 />
               </a>
               <a href="#">
                 <img
-                  src="assets/imgs/template/icons/android.png"
+                  src="/assets/imgs/template/icons/android.png"
                   alt="WorkfitAI"
                 />
               </a>

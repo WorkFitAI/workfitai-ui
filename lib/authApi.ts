@@ -1,153 +1,124 @@
-const AUTH_BASE_URL =
-  process.env.NEXT_PUBLIC_AUTH_BASE_URL ?? "http://localhost:9085/auth";
+// import { getDeviceId } from "@/lib/deviceId";
 
-type HttpMethod = "GET" | "POST" | "DELETE";
-
-// Custom error classes for different HTTP status codes
-export class ApiError extends Error {
-  status: number;
-
-  constructor(message: string, status: number) {
+export class UnauthorizedError extends Error {
+  constructor(message = "Unauthorized") {
     super(message);
-    this.name = "ApiError";
-    this.status = status;
-  }
-}
-
-export class UnauthorizedError extends ApiError {
-  constructor(message: string = "Unauthorized") {
-    super(message, 401);
     this.name = "UnauthorizedError";
   }
 }
 
-export class ForbiddenError extends ApiError {
-  constructor(message: string = "Access denied") {
-    super(message, 403);
+export class ForbiddenError extends Error {
+  constructor(message = "Forbidden") {
+    super(message);
     this.name = "ForbiddenError";
   }
 }
 
-export interface ApiResponse<T> {
-  status: number;
-  message?: string;
-  data?: T;
-  errors?: unknown[];
-  timestamp?: string;
-  source?: string;
-  tokenType?: string;
-}
-
 export interface AuthTokens {
   accessToken: string;
-  expiryInMinutes: number;
+  expiryInMinutes: number | null;
+  tokenType?: string;
+  source?: string;
 }
 
-export interface RequestOptions {
-  method?: HttpMethod;
+export interface ApiResponse<T = unknown> {
+  data?: T;
+  message?: string;
+  status: number;
+  success: boolean;
+  tokenType?: string;
+  source?: string;
+}
+
+interface RequestOptions {
   body?: unknown;
   deviceId?: string;
   accessToken?: string;
 }
 
-const buildUrl = (path: string) =>
-  `${AUTH_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
+const API_URL =
+  process.env.NEXT_PUBLIC_API_URL + "auth" || "http://localhost:9085/";
 
-const buildHeaders = (options?: RequestOptions): HeadersInit => {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
+export const authRequest = async <T>(
+  endpoint: string,
+  options: RequestOptions = {}
+): Promise<ApiResponse<T>> => {
+  const { body, deviceId, accessToken } = options;
+  const headers: HeadersInit = {
     "Content-Type": "application/json",
   };
 
-  if (options?.deviceId) {
-    headers["X-Device-Id"] = options.deviceId;
+  if (deviceId) {
+    headers["X-Device-Id"] = deviceId;
   }
 
-  if (options?.accessToken) {
-    headers["Authorization"] = `Bearer ${options.accessToken}`;
+  if (accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  return headers;
-};
-
-const parseErrors = (errors: unknown): string[] => {
-  if (!errors) return [];
-  if (Array.isArray(errors)) {
-    return errors
-      .map((err) => {
-        if (typeof err === "string") return err;
-        try {
-          return JSON.stringify(err);
-        } catch {
-          return String(err);
-        }
-      })
-      .filter(Boolean);
-  }
-  if (typeof errors === "string") return [errors];
-  try {
-    return [JSON.stringify(errors)];
-  } catch {
-    return [String(errors)];
-  }
-};
-
-const handleResponse = async <T>(
-  response: Response
-): Promise<ApiResponse<T>> => {
-  const contentType = response.headers.get("content-type") ?? "";
-  const isJson = contentType.includes("application/json");
-  const parsed = (
-    isJson ? await response.json().catch(() => null) : null
-  ) as ApiResponse<T> | null;
-
-  const apiResponse: ApiResponse<T> = parsed ?? {
-    status: response.status,
-    message: response.statusText,
+  const config: RequestInit = {
+    method: body ? "POST" : "GET",
+    headers,
+    body: body ? JSON.stringify(body) : undefined,
   };
 
-  if (!response.ok) {
-    const fallbackMessage = response.statusText || "Request failed";
-    const message = apiResponse.message || fallbackMessage;
-    const errorMessages = parseErrors(apiResponse.errors);
-    const combinedMessage = [message, ...errorMessages]
-      .filter(Boolean)
-      .join(" | ");
-    const errorMessage = combinedMessage || fallbackMessage;
+  try {
+    const response = await fetch(`${API_URL}${endpoint}`, config);
+    const data = await response.json();
 
-    // Throw specific error types based on HTTP status code
-    if (response.status === 401) {
-      throw new UnauthorizedError(errorMessage);
+    if (!response.ok) {
+      if (response.status === 401) {
+        throw new UnauthorizedError(data.message || "Unauthorized");
+      }
+      if (response.status === 403) {
+        throw new ForbiddenError(data.message || "Forbidden");
+      }
+      throw new Error(data.message || "An error occurred");
     }
-    if (response.status === 403) {
-      throw new ForbiddenError(errorMessage);
+
+    return data;
+  } catch (error) {
+    if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
+      throw error;
     }
-    throw new ApiError(errorMessage, response.status);
+    throw new Error(error instanceof Error ? error.message : "Network error");
   }
-
-  if (!apiResponse.message && response.ok) {
-    apiResponse.message = "OK";
-  }
-
-  return apiResponse;
 };
 
-export const authRequest = async <T>(
-  path: string,
-  options?: RequestOptions
+export const postAuth = async <T>(
+  endpoint: string,
+  options: RequestOptions
 ): Promise<ApiResponse<T>> => {
-  const response = await fetch(buildUrl(path), {
-    method: options?.method ?? "GET",
-    headers: buildHeaders(options),
-    body: options?.body ? JSON.stringify(options.body) : undefined,
-    credentials: "include",
-  });
-
-  return handleResponse<T>(response);
+  return authRequest<T>(endpoint, { ...options, body: options.body });
 };
 
-export const postAuth = async <T>(path: string, options?: RequestOptions) =>
-  authRequest<T>(path, { ...options, method: "POST" });
+export interface RegisterRequest {
+  fullName: string;
+  email: string;
+  password: string;
+  phoneNumber: string;
+  role: "CANDIDATE" | "HR" | "HR_MANAGER" | "ADMIN";
+  hrProfile?: {
+    department: string;
+    hrManagerEmail?: string; // Required for HR only
+    address: string;
+  };
+  company?: {
+    name: string;
+    logoUrl?: string;
+    websiteUrl?: string;
+    description?: string;
+    address: string;
+    size?: string;
+  };
+}
 
-export const deleteAuth = async <T>(path: string, options?: RequestOptions) =>
-  authRequest<T>(path, { ...options, method: "DELETE" });
+export const register = async (
+  request: RegisterRequest,
+  deviceId?: string
+): Promise<ApiResponse<string>> => {
+  return postAuth<string>("/register", {
+    body: request,
+    deviceId,
+  });
+};

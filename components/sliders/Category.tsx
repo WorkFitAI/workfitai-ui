@@ -102,7 +102,7 @@ const CategorySlider = () => {
                       <div className="image-left">
                         <img
                           alt="workfitAI"
-                          src={`assets/imgs/page/homepage1/${item.icon}`}
+                          src={`/assets/imgs/page/homepage1/${item.icon}`}
                         />
                       </div>
                       <div className="text-info-right">

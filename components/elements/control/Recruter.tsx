@@ -11,7 +11,7 @@ export default function Recruter({ item }: RecruiterProps) {
     <div className="card-grid-1 hover-up wow animate__animated animate__fadeIn">
       <div className="image-box">
         <Link href="/company-details">
-          <img src={`assets/imgs/brands/${item.img}`} alt="jobBox" />
+          <img src={`/assets/imgs/brands/${item.img}`} alt="jobBox" />
         </Link>
       </div>
       <div className="info-text mt-10">
@@ -19,11 +19,11 @@ export default function Recruter({ item }: RecruiterProps) {
           <Link href="#">{item.title}</Link>
         </h5>
         <div className="mt-5">
-          <img alt="jobBox" src="assets/imgs/template/icons/star.svg" />
-          <img alt="jobBox" src="assets/imgs/template/icons/star.svg" />
-          <img alt="jobBox" src="assets/imgs/template/icons/star.svg" />
-          <img alt="jobBox" src="assets/imgs/template/icons/star.svg" />
-          <img alt="jobBox" src="assets/imgs/template/icons/star.svg" />
+          <img alt="jobBox" src="/assets/imgs/template/icons/star.svg" />
+          <img alt="jobBox" src="/assets/imgs/template/icons/star.svg" />
+          <img alt="jobBox" src="/assets/imgs/template/icons/star.svg" />
+          <img alt="jobBox" src="/assets/imgs/template/icons/star.svg" />
+          <img alt="jobBox" src="/assets/imgs/template/icons/star.svg" />
           <span className="font-xs color-text-mutted ml-10">
             <span>(</span>
             <span>{item.rating}</span>

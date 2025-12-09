@@ -44,3 +44,10 @@ package-lock.json
 
 .github/
 .vscode/
+# ClaudeKit Engineer
+.claude/
+docs/
+plans/
+CLAUDE.md
+repomix-output.xml
+template_references/
