@@ -13,6 +13,12 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
 }) => {
+  console.log(
+    "Pagination - currentPage:",
+    currentPage,
+    "totalPages:",
+    totalPages
+  );
   const pageLinks = useMemo(() => {
     const maxVisiblePages = 7;
     const siblingCount = 1;

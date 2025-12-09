@@ -36,7 +36,7 @@ export default function WorkTypeFilter() {
       <h5 className="medium-heading mb-15">Work Type</h5>
       <ul className="list-checkbox">
         {WORK_TYPES.map((item) => {
-          const isChecked = selectedFilters?.includes(item.enum);
+          const isChecked = !!selectedFilters?.includes(item.enum);
           return (
             <li key={item.enum}>
               <label className="cb-container">
