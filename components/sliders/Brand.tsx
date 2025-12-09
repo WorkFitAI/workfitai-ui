@@ -20,57 +20,57 @@ const BrandSlider = () => {
           <SwiperSlide>
             <a href="#">
               <img
-                src="assets/imgs/slider/logo/microsoft.svg"
+                src="/assets/imgs/slider/logo/microsoft.svg"
                 alt="workfitAI"
               />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/sony.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/sony.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/acer.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/acer.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/nokia.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/nokia.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/assus.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/assus.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/casio.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/casio.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/dell.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/dell.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
               <img
-                src="assets/imgs/slider/logo/panasonic.svg"
+                src="/assets/imgs/slider/logo/panasonic.svg"
                 alt="workfitAI"
               />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/vaio.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/vaio.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
           <SwiperSlide>
             <a href="#">
-              <img src="assets/imgs/slider/logo/sharp.svg" alt="workfitAI" />
+              <img src="/assets/imgs/slider/logo/sharp.svg" alt="workfitAI" />
             </a>
           </SwiperSlide>
         </Swiper>

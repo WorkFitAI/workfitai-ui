@@ -53,13 +53,13 @@ export default function Reset() {
               <div className="img-1 d-none d-lg-block">
                 <img
                   className="shape-1"
-                  src="assets/imgs/page/login-register/img-5.svg"
+                  src="/assets/imgs/page/login-register/img-5.svg"
                   alt="workfitAI"
                 />
               </div>
               <div className="img-2">
                 <img
-                  src="assets/imgs/page/login-register/img-3.svg"
+                  src="/assets/imgs/page/login-register/img-3.svg"
                   alt="workfitAI"
                 />
               </div>
