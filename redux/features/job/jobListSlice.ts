@@ -89,7 +89,7 @@ const jobListSlice = createSlice({
 
                 // Gán meta mới
                 const meta = action.payload.meta;
-                state.meta.page = (meta.page ?? 0) + 1;
+                state.meta.page = meta.page;
                 state.meta.total = meta.total;
                 state.meta.pages = meta.pages;
                 state.meta.pageSize = meta.pageSize;

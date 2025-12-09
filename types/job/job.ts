@@ -1,5 +1,4 @@
 import { Company } from '@/types/job/company';
-import { Skill } from '@/types/job/skill';
 
 export interface Meta {
     page: number;
@@ -11,7 +10,7 @@ export interface Meta {
 export interface Job {
     postId: string;
     title: string;
-    description: string;
+    shortDescription: string;
     employmentType: string;
     experienceLevel: string;
     salaryMin: number;
@@ -23,7 +22,7 @@ export interface Job {
     status: string;
     educationLevel: string;
     company: Company | null;
-    skills: Skill[] | null;
+    skillNames: string[] | null;
 }
 
 export interface JobResponse {

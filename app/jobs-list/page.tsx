@@ -9,6 +9,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import Preloader from "@/app/loading";
 import { setShowSize, setSortBy } from "@/redux/features/job/jobFilterSlice";
 import FilterDropdown from "@/components/job/Dropdown/FilterDropdown";
+import Link from "next/link";
 
 export default function JobList() {
   const dispatch = useAppDispatch();
@@ -79,8 +80,14 @@ export default function JobList() {
                             <div className="card-grid-2-image-left">
                               <div className="image-box">
                                 <img
-                                  src={"/assets/imgs/brands/brand-2.png"}
+                                  src={job.company?.logoUrl}
                                   alt={job.company?.name || "Company"}
+                                  style={{
+                                    maxWidth: "60px",
+                                    maxHeight: "70px",
+                                    objectFit: "contain",
+                                    borderRadius: "10px",
+                                  }}
                                 />
                               </div>
                               <div className="right-info">
@@ -96,12 +103,12 @@ export default function JobList() {
 
                           <div className="col-lg-6 text-start text-md-end pr-60 col-md-6 col-sm-12">
                             <div className="pl-15 mb-15 mt-30">
-                              {job.skills?.map((skill) => (
+                              {job.skillNames?.map((skill, index) => (
                                 <span
                                   className="btn btn-grey-small mr-5"
-                                  key={skill.skillId}
+                                  key={index}
                                 >
-                                  {skill.name}
+                                  {skill}
                                 </span>
                               ))}
                             </div>
@@ -109,7 +116,13 @@ export default function JobList() {
                         </div>
 
                         <div className="card-block-info">
-                          <h4>{job.title}</h4>
+                          <h6>
+                            <Link href={`/job-details/${job.postId}`}>
+                              <span>{job.title}</span>
+                            </Link>
+                          </h6>
+
+                          <p>{job.shortDescription}</p>
 
                           <div className="mt-5">
                             <span className="card-briefcase">
@@ -120,10 +133,6 @@ export default function JobList() {
                               {new Date(job.expiresAt).toLocaleDateString()}
                             </span>
                           </div>
-
-                          <p className="font-sm color-text-paragraph mt-10">
-                            {job.description}
-                          </p>
 
                           <div className="card-2-bottom mt-20">
                             <div className="row">
