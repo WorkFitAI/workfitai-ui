@@ -1,6 +1,5 @@
 "use client";
 import React, { useEffect } from "react";
-import Layout from "@/components/Layout/Layout";
 import HeroBanner from "@/components/job/Banner/HeroBanner";
 import JobFilterSidebar from "@/components/job/Filter/JobFilterSidebar";
 import Pagination from "@/components/job/Pagination/Pagination";
@@ -28,7 +27,7 @@ export default function JobList() {
   if (loading) return <Preloader />;
 
   return (
-    <Layout>
+    <>
       <HeroBanner />
 
       <section className="section-box mt-30">
@@ -179,6 +178,6 @@ export default function JobList() {
           </div>
         </div>
       </section>
-    </Layout>
+    </>
   );
 }
