@@ -10,3 +10,11 @@ export const selectEmploymentType = createSelector(
         return arr && arr.length > 0 ? arr : null;
     }
 );
+
+export const selectSkillNames = createSelector(
+    [selectJobFilters],
+    (filters) => {
+        const arr = filters["skills.name"];
+        return arr && arr.length > 0 ? arr : null;
+    }
+);

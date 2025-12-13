@@ -22,6 +22,13 @@ export const jobFilterSlice = createSlice({
             }
         },
 
+        setFilter: (
+            state,
+            action: PayloadAction<JobFilterState["filter"]>
+        ) => {
+            state.filter = action.payload;
+        },
+
         setSortBy: (state, action: PayloadAction<string>) => {
             if (state.sortBy !== action.payload) {
                 state.sortBy = action.payload;
@@ -81,22 +88,50 @@ export const jobFilterSlice = createSlice({
 export const buildFilterQuery = (filter: JobFilterState["filter"]) => {
     return Object.entries(filter)
         .map(([field, values]) => {
+            if (!values.length) return "";
+
+            // loại bỏ trùng lặp
+            const uniqueValues = Array.from(new Set(values));
+
+            // xử lý riêng cho salaryMin
             if (field === "salaryMin") {
-                return `(${values.map(v => `${field}${v}`).join(" OR ")})`;
+                return `(${uniqueValues.map(v => `${field}${v}`).join(" OR ")})`;
             }
+
+            // xử lý riêng cho salaryMax
             if (field === "salaryMax") {
-                return `(${values.map(v => `${field}${v}`).join(" OR ")})`;
+                return `(${uniqueValues.map(v => `${field}${v}`).join(" OR ")})`;
             }
+
+            // xử lý riêng cho title (fuzzy search)
             if (field === "title") {
-                return `(${values
+                return `(${uniqueValues
                     .map(v => `${field}~~'${encodeURIComponent(v)}'`)
                     .join(" OR ")})`;
             }
 
-            return `(${values
-                .map(v => `${field}:${encodeURIComponent(v)}`)
-                .join(" OR ")})`;
+            // xử lý riêng cho skills.name (mảng skill)
+            if (field === "skills.name") {
+                return `(${uniqueValues
+                    .map(v => `${field} ~~ '${v}'`)
+                    .join(" OR ")})`;
+            }
+
+            if (field === "location") {
+                return `(${uniqueValues
+                    .map(v => `${field} ~~ '${v}'`)
+                    .join(" OR ")})`;
+            }
+
+            // Xử lý chung cho các field enum hoặc string khác
+            if (uniqueValues.length === 1) {
+                return `${field}:'${uniqueValues[0]}'`;
+            }
+
+            // Nếu nhiều giá trị → dùng IN
+            return `${field} in [${uniqueValues.map(v => `'${v}'`).join(", ")}]`;
         })
+        .filter(Boolean)
         .join(" AND ");
 };
 
@@ -105,6 +140,7 @@ export const {
     setSortBy,
     addFilterValue,
     removeFilterValue,
+    setFilter,
     resetFilter,
 } = jobFilterSlice.actions;
 

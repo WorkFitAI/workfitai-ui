@@ -8,9 +8,9 @@ if (typeof globalThis.localStorage !== "undefined" && typeof globalThis.localSto
     // If deletion fails, fall back to an inert polyfill to avoid runtime errors.
     globalThis.localStorage = {
       getItem: () => null,
-      setItem: () => {},
-      removeItem: () => {},
-      clear: () => {},
+      setItem: () => { },
+      removeItem: () => { },
+      clear: () => { },
       key: () => null,
       length: 0,
     };
@@ -25,15 +25,21 @@ const nextConfig = {
   },
   images: {
     domains: ['localhost'],
+    remotePatterns: [
+      {
+        protocol: "https",
+        hostname: "res.cloudinary.com",
+      },
+    ],
   },
   webpack: (config, { isServer, dev }) => {
     config.resolve.fallback = { fs: false, path: false };
-    
+
     // Disable source maps in development
     if (dev) {
       config.devtool = false;
     }
-    
+
     return config;
   },
   // Disable source maps in production

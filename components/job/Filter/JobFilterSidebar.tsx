@@ -5,7 +5,7 @@ import SalaryFilter from "./SalaryFilter";
 // import PositionFilter from "./PositionFilter";
 // import ExperienceFilter from "./ExperienceFilter";
 import WorkTypeFilter from "./WorkTypeFilter";
-import PostedFilter from "./PostedFilter";
+import SkillFilter from "./SkillFilter";
 
 export default function JobFilterSidebar() {
   return (
@@ -18,7 +18,7 @@ export default function JobFilterSidebar() {
           {/* <PositionFilter /> */}
           {/* <ExperienceFilter /> */}
           <WorkTypeFilter />
-          <PostedFilter />
+          <SkillFilter />
         </div>
       </div>
     </div>

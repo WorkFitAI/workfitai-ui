@@ -1,5 +1,8 @@
-import { Company } from '@/types/job/company';
+import { Company } from "@/types/job/company";
 
+/* =======================
+ * Pagination Meta
+ * ======================= */
 export interface Meta {
     page: number;
     pageSize: number;
@@ -7,17 +10,26 @@ export interface Meta {
     total: number;
 }
 
-export interface Job {
+/* =======================
+ * Base Job (dùng chung)
+ * ======================= */
+export interface JobBase {
     postId: string;
     title: string;
-    shortDescription: string;
     employmentType: string;
-    experienceLevel: string;
     salaryMin: number;
     salaryMax: number;
     currency: string;
     location: string;
     quantity: number;
+}
+
+/* =======================
+ * Job dùng cho LIST / SEARCH
+ * ======================= */
+export interface Job extends JobBase {
+    shortDescription: string;
+    experienceLevel: string;
     expiresAt: string;
     status: string;
     educationLevel: string;
@@ -25,6 +37,28 @@ export interface Job {
     skillNames: string[] | null;
 }
 
+/* =======================
+ * Job chi tiết (DETAIL PAGE)
+ * ======================= */
+export interface JobDetail extends JobBase {
+    createdDate: string;
+    company: Company;
+    description: string;
+    skillNames: string[];
+    bannerUrl: string | null;
+    responsibilities: string;
+    requirements: string;
+    benefits: string;
+    experienceLevel: string;
+    requiredExperience: string;
+    educationLevel: string;
+    expiresAt: string;
+    lastModifiedDate: string | null;
+}
+
+/* =======================
+ * API Response
+ * ======================= */
 export interface JobResponse {
     meta: Meta;
     result: Job[];

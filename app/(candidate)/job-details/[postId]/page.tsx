@@ -1,107 +1,53 @@
-/* eslint-disable react/no-unescaped-entities */
 import Link from "next/link";
 import FeaturedSlider from "@/components/sliders/Featured";
+import Image from "next/image";
 
 import { getJobs } from "@/lib/jobApi";
+import SimilarJobs from "@/components/job/SimilarJob/SimilarJobs";
+import CompanySidebar from "@/components/job/SimilarJob/CompanySideBar";
 
-const formatVietnam = (isoString: string) => {
-  const d = new Date(isoString);
-  return (
-    d.getDate().toString().padStart(2, "0") +
-    "/" +
-    (d.getMonth() + 1).toString().padStart(2, "0") +
-    "/" +
-    d.getFullYear() +
-    " " +
-    d.getHours().toString().padStart(2, "0") +
-    ":" +
-    d.getMinutes().toString().padStart(2, "0")
-  );
-};
-
-interface Company {
-  companyNo: string;
-  name: string;
-  description: string;
-  address: string;
-  websiteUrl: string | null;
-  logoUrl: string | null;
-  size: string | null;
-}
-
-interface JobDetails {
-  postId: string;
-  title: string;
-  description: string;
-  employmentType: string;
-  experienceLevel: string;
-  requiredExperience: string;
-  salaryMin: number;
-  salaryMax: number;
-  currency: string;
-  expiresAt: string;
-  status: string;
-  educationLevel: string;
-  requirements: string;
-  responsibilities: string;
-  benefits: string;
-  skillNames: string[];
-  location: string | null;
-  company: Company;
-  bannerUrl: string | null;
-  createdDate: string;
-  lastModifiedDate: string;
-}
-
-// 3. Định nghĩa kiểu dữ liệu cho phản hồi API
-interface ApiResponse {
-  data: JobDetails;
-  message: string;
-  status: number;
-  timestamp: string;
-}
+import { JobDetail } from "@/types/job/job";
 
 interface Props {
-  params: { postId: string };
+  params: {
+    postId: string;
+  };
 }
 
-export default async function JobDetails(props: Props) {
-  const { postId } = await props.params;
+export default async function JobDetails({ params }: Props) {
+  const { postId } = await params;
 
-  const res = await getJobs<ApiResponse>(`/public/jobs/${postId}`);
-  const resSimilar = await getJobs<ApiResponse>(
-    `/public/jobs/similar/${postId}`
-  );
+  const res = await getJobs<JobDetail>(`/public/jobs/${postId}`);
 
   if (!res.data) {
     return <h1>Công việc không tồn tại.</h1>;
   }
 
   const job = res.data;
-  const similarJobs = resSimilar.data;
+
   return (
     <>
       <div>
         <section className="section-box-2">
           <div className="container">
             <div className="banner-hero banner-image-single">
-              {job.bannerUrl ? (
-                <img src={job.bannerUrl} alt="jobBox" />
-              ) : (
-                <img
-                  src="/assets/imgs/page/job-single/thumb.png"
-                  alt="jobBox"
-                />
-              )}
+              <Image
+                src={job?.bannerUrl || "/assets/imgs/page/job-single/thumb.png"}
+                alt="job banner"
+                priority
+                unoptimized
+                width={500}
+                height={400}
+              />
             </div>
             {/* Title, Job Type, Create Time, Apply Button */}
             <div className="row mt-10">
               <div className="col-lg-8 col-md-12">
-                <h3>{job.title}</h3>
+                <h3>{job?.title}</h3>
                 <div className="mt-0 mb-15">
-                  <span className="card-briefcase">{job.employmentType}</span>
+                  <span className="card-briefcase">{job?.employmentType}</span>
                   <span className="card-time">
-                    {formatVietnam(job.createdDate)}
+                    {new Date(job?.createdDate).toLocaleDateString()}
                   </span>
                 </div>
               </div>
@@ -141,7 +87,7 @@ export default async function JobDetails(props: Props) {
                           Skills
                         </span>
                         <strong className="small-heading">
-                          {job.skillNames.join(", ")}
+                          {job?.skillNames.join(", ")}
                         </strong>
                       </div>
                     </div>
@@ -157,7 +103,7 @@ export default async function JobDetails(props: Props) {
                           Job level
                         </span>
                         <strong className="small-heading">
-                          {job.experienceLevel}
+                          {job?.experienceLevel}
                         </strong>
                       </div>
                     </div>
@@ -175,7 +121,7 @@ export default async function JobDetails(props: Props) {
                           Salary
                         </span>
                         <strong className="small-heading">
-                          {job.salaryMin} - {job.salaryMax}
+                          {job?.salaryMin} - {job?.salaryMax}
                         </strong>
                       </div>
                     </div>
@@ -191,8 +137,8 @@ export default async function JobDetails(props: Props) {
                           Experience
                         </span>
                         <strong className="small-heading">
-                          {job.requiredExperience
-                            ? job.requiredExperience
+                          {job?.requiredExperience
+                            ? job?.requiredExperience
                             : "N/A"}
                         </strong>
                       </div>
@@ -211,7 +157,7 @@ export default async function JobDetails(props: Props) {
                           Job type
                         </span>
                         <strong className="small-heading">
-                          {job.employmentType}
+                          {job?.employmentType}
                         </strong>
                       </div>
                     </div>
@@ -225,7 +171,7 @@ export default async function JobDetails(props: Props) {
                       <div className="sidebar-text-info ml-10">
                         <span className="text-description mb-10">Deadline</span>
                         <strong className="small-heading">
-                          {formatVietnam(job.expiresAt)}
+                          {new Date(job?.expiresAt).toLocaleDateString()}
                         </strong>
                       </div>
                     </div>
@@ -243,8 +189,10 @@ export default async function JobDetails(props: Props) {
                           Updated
                         </span>
                         <strong className="small-heading">
-                          {job.lastModifiedDate
-                            ? formatVietnam(job.lastModifiedDate)
+                          {job?.lastModifiedDate
+                            ? new Date(
+                                job?.lastModifiedDate
+                              ).toLocaleDateString()
                             : "N/A"}
                         </strong>
                       </div>
@@ -259,7 +207,7 @@ export default async function JobDetails(props: Props) {
                       <div className="sidebar-text-info ml-10">
                         <span className="text-description mb-10">Location</span>
                         <strong className="small-heading">
-                          {job.location ? job.location : "N/A"}
+                          {job?.location ? job?.location : "N/A"}
                         </strong>
                       </div>
                     </div>
@@ -268,71 +216,71 @@ export default async function JobDetails(props: Props) {
                 {/* Job Description */}
                 <div className="content-single">
                   {/* Company */}
-                  <h4>Welcome to {job.company?.name || "Company"}</h4>
+                  <h4>Welcome to {job?.company?.name || "Company"}</h4>
                   <p>
-                    {job.company?.description ||
+                    {job?.company?.description ||
                       "No company description available."}
                   </p>
 
                   {/* Job Description */}
-                  <p>{job.description}</p>
+                  <p>{job?.description}</p>
 
                   {/* Education Level */}
-                  {job.educationLevel && (
+                  {job?.educationLevel && (
                     <>
                       <h4>Education Level</h4>
-                      <p>{job.educationLevel}</p>
+                      <p>{job?.educationLevel}</p>
                     </>
                   )}
 
                   {/* Skills + Experience Level */}
-                  {job.skillNames && job.skillNames.length > 0 && (
+                  {job?.skillNames && job?.skillNames.length > 0 && (
                     <>
                       <h4>Essential Knowledge, Skills</h4>
-                      {job.skillNames.map((skill: string, index: number) => (
+                      {job?.skillNames?.map((skill: string, index: number) => (
                         <p key={index}>{skill}</p>
                       ))}
 
-                      {job.experienceLevel && (
+                      {job?.experienceLevel && (
                         <>
                           <h4>Experience Level</h4>
-                          <p>{job.experienceLevel}</p>
+                          <p>{job?.experienceLevel}</p>
                         </>
                       )}
                     </>
                   )}
 
                   {/* Preferred Experience */}
-                  {job.requirements && (
+                  {job?.requirements && (
                     <>
                       <h4>Preferred Experience</h4>
-                      {job.requirements
+                      {job?.requirements
                         .split("\n")
-                        .map((req: string, index: number) => (
+                        ?.map((req: string, index: number) => (
                           <p key={index}>{req}</p>
                         ))}
                     </>
                   )}
 
                   {/* Responsibility */}
-                  {job.responsibilities && (
+                  {job?.responsibilities && (
                     <>
                       <h4>Responsibilities</h4>
-                      {job.responsibilities
+                      {job?.responsibilities
                         .split("\n")
-                        .map((resp: string, index: number) => (
+                        ?.map((resp: string, index: number) => (
                           <p key={index}>{resp}</p>
                         ))}
                     </>
                   )}
 
                   {/* Benefits */}
-                  {job.benefits && (
+                  {job?.benefits && (
                     <>
                       <h4>What We Offer</h4>
-                      {job.benefits
+                      {job?.benefits
                         .split("\n")
-                        .map((benefit: string, index: number) => (
+                        ?.map((benefit: string, index: number) => (
                           <p key={index}>{benefit}</p>
                         ))}
                     </>
@@ -340,7 +288,7 @@ export default async function JobDetails(props: Props) {
                 </div>
                 {/* Author */}
                 <div className="author-single">
-                  <span>{job.company.name}</span>
+                  <span>{job?.company.name}</span>
                 </div>
                 {/* Apply Job & Share */}
                 <div className="single-apply-jobs">
@@ -399,137 +347,9 @@ export default async function JobDetails(props: Props) {
               </div>
               {/* Similar Jobs */}
               <div className="col-lg-4 col-md-12 col-sm-12 col-12 pl-40 pl-lg-15 mt-lg-30">
-                <div className="sidebar-border">
-                  <div className="sidebar-heading">
-                    <div className="avatar-sidebar">
-                      <figure>
-                        <img
-                          src={job.company?.logoUrl}
-                          alt={job.company?.name || "Company"}
-                          style={{
-                            maxWidth: "60px",
-                            maxHeight: "70px",
-                            objectFit: "contain",
-                            borderRadius: "10px",
-                          }}
-                        />
-                      </figure>
-                      <div className="sidebar-info">
-                        <span className="sidebar-company">
-                          {job.company.name}
-                        </span>
-                        <span className="card-location">
-                          {job.location ? job.location : "N/A"}
-                        </span>
-                        <Link href="#">
-                          <span className="link-underline mt-15">
-                            {job.quantity} Open position(s)
-                          </span>
-                        </Link>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="sidebar-list-job">
-                    <div className="box-map">
-                      <iframe
-                        src="https://www.google.com/maps/embed?pb=!1m18!1m12!1m3!1d2970.3150609575905!2d-87.6235655!3d41.886080899999996!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!3m3!1m2!1s0x880e2ca8b34afe61%3A0x6caeb5f721ca846!2s205%20N%20Michigan%20Ave%20Suit%20810%2C%20Chicago%2C%20IL%2060601%2C%20Hoa%20K%E1%BB%B3!5e0!3m2!1svi!2s!4v1658551322537!5m2!1svi!2s"
-                        allowFullScreen
-                        loading="lazy"
-                        referrerPolicy="no-referrer-when-downgrade"
-                      />
-                    </div>
-                    <ul className="ul-disc">
-                      <li>{job.company.address}</li>
-                      <li>Phone: (123) 456-7890</li>
-                      <li>Email: contact@Evara.com</li>
-                    </ul>
-                  </div>
-                </div>
-                <div className="sidebar-border">
-                  <h6 className="f-18">Similar jobs</h6>
-                  <div className="sidebar-list-job">
-                    <ul>
-                      {similarJobs.map((job: any) => (
-                        <li key={job.postId}>
-                          <div className="card-list-4 hover-up">
-                            {/* Avatar company */}
-                            <div className="image">
-                              <Link href={`/job-details/${job.postId}`}>
-                                <span>
-                                  {job.company.logoUrl ? (
-                                    <img
-                                      src={job.company?.logoUrl}
-                                      alt={job.company?.name || "Company"}
-                                      style={{
-                                        maxWidth: "50px",
-                                        maxHeight: "50px",
-                                        objectFit: "contain",
-                                        borderRadius: "10px",
-                                      }}
-                                    />
-                                  ) : (
-                                    <div className="w-12 h-12 rounded-full bg-blue-500 text-white flex items-center justify-center font-bold text-xl">
-                                      {job.company.name.charAt(0)}
-                                    </div>
-                                  )}
-                                </span>
-                              </Link>
-                            </div>
+                <CompanySidebar job={job} />
 
-                            <div className="info-text">
-                              {/* Job title */}
-                              <h5 className="font-md font-bold color-brand-1">
-                                <Link href={`/job-details/${job.postId}`}>
-                                  <span>{job.title}</span>
-                                </Link>
-                              </h5>
-
-                              <div className="mt-0">
-                                <span className="card-briefcase">
-                                  {job.employmentType}
-                                </span>
-
-                                <span className="card-time">
-                                  <span>{formatVietnam(job.createdDate)}</span>
-                                </span>
-                              </div>
-
-                              <div className="mt-5">
-                                <div className="row">
-                                  <div className="col-6">
-                                    <h6 className="card-price">
-                                      {job.salaryMin} - {job.salaryMax}{" "}
-                                      {job.currency}
-                                    </h6>
-                                  </div>
-                                  <div className="col-6 text-end">
-                                    <span className="card-briefcase">
-                                      {job.company.name}
-                                    </span>
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Skills */}
-                              <div className="mt-2">
-                                {job.skillNames
-                                  .slice(0, 3)
-                                  .map((sk: string, index: number) => (
-                                    <span
-                                      key={sk + index}
-                                      className="badge bg-light text-dark me-1"
-                                    >
-                                      {sk}
-                                    </span>
-                                  ))}
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                    </ul>
-                  </div>
-                </div>
+                <SimilarJobs postId={job.postId} />
               </div>
             </div>
           </div>

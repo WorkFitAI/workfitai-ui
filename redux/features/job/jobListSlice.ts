@@ -1,75 +1,47 @@
 import { createAsyncThunk, createSlice } from "@reduxjs/toolkit";
 import { getJobs } from "@/lib/jobApi";
-import { Job, Meta } from "@/types/job/job";
-import { JobResponse } from "@/types/job/job";
-import { JobFilterState, buildFilterQuery } from './jobFilterSlice';
+import { Job, Meta, JobResponse } from "@/types/job/job";
+import { JobFilterState, buildFilterQuery } from "./jobFilterSlice";
 
-const buildQuery = ({
-    page = 1,
-    size = 12,
-    filter,
-    sort,
-}: {
+interface FetchArgs {
     page?: number;
     size?: number;
-    filter?: JobFilterState['filter'];
+    filter?: JobFilterState["filter"];
     sort?: string;
-}) => {
+}
+
+const buildQuery = ({ page = 1, size = 12, filter, sort }: FetchArgs) => {
     let query = `/public/jobs?page=${page - 1}&size=${size}`;
 
-    if (filter && Object.keys(filter).length > 0) {
-        const filterString = buildFilterQuery(filter);
-        query += `&filter=${encodeURIComponent(filterString)}`;
+    if (filter && Object.keys(filter).length) {
+        query += `&filter=${encodeURIComponent(buildFilterQuery(filter))}`;
     }
 
-    switch (sort) {
-        case "Newest Post":
-            query += `&sort=createdDate,desc`;
-            break;
-        case "Oldest Post":
-            query += `&sort=createdDate,asc`;
-            break;
-        case "Rating Post":
-            query += `&sort=rating,desc`;
-            break;
-    }
+    if (sort === "Newest Post") query += `&sort=createdDate,desc`;
+    if (sort === "Oldest Post") query += `&sort=createdDate,asc`;
+    if (sort === "Rating Post") query += `&sort=rating,desc`;
 
     return query;
 };
 
 export const fetchAllJobs = createAsyncThunk(
-    "jobs/all",
-    async ({
-        page = 1,
-        size = 12,
-        filter = {},
-        sort = "",
-    }: {
-        page?: number;
-        size?: number;
-        filter?: JobFilterState['filter'];
-        sort?: string;
-    }) => {
-        const query = buildQuery({ page, size, filter, sort });
-        const res = await getJobs<JobResponse>(query);
+    "jobs/fetchAll",
+    async (args: FetchArgs) => {
+        const res = await getJobs<JobResponse>(buildQuery(args));
         return res.data!;
     }
 );
 
 interface JobListState {
+    page: number;
     meta: Meta;
     jobs: Job[];
     loading: boolean;
-    error?: string | null;
 }
 
 const initialState: JobListState = {
-    meta: {
-        page: 1,
-        total: 0,
-        pages: 0,
-        pageSize: 12,
-    },
+    page: 1,
+    meta: { page: 1, pages: 0, total: 0, pageSize: 12 },
     jobs: [],
     loading: false,
 };
@@ -80,25 +52,16 @@ const jobListSlice = createSlice({
     reducers: {},
     extraReducers: (builder) => {
         builder
-            .addCase(fetchAllJobs.pending, (state) => {
-                state.loading = true;
-                state.error = null;
+            .addCase(fetchAllJobs.pending, (s) => {
+                s.loading = true;
             })
-            .addCase(fetchAllJobs.fulfilled, (state, action) => {
-                state.loading = false;
-
-                // Gán meta mới
-                const meta = action.payload.meta;
-                state.meta.page = meta.page;
-                state.meta.total = meta.total;
-                state.meta.pages = meta.pages;
-                state.meta.pageSize = meta.pageSize;
-
-                state.jobs = action.payload.result;
+            .addCase(fetchAllJobs.fulfilled, (s, a) => {
+                s.loading = false;
+                s.jobs = a.payload.result;
+                s.meta = a.payload.meta;
             })
-            .addCase(fetchAllJobs.rejected, (state, action) => {
-                state.loading = false;
-                state.error = action.error.message || "Cannot load jobs after 3 retries.";
+            .addCase(fetchAllJobs.rejected, (s) => {
+                s.loading = false;
             });
     },
 });

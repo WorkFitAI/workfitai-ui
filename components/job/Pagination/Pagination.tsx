@@ -13,12 +13,6 @@ const Pagination: React.FC<PaginationProps> = ({
   totalPages,
   onPageChange,
 }) => {
-  console.log(
-    "Pagination - currentPage:",
-    currentPage,
-    "totalPages:",
-    totalPages
-  );
   const pageLinks = useMemo(() => {
     const maxVisiblePages = 7;
     const siblingCount = 1;
@@ -40,7 +34,9 @@ const Pagination: React.FC<PaginationProps> = ({
     return pages;
   }, [currentPage, totalPages]);
 
-  return (
+  return totalPages === 0 ? (
+    <div className="mf-no-data">No pages available</div>
+  ) : (
     <div className="mf-pagination">
       <ul className="mf-page-list">
         <li>
@@ -48,7 +44,7 @@ const Pagination: React.FC<PaginationProps> = ({
             className="mf-page-prev"
             onClick={() => currentPage > 1 && onPageChange(currentPage - 1)}
             disabled={currentPage === 1}
-          ></button>
+          />
         </li>
 
         {pageLinks.map((p, idx) =>
@@ -77,7 +73,7 @@ const Pagination: React.FC<PaginationProps> = ({
               currentPage < totalPages && onPageChange(currentPage + 1)
             }
             disabled={currentPage === totalPages}
-          ></button>
+          />
         </li>
       </ul>
     </div>
