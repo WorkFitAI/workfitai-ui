@@ -10,20 +10,45 @@ import { setShowSize, setSortBy } from "@/redux/features/job/jobFilterSlice";
 import FilterDropdown from "@/components/job/Dropdown/FilterDropdown";
 import Link from "next/link";
 import Image from "next/image";
+import { useDebounce } from "@/hooks/useDebounce";
 
 export default function JobList() {
   const dispatch = useAppDispatch();
+
   const { showSize, sortBy, filter } = useAppSelector(
     (state) => state.jobFilter
   );
   const { jobs, meta, loading } = useAppSelector((state) => state.jobList);
 
+  const [currentPage, setCurrentPage] = React.useState(1);
+
   const showOptions = [10, 12, 20];
   const sortOptions = ["Newest Post", "Oldest Post", "Rating Post"];
 
+  const debouncedFilter = useDebounce(filter, 400);
+  const debouncedSort = useDebounce(sortBy, 300);
+  const debouncedShowSize = useDebounce(showSize, 300);
+
   useEffect(() => {
-    dispatch(fetchAllJobs({ page: 1, size: showSize, filter, sort: sortBy }));
-  }, [dispatch, showSize, sortBy, filter]);
+    dispatch(
+      fetchAllJobs({
+        page: currentPage,
+        size: debouncedShowSize,
+        filter: debouncedFilter,
+        sort: debouncedSort,
+      })
+    );
+  }, [
+    dispatch,
+    currentPage,
+    debouncedFilter,
+    debouncedSort,
+    debouncedShowSize,
+  ]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [filter, sortBy, showSize]); // Đảm bảo khi filter, sortBy hoặc showSize thay đổi thì trang hiện tại sẽ về 1
 
   if (loading) return <Preloader />;
 
@@ -101,7 +126,7 @@ export default function JobList() {
                                   {job?.company?.name || "Unknown Company"}
                                 </span>
                                 <span className="location-small">
-                                  {job?.location}
+                                  {job?.company?.address || null}
                                 </span>
                               </div>
                             </div>
@@ -172,11 +197,9 @@ export default function JobList() {
                 {/* Pagination */}
                 {meta && (
                   <Pagination
-                    currentPage={meta.page}
-                    totalPages={meta.pages}
-                    onPageChange={(p) =>
-                      dispatch(fetchAllJobs({ page: p, size: showSize }))
-                    }
+                    currentPage={currentPage}
+                    totalPages={meta?.pages || 1}
+                    onPageChange={(p) => setCurrentPage(p)}
                   />
                 )}
               </div>

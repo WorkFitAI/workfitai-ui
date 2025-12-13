@@ -22,6 +22,13 @@ export const jobFilterSlice = createSlice({
             }
         },
 
+        setFilter: (
+            state,
+            action: PayloadAction<JobFilterState["filter"]>
+        ) => {
+            state.filter = action.payload;
+        },
+
         setSortBy: (state, action: PayloadAction<string>) => {
             if (state.sortBy !== action.payload) {
                 state.sortBy = action.payload;
@@ -110,6 +117,12 @@ export const buildFilterQuery = (filter: JobFilterState["filter"]) => {
                     .join(" OR ")})`;
             }
 
+            if (field === "location") {
+                return `(${uniqueValues
+                    .map(v => `${field} ~~ '${v}'`)
+                    .join(" OR ")})`;
+            }
+
             // Xử lý chung cho các field enum hoặc string khác
             if (uniqueValues.length === 1) {
                 return `${field}:'${uniqueValues[0]}'`;
@@ -127,6 +140,7 @@ export const {
     setSortBy,
     addFilterValue,
     removeFilterValue,
+    setFilter,
     resetFilter,
 } = jobFilterSlice.actions;
 
