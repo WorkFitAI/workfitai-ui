@@ -114,3 +114,18 @@ export const putJob = async <T>(path: string, options?: RequestOptions) =>
 
 export const deleteJob = async <T>(path: string, options?: RequestOptions) =>
   jobRequest<T>(path, { ...options, method: "DELETE" });
+
+export const postJobFormData = async <T>(path: string, formData: FormData, accessToken?: string) => {
+  const headers: HeadersInit = {};
+  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+
+  const response = await fetch(buildUrl(path), {
+    method: "POST",
+    headers,
+    body: formData,
+    credentials: "include",
+  });
+
+  return handleResponse<T>(response);
+};
+

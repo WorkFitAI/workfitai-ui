@@ -5,9 +5,12 @@ import Image from "next/image";
 import { getJobs } from "@/lib/jobApi";
 import SimilarJobs from "@/components/job/SimilarJob/SimilarJobs";
 import CompanySidebar from "@/components/job/SimilarJob/CompanySideBar";
+// import JobDescriptionEditorClient from "@/components/job/JobDescriptionEditor/JobDescriptionEditorClient";
 
 import { JobDetail } from "@/types/job/job";
-
+import JobStatusBadge from "@/components/job/JobStatusAction/JobStatusBadge";
+// import BannerUploader from "@/components/job/Banner/BannerUploader";
+import JobDescriptionRender from "@/components/job/JobDescriptionRender/JobDescriptionRender";
 interface Props {
   params: {
     postId: string;
@@ -39,6 +42,12 @@ export default async function JobDetails({ params }: Props) {
                 width={500}
                 height={400}
               />
+              {/* <BannerUploader
+                jobId={job.postId}
+                initialUrl={
+                  job?.bannerUrl || "/assets/imgs/page/job-single/thumb.png"
+                }
+              /> */}
             </div>
             {/* Title, Job Type, Create Time, Apply Button */}
             <div className="row mt-10">
@@ -72,7 +81,8 @@ export default async function JobDetails({ params }: Props) {
                 {/* Job Overview */}
                 <div className="job-overview">
                   <h5 className="border-bottom pb-15 mb-30">
-                    Employment Information
+                    Employment Information{" "}
+                    <JobStatusBadge status={job.status} />
                   </h5>
                   <div className="row">
                     <div className="col-md-6 d-flex">
@@ -214,78 +224,8 @@ export default async function JobDetails({ params }: Props) {
                   </div>
                 </div>
                 {/* Job Description */}
-                <div className="content-single">
-                  {/* Company */}
-                  <h4>Welcome to {job?.company?.name || "Company"}</h4>
-                  <p>
-                    {job?.company?.description ||
-                      "No company description available."}
-                  </p>
-
-                  {/* Job Description */}
-                  <p>{job?.description}</p>
-
-                  {/* Education Level */}
-                  {job?.educationLevel && (
-                    <>
-                      <h4>Education Level</h4>
-                      <p>{job?.educationLevel}</p>
-                    </>
-                  )}
-
-                  {/* Skills + Experience Level */}
-                  {job?.skillNames && job?.skillNames.length > 0 && (
-                    <>
-                      <h4>Essential Knowledge, Skills</h4>
-                      {job?.skillNames?.map((skill: string, index: number) => (
-                        <p key={index}>{skill}</p>
-                      ))}
-
-                      {job?.experienceLevel && (
-                        <>
-                          <h4>Experience Level</h4>
-                          <p>{job?.experienceLevel}</p>
-                        </>
-                      )}
-                    </>
-                  )}
-
-                  {/* Preferred Experience */}
-                  {job?.requirements && (
-                    <>
-                      <h4>Preferred Experience</h4>
-                      {job?.requirements
-                        .split("\n")
-                        ?.map((req: string, index: number) => (
-                          <p key={index}>{req}</p>
-                        ))}
-                    </>
-                  )}
-
-                  {/* Responsibility */}
-                  {job?.responsibilities && (
-                    <>
-                      <h4>Responsibilities</h4>
-                      {job?.responsibilities
-                        .split("\n")
-                        ?.map((resp: string, index: number) => (
-                          <p key={index}>{resp}</p>
-                        ))}
-                    </>
-                  )}
-
-                  {/* Benefits */}
-                  {job?.benefits && (
-                    <>
-                      <h4>What We Offer</h4>
-                      {job?.benefits
-                        .split("\n")
-                        ?.map((benefit: string, index: number) => (
-                          <p key={index}>{benefit}</p>
-                        ))}
-                    </>
-                  )}
-                </div>
+                {/* <JobDescriptionEditorClient job={job} /> */}
+                <JobDescriptionRender job={job} />
                 {/* Author */}
                 <div className="author-single">
                   <span>{job?.company.name}</span>
