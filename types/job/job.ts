@@ -1,5 +1,7 @@
 import { Company } from "@/types/job/company";
 
+export type JobStatus = "DRAFT" | "PUBLISHED" | "CLOSED";
+
 /* =======================
  * Pagination Meta
  * ======================= */
@@ -44,6 +46,7 @@ export interface JobDetail extends JobBase {
     createdDate: string;
     company: Company;
     description: string;
+    shortDescription: string;
     skillNames: string[];
     bannerUrl: string | null;
     responsibilities: string;
@@ -53,6 +56,7 @@ export interface JobDetail extends JobBase {
     requiredExperience: string;
     educationLevel: string;
     expiresAt: string;
+    status: JobStatus;
     lastModifiedDate: string | null;
 }
 
@@ -63,3 +67,50 @@ export interface JobResponse {
     meta: Meta;
     result: Job[];
 }
+
+export interface ReqUpdateJobDTO {
+    jobId: string;
+    // Company info
+    companyNo?: string;
+
+    location?: string;
+    quantity?: number;
+    expiresAt?: string;
+
+    // Job basic info
+    title?: string;
+    description?: string;
+    educationLevel?: string;
+    experienceLevel?: string;
+
+    shortDescription?: string;
+
+    // Skills
+    skillNames?: string[];
+    requiredExperience?: string;
+    employmentType?: string;
+
+    // Salary
+    salaryMin?: number;
+    salaryMax?: number;
+    currency?: string;
+
+    // Requirements / Preferred experience
+    requirements?: string;
+
+    // Responsibilities
+    responsibilities?: string;
+
+    // Benefits / What we offer
+    benefits?: string;
+
+    // Status
+    status?: JobStatus;
+
+    skillIds?: string[];
+
+    // Banner file (if uploading a new one)
+    bannerFile?: File;
+}
+
+
