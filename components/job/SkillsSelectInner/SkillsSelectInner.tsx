@@ -10,7 +10,10 @@ interface SkillsSelectProps {
   onChange: (val: string[]) => void;
 }
 
-const SkillsSelect: React.FC<SkillsSelectProps> = ({ value, onChange }) => {
+const SkillsSelectInner: React.FC<SkillsSelectProps> = ({
+  value,
+  onChange,
+}) => {
   const [options, setOptions] = useState<SkillOption[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,29 +27,19 @@ const SkillsSelect: React.FC<SkillsSelectProps> = ({ value, onChange }) => {
 
         const apiOptions: SkillOption[] = skills.map((s) => ({
           label: s.name,
-          value: s.name,
+          value: s.skillId,
         }));
 
-        const mergedOptions: SkillOption[] = [
-          ...apiOptions,
-          ...value
-            .filter((name) => !apiOptions.some((o) => o.value === name))
-            .map((name) => ({
-              label: name,
-              value: name,
-            })),
-        ];
-
-        setOptions(mergedOptions);
-      } catch (err) {
-        console.error("Failed to fetch skills", err);
+        setOptions(apiOptions);
+      } catch (error) {
+        console.error("Failed to fetch skills", error);
       } finally {
         setLoading(false);
       }
     };
 
     fetchAllSkills();
-  }, [value]);
+  }, []);
 
   return (
     <Select<SkillOption, true>
@@ -58,9 +51,9 @@ const SkillsSelect: React.FC<SkillsSelectProps> = ({ value, onChange }) => {
       onChange={(selected: MultiValue<SkillOption>) =>
         onChange(selected.map((s) => s.value))
       }
-      placeholder="Select skills..."
+      placeholder="At least 1 skill required!"
     />
   );
 };
 
-export default SkillsSelect;
+export default SkillsSelectInner;
