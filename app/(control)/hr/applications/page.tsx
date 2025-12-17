@@ -8,9 +8,9 @@ import {
   fetchAssignedApplications,
   selectApplications,
   selectApplicationLoading,
+  selectApplicationMeta,
 } from "@/redux/features/application/applicationSlice";
 import ApplicationTable from "@/components/application/control/ApplicationTable";
-import SearchFilters from "@/components/application/control/SearchFilters";
 import { useToast } from "@/components/application/common/Toast";
 import { ErrorBoundary } from "@/components/application/common/ErrorBoundary";
 import type { ApplicationFilters } from "@/components/application/control/SearchFilters";
@@ -31,7 +31,8 @@ export default function ApplicationsPage(): React.ReactElement {
 
   const jobId = searchParams.get("jobId");
   const page = parseInt(searchParams.get("page") || "0");
-  const size = parseInt(searchParams.get("size") || "20");
+  const size = parseInt(searchParams.get("size") || "5");
+  const paginationMeta = useAppSelector(selectApplicationMeta);
 
   // Fetch applications on initial load and when dependencies change
   useEffect(() => {
@@ -63,6 +64,20 @@ export default function ApplicationsPage(): React.ReactElement {
     }
     return allApplications.filter((app) => app.status === currentStatus);
   }, [allApplications, currentStatus, jobId]);
+
+  // Handlers for pagination - update URL params which triggers API refetch
+  const handlePageChange = (newPage: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("page", newPage.toString());
+    router.push(`?${params.toString()}`);
+  };
+
+  const handlePageSizeChange = (newSize: number) => {
+    const params = new URLSearchParams(searchParams.toString());
+    params.set("size", newSize.toString());
+    params.set("page", "0"); // Reset to first page when changing size
+    router.push(`?${params.toString()}`);
+  };
 
   // Calculate status counts from all applications
   const statusCounts = useMemo(() => {
@@ -147,18 +162,6 @@ export default function ApplicationsPage(): React.ReactElement {
     }
   };
 
-  const handleBulkAction = async (): Promise<void> => {
-    if (selectedIds.length === 0) {
-      showToast({
-        type: "warning",
-        title: "No Selection",
-        message: "Please select applications first",
-      });
-      return;
-    }
-    // Bulk actions handled in BulkActionsToolbar component
-  };
-
   return (
     <ErrorBoundary>
       <div className="box-content">
@@ -208,157 +211,166 @@ export default function ApplicationsPage(): React.ReactElement {
                       )}
                     </div>
 
-                    {/* Quick Stats Cards */}
+                    {/* Enhanced Stats Cards */}
                     <div className="row mt-25">
-                      <div className="col-lg-3 col-md-6 col-sm-6 mb-20">
+                      {[
+                        {
+                          key: "new",
+                          label: "New Applications",
+                          count: statusCounts.APPLIED,
+                          subtitle: "Awaiting Review",
+                          bgColor: "#3498DB",
+                          icon: "fi fi-rr-paper-plane",
+                          onClick: () => setCurrentStatus(undefined),
+                          trend: "+12%",
+                          trendUp: true,
+                        },
+                        {
+                          key: "reviewing",
+                          label: "Under Review",
+                          count: statusCounts.REVIEWING,
+                          subtitle: "In Progress",
+                          bgColor: "#F39C12",
+                          icon: "fi fi-rr-eye",
+                          onClick: () => setCurrentStatus("REVIEWING"),
+                          trend: "+5%",
+                          trendUp: true,
+                        },
+                        {
+                          key: "interview",
+                          label: "Interviews",
+                          count: statusCounts.INTERVIEW,
+                          subtitle: "Scheduled",
+                          bgColor: "#9B59B6",
+                          icon: "fi fi-rr-users",
+                          onClick: () => setCurrentStatus("INTERVIEW"),
+                          trend: "+8%",
+                          trendUp: true,
+                        },
+                        {
+                          key: "hired",
+                          label: "Successfully Hired",
+                          count: statusCounts.HIRED,
+                          subtitle: "This Month",
+                          bgColor: "#27AE60",
+                          icon: "fi fi-rr-badge-check",
+                          onClick: () => setCurrentStatus("HIRED"),
+                          trend: "+15%",
+                          trendUp: true,
+                        },
+                      ].map((stat) => (
                         <div
-                          className="card-style-1 hover-up"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => setCurrentStatus(undefined)}
+                          key={stat.key}
+                          className="col-lg-3 col-md-6 col-sm-6 mb-20"
                         >
-                          <div className="card-info">
-                            <div className="card-title">
-                              <h6 className="font-sm color-text-paragraph-2 mb-5">
-                                New
-                              </h6>
-                            </div>
-                            <div className="card-count">
-                              <h3 className="color-brand-2">
-                                {statusCounts.APPLIED}
-                              </h3>
-                              <span className="font-xs color-text-mutted">
-                                Applications
-                              </span>
-                            </div>
-                          </div>
-                          <div className="card-icon">
-                            <div className="icon-bg icon-bg-primary">
-                              <svg
-                                style={{ width: "24px", height: "24px" }}
-                                fill="white"
-                                viewBox="0 0 20 20"
+                          <div
+                            onClick={stat.onClick}
+                            style={{
+                              background: "#FFFFFF",
+                              borderRadius: "8px",
+                              padding: "20px",
+                              cursor: "pointer",
+                              transition: "all 0.2s ease",
+                              border: "1px solid #E9ECEF",
+                            }}
+                            onMouseOver={(e) => {
+                              e.currentTarget.style.backgroundColor = "#F8F9FA";
+                            }}
+                            onMouseOut={(e) => {
+                              e.currentTarget.style.backgroundColor = "#FFFFFF";
+                            }}
+                          >
+                            <div>
+                              {/* Header with Icon */}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  alignItems: "center",
+                                  justifyContent: "space-between",
+                                  marginBottom: "16px",
+                                }}
                               >
-                                <path d="M9 2a1 1 0 000 2h2a1 1 0 100-2H9z" />
-                                <path
-                                  fillRule="evenodd"
-                                  d="M4 5a2 2 0 012-2 3 3 0 003 3h2a3 3 0 003-3 2 2 0 012 2v11a2 2 0 01-2 2H6a2 2 0 01-2-2V5zm9.707 5.707a1 1 0 00-1.414-1.414L9 12.586l-1.293-1.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
+                                <div
+                                  style={{
+                                    width: "48px",
+                                    height: "48px",
+                                    borderRadius: "8px",
+                                    backgroundColor: stat.bgColor,
+                                    display: "flex",
+                                    alignItems: "center",
+                                    justifyContent: "center",
+                                  }}
+                                >
+                                  <i
+                                    className={stat.icon}
+                                    style={{
+                                      fontSize: "22px",
+                                      color: "#FFFFFF",
+                                    }}
+                                  ></i>
+                                </div>
+                                {/* Trend Badge */}
+                                <div
+                                  style={{
+                                    padding: "4px 10px",
+                                    borderRadius: "6px",
+                                    fontSize: "12px",
+                                    fontWeight: 700,
+                                    color: stat.trendUp ? "#27AE60" : "#E74C3C",
+                                    backgroundColor: stat.trendUp
+                                      ? "#E8F8F5"
+                                      : "#FADBD8",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "4px",
+                                  }}
+                                >
+                                  <i
+                                    className={`fi fi-rr-arrow-small-${
+                                      stat.trendUp ? "up" : "down"
+                                    }`}
+                                  ></i>
+                                  {stat.trend}
+                                </div>
+                              </div>
+
+                              {/* Stats Content */}
+                              <div>
+                                <h2
+                                  style={{
+                                    fontSize: "32px",
+                                    fontWeight: 800,
+                                    color: "#2D3E50",
+                                    marginBottom: "4px",
+                                    lineHeight: 1,
+                                  }}
+                                >
+                                  {stat.count}
+                                </h2>
+                                <h6
+                                  style={{
+                                    fontSize: "14px",
+                                    fontWeight: 600,
+                                    color: "#495057",
+                                    marginBottom: "4px",
+                                  }}
+                                >
+                                  {stat.label}
+                                </h6>
+                                <p
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "#6C757D",
+                                    margin: 0,
+                                  }}
+                                >
+                                  {stat.subtitle}
+                                </p>
+                              </div>
                             </div>
                           </div>
                         </div>
-                      </div>
-                      <div className="col-lg-3 col-md-6 col-sm-6 mb-20">
-                        <div
-                          className="card-style-1 hover-up"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => setCurrentStatus("REVIEWING")}
-                        >
-                          <div className="card-info">
-                            <div className="card-title">
-                              <h6 className="font-sm color-text-paragraph-2 mb-5">
-                                Reviewing
-                              </h6>
-                            </div>
-                            <div className="card-count">
-                              <h3 className="color-brand-2">
-                                {statusCounts.REVIEWING}
-                              </h3>
-                              <span className="font-xs color-text-mutted">
-                                In Progress
-                              </span>
-                            </div>
-                          </div>
-                          <div className="card-icon">
-                            <div className="icon-bg icon-bg-warning">
-                              <svg
-                                style={{ width: "24px", height: "24px" }}
-                                fill="white"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="col-lg-3 col-md-6 col-sm-6 mb-20">
-                        <div
-                          className="card-style-1 hover-up"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => setCurrentStatus("INTERVIEW")}
-                        >
-                          <div className="card-info">
-                            <div className="card-title">
-                              <h6 className="font-sm color-text-paragraph-2 mb-5">
-                                Interview
-                              </h6>
-                            </div>
-                            <div className="card-count">
-                              <h3 className="color-brand-2">
-                                {statusCounts.INTERVIEW}
-                              </h3>
-                              <span className="font-xs color-text-mutted">
-                                Scheduled
-                              </span>
-                            </div>
-                          </div>
-                          <div className="card-icon">
-                            <div className="icon-bg icon-bg-info">
-                              <svg
-                                style={{ width: "24px", height: "24px" }}
-                                fill="white"
-                                viewBox="0 0 20 20"
-                              >
-                                <path d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z" />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="col-lg-3 col-md-6 col-sm-6 mb-20">
-                        <div
-                          className="card-style-1 hover-up"
-                          style={{ cursor: "pointer" }}
-                          onClick={() => setCurrentStatus("HIRED")}
-                        >
-                          <div className="card-info">
-                            <div className="card-title">
-                              <h6 className="font-sm color-text-paragraph-2 mb-5">
-                                Hired
-                              </h6>
-                            </div>
-                            <div className="card-count">
-                              <h3 className="color-brand-2">
-                                {statusCounts.HIRED}
-                              </h3>
-                              <span className="font-xs color-text-mutted">
-                                Successful
-                              </span>
-                            </div>
-                          </div>
-                          <div className="card-icon">
-                            <div className="icon-bg icon-bg-success">
-                              <svg
-                                style={{ width: "24px", height: "24px" }}
-                                fill="white"
-                                viewBox="0 0 20 20"
-                              >
-                                <path
-                                  fillRule="evenodd"
-                                  d="M6.267 3.455a3.066 3.066 0 001.745-.723 3.066 3.066 0 013.976 0 3.066 3.066 0 001.745.723 3.066 3.066 0 012.812 2.812c.051.643.304 1.254.723 1.745a3.066 3.066 0 010 3.976 3.066 3.066 0 00-.723 1.745 3.066 3.066 0 01-2.812 2.812 3.066 3.066 0 00-1.745.723 3.066 3.066 0 01-3.976 0 3.066 3.066 0 00-1.745-.723 3.066 3.066 0 01-2.812-2.812 3.066 3.066 0 00-.723-1.745 3.066 3.066 0 010-3.976 3.066 3.066 0 00.723-1.745 3.066 3.066 0 012.812-2.812zm7.44 5.252a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z"
-                                  clipRule="evenodd"
-                                />
-                              </svg>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
+                      ))}
                     </div>
                   </div>
                 </div>
@@ -485,101 +497,6 @@ export default function ApplicationsPage(): React.ReactElement {
           <div className="container">
             <div className="panel-white">
               <div className="box-padding">
-                <div className="mb-30">
-                  <h6 className="color-text-paragraph-2 mb-15">
-                    <svg
-                      className="mr-10"
-                      style={{
-                        width: "16px",
-                        height: "16px",
-                        display: "inline-block",
-                        verticalAlign: "middle",
-                      }}
-                      fill="currentColor"
-                      viewBox="0 0 20 20"
-                    >
-                      <path
-                        fillRule="evenodd"
-                        d="M3 3a1 1 0 011-1h12a1 1 0 011 1v3a1 1 0 01-.293.707L12 11.414V15a1 1 0 01-.293.707l-2 2A1 1 0 018 17v-5.586L3.293 6.707A1 1 0 013 6V3z"
-                        clipRule="evenodd"
-                      />
-                    </svg>
-                    Filter Applications
-                  </h6>
-
-                  {/* Search & Filters */}
-                  <SearchFilters
-                    onFiltersChange={handleFiltersChange}
-                    counts={{
-                      DRAFT: statusCounts.DRAFT,
-                      APPLIED: statusCounts.APPLIED,
-                      REVIEWING: statusCounts.REVIEWING,
-                      INTERVIEW: statusCounts.INTERVIEW,
-                      OFFER: statusCounts.OFFER,
-                      HIRED: statusCounts.HIRED,
-                      REJECTED: statusCounts.REJECTED,
-                      WITHDRAWN: statusCounts.WITHDRAWN,
-                    }}
-                  />
-                </div>
-
-                <div className="border-top pt-30">
-                  {/* Result Count and Actions */}
-                  <div className="d-flex align-items-center justify-content-between mb-20">
-                    <div>
-                      <h6 className="color-text-paragraph-2 mb-0">
-                        {applications.length === allApplications.length ? (
-                          <>Showing all {applications.length} applications</>
-                        ) : (
-                          <>
-                            Showing {applications.length} of{" "}
-                            {allApplications.length} applications
-                            {currentStatus && (
-                              <>
-                                {" "}
-                                <span className="badge badge-info ml-10">
-                                  {currentStatus}
-                                </span>
-                              </>
-                            )}
-                          </>
-                        )}
-                      </h6>
-                    </div>
-                    {applications.length > 0 && (
-                      <div>
-                        <button
-                          className="btn btn-default btn-sm mr-10"
-                          onClick={handleReset}
-                          disabled={
-                            !currentStatus &&
-                            applications.length === allApplications.length
-                          }
-                        >
-                          <svg
-                            style={{
-                              width: "14px",
-                              height: "14px",
-                              marginRight: "4px",
-                              display: "inline-block",
-                              verticalAlign: "middle",
-                            }}
-                            fill="currentColor"
-                            viewBox="0 0 20 20"
-                          >
-                            <path
-                              fillRule="evenodd"
-                              d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z"
-                              clipRule="evenodd"
-                            />
-                          </svg>
-                          Reset
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
                 {/* Applications Table - Outside panel to allow overflow */}
                 <ApplicationTable
                   applications={applications}
@@ -590,8 +507,10 @@ export default function ApplicationsPage(): React.ReactElement {
                   sortOrder={sortOrder}
                   onSort={handleSort}
                   onRowAction={handleRowAction}
-                  onBulkAction={handleBulkAction}
                   onStatusUpdated={handleStatusUpdated}
+                  pagination={paginationMeta}
+                  onPageChange={handlePageChange}
+                  onPageSizeChange={handlePageSizeChange}
                 />
               </div>
             </div>

@@ -37,7 +37,7 @@ export enum ApplicationStatus {
   OFFER = "OFFER",
   HIRED = "HIRED",
   REJECTED = "REJECTED",
-  WITHDRAWN = "WITHDRAWN"
+  WITHDRAWN = "WITHDRAWN",
 }
 
 export interface StatusChange {
@@ -60,8 +60,12 @@ export interface Note {
 export interface PaginationMeta {
   page: number;
   size: number;
-  totalItems: number;
+  totalElements: number;
   totalPages: number;
+  first: boolean;
+  last: boolean;
+  hasNext: boolean;
+  hasPrevious: boolean;
 }
 
 export interface ApplicationResponse {
@@ -183,7 +187,7 @@ export interface AssignApplicationRequest {
 
 export interface ExportRequest {
   companyId: string;
-  format: 'csv' | 'excel';
+  format: "csv" | "excel";
   jobIds?: string[];
   status?: ApplicationStatus;
   fromDate?: string;
