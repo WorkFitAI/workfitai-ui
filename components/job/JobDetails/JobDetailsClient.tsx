@@ -37,7 +37,10 @@ export default function JobDetailsClient({ postId }: Props) {
           : `/public/jobs/${postId}`;
       setLoading(true);
       getJobs<JobDetail>(endpoint)
-        .then((res) => setJob(res.data ?? null))
+        .then((res) => {
+          console.log("Fetched job details:", res.data);
+          setJob(res.data ?? null);
+        })
         .finally(() => setLoading(false));
     };
 
@@ -45,7 +48,7 @@ export default function JobDetailsClient({ postId }: Props) {
   }, [postId, role]);
 
   if (loading) return <Preloader />;
-  if (!job) return <div>Job not found</div>;
+  if (!job) return null;
 
   return (
     <>
@@ -163,7 +166,7 @@ export default function JobDetailsClient({ postId }: Props) {
                         </span>
                         <strong className="small-heading">
                           {job?.requiredExperience
-                            ? job?.requiredExperience
+                            ? job.requiredExperience
                             : "N/A"}
                         </strong>
                       </div>
@@ -240,7 +243,10 @@ export default function JobDetailsClient({ postId }: Props) {
                 </div>
                 {/* Job Description */}
                 {role === "HR" || role === "HR_MANAGER" ? (
-                  <JobDescriptionEditorClient job={job} />
+                  <JobDescriptionEditorClient
+                    job={job}
+                    onChange={(updatedJob) => setJob(updatedJob)}
+                  />
                 ) : (
                   <JobDescriptionRender job={job} />
                 )}

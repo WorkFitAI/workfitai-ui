@@ -28,7 +28,6 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
   job,
   onChange,
 }) => {
-  // Helper để update từng field
   const updateJobField = <K extends keyof JobDetail>(
     field: K,
     value: JobDetail[K]
@@ -75,8 +74,9 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
         value={job.skillNames ?? []}
         onChange={(val) => updateJobField("skillNames", val)}
       />
-      {/* Preferred Experience */}
-      <h5>Preferred Experience</h5>
+
+      {/* Experience Requirements */}
+      <h5>Requirements</h5>
       <ParagraphEditor
         value={job.requirements ?? ""}
         onChange={(val) => updateJobField("requirements", val)}

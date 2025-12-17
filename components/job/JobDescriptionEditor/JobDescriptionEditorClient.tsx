@@ -10,7 +10,6 @@ import { ReqUpdateJobDTO } from "@/types/job/job";
 import { Skill } from "@/types/job/skill";
 import { getSkills, ApiResponse } from "@/lib/skillApi";
 import { SkillDataResponse } from "@/types/job/skill";
-import { useRouter } from "next/navigation";
 import JobStatusAction from "@/components/job/JobStatusAction/JobStatusAction";
 
 const JobDescriptionEditor = dynamic(() => import("./JobDescriptionEditor"), {
@@ -19,9 +18,10 @@ const JobDescriptionEditor = dynamic(() => import("./JobDescriptionEditor"), {
 
 interface Props {
   job: JobDetail;
+  onChange: (job: JobDetail) => void;
 }
 
-export default function JobDescriptionEditorClient({ job }: Props) {
+export default function JobDescriptionEditorClient({ job, onChange }: Props) {
   const [jobState, setJobState] = useState<JobDetail>(job);
   const [saving, setSaving] = useState(false);
   const [skillsList, setSkillsList] = useState<Skill[]>([]);
@@ -45,7 +45,9 @@ export default function JobDescriptionEditorClient({ job }: Props) {
     fetchSkills();
   }, []);
 
-  const router = useRouter();
+  useEffect(() => {
+    setJobState(job);
+  }, [job]);
 
   // Map JobDetail -> ReqUpdateJobDTO
   const mapJobToReqDTO = (job: JobDetail): ReqUpdateJobDTO => ({
@@ -79,7 +81,7 @@ export default function JobDescriptionEditorClient({ job }: Props) {
     try {
       const dto = mapJobToReqDTO(jobState);
       await putJob(`/hr/jobs`, { body: dto });
-      router.refresh();
+      onChange(jobState);
       toast.success("Job updated successfully!");
     } catch (err) {
       console.error(err);
@@ -105,6 +107,13 @@ export default function JobDescriptionEditorClient({ job }: Props) {
         <JobStatusAction
           jobId={jobState.postId}
           currentStatus={jobState.status}
+          onStatusChanged={(newStatus) => {
+            // update local state form
+            setJobState((prev) => ({ ...prev, status: newStatus }));
+
+            // update state cha để JobStatusBadge render lại
+            onChange({ ...jobState, status: newStatus });
+          }}
         />
       </div>
 
