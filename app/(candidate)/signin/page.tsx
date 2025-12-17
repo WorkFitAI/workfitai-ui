@@ -8,9 +8,6 @@ import {
   selectAuthStatus,
   selectUserRoles,
   selectAuthErrorType,
-  selectRequire2FA,
-  selectTemp2FAToken,
-  selectTwoFactorMethod,
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import Link from "next/link";
@@ -34,9 +31,6 @@ function SigninContent() {
   const errorType = useAppSelector(selectAuthErrorType);
   const accessToken = useAppSelector((state) => state.auth.accessToken);
   const roles = useAppSelector(selectUserRoles);
-  const require2FA = useAppSelector(selectRequire2FA);
-  const temp2FAToken = useAppSelector(selectTemp2FAToken);
-  const twoFactorMethod = useAppSelector(selectTwoFactorMethod);
 
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -70,13 +64,6 @@ function SigninContent() {
     }
   }, [accessToken, roles, router]);
 
-  // Redirect to 2FA verification if required
-  useEffect(() => {
-    if (require2FA && temp2FAToken) {
-      router.push(`/verify-2fa?tempToken=${temp2FAToken}&method=${twoFactorMethod}`);
-    }
-  }, [require2FA, temp2FAToken, twoFactorMethod, router]);
-
   // Handle 403 Forbidden errors (pending approval)
   useEffect(() => {
     if (errorType === "forbidden" && error) {
@@ -104,8 +91,18 @@ function SigninContent() {
     event.preventDefault();
     if (!usernameOrEmail || !password) return;
 
-    setLocalMessage(null); // Clear local success message on submit
-    await dispatch(loginUser({ usernameOrEmail, password }));
+    setLocalMessage(null);
+
+    try {
+      const result = await dispatch(loginUser({ usernameOrEmail, password })).unwrap();
+
+      // Check if 2FA is required and redirect
+      if ('require2FA' in result && result.require2FA) {
+        router.push(`/verify-2fa?tempToken=${result.tempToken}&method=${result.method}`);
+      }
+    } catch (error) {
+      // Error is already handled by Redux reducer
+    }
   };
 
   const handleGoogleLogin = () => {

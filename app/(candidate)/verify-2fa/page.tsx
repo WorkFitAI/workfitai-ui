@@ -10,7 +10,7 @@ import { Suspense } from "react";
 function Verify2FAContent() {
     const router = useRouter();
     const searchParams = useSearchParams();
-    const tempToken = searchParams.get("token");
+    const tempToken = searchParams.get("tempToken");
 
     const [code, setCode] = useState("");
     const [isLoading, setIsLoading] = useState(false);
