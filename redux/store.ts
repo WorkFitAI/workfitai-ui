@@ -4,6 +4,7 @@ import { jobListReducer } from "./features/job/jobListSlice";
 import { jobFilterReducer } from "./features/job/jobFilterSlice";
 import applicationReducer from "./features/application/applicationSlice";
 import applicationFilterReducer from "./features/application/applicationFilterSlice";
+import profileReducer from "./features/profile/profileSlice";
 
 const rootReducer = {
   auth: authReducer,
@@ -11,6 +12,7 @@ const rootReducer = {
   jobFilter: jobFilterReducer,
   application: applicationReducer,
   applicationFilter: applicationFilterReducer,
+  profile: profileReducer,
 };
 
 // Create a temp store to infer the state type
