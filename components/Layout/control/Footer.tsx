@@ -11,33 +11,13 @@ export default function Footer() {
                 © {new Date().getFullYear()} -{" "}
                 <Link
                   className="color-brand-2"
-                  href="https://themeforest.net/item/jobbox-job-portal-html-bootstrap-5-template/39217891"
+                  href="/"
                   target="_blank"
                 >
-                  JobBox{" "}
+                  WorkfitAI{" "}
                 </Link>
-                Dashboard <span> Made by </span>
-                <Link className="color-brand-2" href="http://alithemes.com" target="_blank">
-                  {" "}
-                  AliThemes
-                </Link>
+                Dashboard
               </p>
-            </div>
-            <div className="col-md-6 col-sm-12 text-center text-md-end mb-25">
-              <ul className="menu-footer">
-                <li>
-                  <Link href="#">About</Link>
-                </li>
-                <li>
-                  <Link href="#">Careers</Link>
-                </li>
-                <li>
-                  <Link href="#">Policy</Link>
-                </li>
-                <li>
-                  <Link href="#">Contact</Link>
-                </li>
-              </ul>
             </div>
           </div>
         </div>
