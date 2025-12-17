@@ -8,22 +8,50 @@ import {
     logoutAllOtherSessions,
     selectSessions,
     selectProfileLoading,
+    fetch2FAStatus,
 } from "@/redux/features/profile/profileSlice";
 import ChangePasswordForm from "./ChangePasswordForm";
 import Enable2FAModal from "./Enable2FAModal";
+import Disable2FAModal from "./Disable2FAModal";
 
-export default function SecuritySettings() {
+interface SecuritySettingsProps {
+    twoFactorStatus: {
+        enabled: boolean;
+        method: 'TOTP' | 'EMAIL' | null;
+        enabledAt: string | null;
+    } | null;
+}
+
+export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsProps) {
     const dispatch = useAppDispatch();
     const sessions = useAppSelector(selectSessions);
     const loading = useAppSelector(selectProfileLoading);
 
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [show2FAModal, setShow2FAModal] = useState(false);
-    const [is2FAEnabled, setIs2FAEnabled] = useState(false); // TODO: Get from profile state
+    const [showDisable2FAModal, setShowDisable2FAModal] = useState(false);
+
+    const is2FAEnabled = twoFactorStatus?.enabled || false;
+    const twoFactorMethod = twoFactorStatus?.method;
 
     useEffect(() => {
         dispatch(fetchActiveSessions());
     }, [dispatch]);
+
+    const handle2FAModalClose = () => {
+        setShow2FAModal(false);
+        setShowDisable2FAModal(false);
+        // Refresh 2FA status after modal closes
+        dispatch(fetch2FAStatus());
+    };
+
+    const handleEnable2FAClick = () => {
+        setShow2FAModal(true);
+    };
+
+    const handleDisable2FAClick = () => {
+        setShowDisable2FAModal(true);
+    };
 
     const handleLogoutSession = async (sessionId: string) => {
         if (!confirm("Are you sure you want to logout this session?")) {
@@ -104,30 +132,46 @@ export default function SecuritySettings() {
                         <i className="fi-rr-shield-check"></i>
                         <h5>Two-Factor Authentication</h5>
                     </div>
-                    <span className={`badge ${is2FAEnabled ? 'bg-success' : 'bg-secondary'}`}>
-                        {is2FAEnabled ? 'Enabled' : 'Disabled'}
-                    </span>
+                    <div className="d-flex align-items-center gap-2">
+                        {is2FAEnabled && twoFactorMethod && (
+                            <span className="badge bg-info">
+                                {twoFactorMethod === 'TOTP' ? 'Authenticator' : 'Email'}
+                            </span>
+                        )}
+                        <span className={`badge ${is2FAEnabled ? 'bg-success' : 'bg-secondary'}`}>
+                            {is2FAEnabled ? 'Enabled' : 'Disabled'}
+                        </span>
+                    </div>
                 </div>
                 <p className="text-muted">
                     Add an extra layer of security to your account by enabling two-factor authentication.
-                    {is2FAEnabled && ' Your account is currently protected by 2FA.'}
+                    {is2FAEnabled && ` Your account is currently protected by 2FA using ${twoFactorMethod === 'TOTP' ? 'authenticator app' : 'email'}.`}
                 </p>
                 <button
                     type="button"
                     className={`btn ${is2FAEnabled ? 'btn-danger' : 'btn-brand-2'}`}
-                    onClick={() => setShow2FAModal(true)}
+                    onClick={is2FAEnabled ? handleDisable2FAClick : handleEnable2FAClick}
                 >
                     <i className={`fi-rr-${is2FAEnabled ? 'shield-exclamation' : 'plus'}`}></i>
                     {is2FAEnabled ? ' Disable 2FA' : ' Enable 2FA'}
                 </button>
             </div>
 
-            {/* 2FA Modal */}
+            {/* Enable 2FA Modal */}
             <Enable2FAModal
                 show={show2FAModal}
-                onHide={() => setShow2FAModal(false)}
-                currentlyEnabled={is2FAEnabled}
+                onHide={handle2FAModalClose}
+                currentlyEnabled={false}
             />
+
+            {/* Disable 2FA Modal */}
+            {is2FAEnabled && twoFactorMethod && (
+                <Disable2FAModal
+                    show={showDisable2FAModal}
+                    onHide={handle2FAModalClose}
+                    method={twoFactorMethod}
+                />
+            )}
 
             {/* Active Sessions */}
             <div className="settings-section mt-4">
@@ -136,7 +180,7 @@ export default function SecuritySettings() {
                         <i className="fi-rr-devices"></i>
                         <h5>Active Sessions</h5>
                     </div>
-                    {sessions.others.length > 0 && (
+                    {sessions?.others && sessions.others.length > 0 && (
                         <button
                             type="button"
                             className="btn btn-sm btn-danger"
@@ -157,7 +201,7 @@ export default function SecuritySettings() {
                 ) : (
                     <div className="sessions-list">
                         {/* Current Session */}
-                        {sessions.current && (
+                        {sessions?.current && (
                             <div className="session-card current-session">
                                 <div className="session-icon">
                                     <i className={getDeviceIcon(sessions.current.deviceName)}></i>
@@ -185,7 +229,7 @@ export default function SecuritySettings() {
                         )}
 
                         {/* Other Sessions */}
-                        {sessions.others.map((session) => (
+                        {sessions?.others && sessions.others.map((session) => (
                             <div key={session.sessionId} className="session-card">
                                 <div className="session-icon">
                                     <i className={getDeviceIcon(session.deviceName)}></i>
@@ -220,7 +264,7 @@ export default function SecuritySettings() {
                             </div>
                         ))}
 
-                        {sessions.others.length === 0 && (
+                        {(!sessions?.others || sessions.others.length === 0) && (
                             <div className="alert alert-info">
                                 <i className="fi-rr-info"></i> You don't have any other active sessions.
                             </div>

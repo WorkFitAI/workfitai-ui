@@ -59,6 +59,9 @@ const USER_API_URL =
 const AUTH_API_URL =
     process.env.NEXT_PUBLIC_AUTH_BASE_URL || "http://localhost:9085/auth";
 
+// Note: All requests should go through API Gateway
+// API Gateway will add X-Username header from JWT token
+
 // Generic request handler
 const profileRequest = async <T>(
     endpoint: string,
@@ -87,7 +90,7 @@ const profileRequest = async <T>(
     }
 
     const baseUrl = endpoint.startsWith("/auth") ? AUTH_API_URL : USER_API_URL;
-    const url = `${baseUrl}${endpoint}`;
+    const url = `${baseUrl}${endpoint.replace(/^\/(auth|user)/, "")}`; // ex: /auth/sessions to AUTH_API_URL/sessions
 
     try {
         const response = await fetch(url, requestOptions);
@@ -138,17 +141,60 @@ const profileRequest = async <T>(
  * GET /user/profile/me
  */
 export const getCurrentProfile = async (): Promise<ApiResponse<UserProfile>> => {
-    return profileRequest<UserProfile>("/profile/me");
+    const response = await profileRequest<UserProfile>("/profile/me");
+
+    // Normalize API response fields
+    if (response.status === "success" && response.data) {
+        const profileData = response.data;
+
+        // Fetch avatar URL if user is authenticated
+        let avatarUrl: string | undefined = undefined;
+        try {
+            const avatarResponse = await profileRequest<{ avatarUrl?: string }>("/profile/avatar");
+            if (avatarResponse.status === "success" && avatarResponse.data?.avatarUrl) {
+                avatarUrl = avatarResponse.data.avatarUrl;
+            }
+        } catch (error) {
+            console.warn("Failed to fetch avatar, using fallback:", error);
+        }
+
+        const normalizedProfile: UserProfile = {
+            ...profileData,
+            role: profileData.userRole || profileData.role,
+            createdAt: profileData.createdDate || profileData.createdAt,
+            updatedAt: profileData.lastModifiedDate || profileData.updatedAt,
+            avatarUrl,
+        };
+
+        return {
+            ...response,
+            data: normalizedProfile,
+        };
+    }
+
+    return response;
 };
 
 /**
- * Update profile
- * PUT /user/profile (assuming this endpoint exists)
+ * Update profile based on user role
+ * Backend endpoints:
+ * - PUT /user/profile/candidate (for CANDIDATE role)
+ * - PUT /user/profile/hr (for HR/HR_MANAGER roles)
+ * - PUT /user/profile/admin (for ADMIN role)
  */
 export const updateProfile = async (
-    data: UpdateProfileRequest
+    data: UpdateProfileRequest,
+    role: "CANDIDATE" | "HR" | "HR_MANAGER" | "ADMIN"
 ): Promise<ApiResponse<UserProfile>> => {
-    return profileRequest<UserProfile>("/profile", {
+    let endpoint = "/profile/candidate"; // default
+
+    if (role === "HR" || role === "HR_MANAGER") {
+        endpoint = "/profile/hr";
+    } else if (role === "ADMIN") {
+        endpoint = "/profile/admin";
+    }
+
+    return profileRequest<UserProfile>(endpoint, {
         method: "PUT",
         body: data,
     });
@@ -320,6 +366,24 @@ export const enable2FA = async (
     return profileRequest<Enable2FAResponse>("/auth/enable-2fa", {
         method: "POST",
         body: data,
+    });
+};
+
+/**
+ * Get 2FA Status
+ * GET /auth/2fa/status
+ */
+export const get2FAStatus = async (): Promise<ApiResponse<{
+    enabled: boolean;
+    method: 'TOTP' | 'EMAIL' | null;
+    enabledAt: string | null;
+}>> => {
+    return profileRequest<{
+        enabled: boolean;
+        method: 'TOTP' | 'EMAIL' | null;
+        enabledAt: string | null;
+    }>("/auth/2fa/status", {
+        method: "GET",
     });
 };
 

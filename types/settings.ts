@@ -1,28 +1,32 @@
 // Settings-related TypeScript interfaces
 
-// Notification Settings
+// Notification Settings - Match backend structure
 export interface EmailNotificationSettings {
-    enabled: boolean;
-    newJobMatch: boolean;
-    applicationStatus: boolean;
+    jobAlerts: boolean;
+    applicationUpdates: boolean;
     messages: boolean;
-    weeklyDigest: boolean;
-    promotions: boolean;
+    newsletter: boolean;
+    marketingEmails: boolean;
+    securityAlerts: boolean;
 }
 
 export interface PushNotificationSettings {
-    enabled: boolean;
-    newJobMatch: boolean;
-    applicationStatus: boolean;
+    jobAlerts: boolean;
+    applicationUpdates: boolean;
     messages: boolean;
+    reminders: boolean;
 }
 
-export type NotificationFrequency = "REAL_TIME" | "DAILY_DIGEST" | "WEEKLY_DIGEST" | "NONE";
+export interface SmsNotificationSettings {
+    jobAlerts: boolean;
+    securityAlerts: boolean;
+    importantUpdates: boolean;
+}
 
 export interface NotificationSettings {
-    emailNotifications: EmailNotificationSettings;
-    pushNotifications: PushNotificationSettings;
-    frequency: NotificationFrequency;
+    email: EmailNotificationSettings;
+    push: PushNotificationSettings;
+    sms: SmsNotificationSettings;
 }
 
 // Privacy Settings
@@ -60,7 +64,9 @@ export interface Enable2FAResponse {
     twoFactorMethod: "EMAIL" | "SMS" | "TOTP";
     backupCodes: string[];
     secret?: string; // For TOTP
-    qrCode?: string; // For TOTP (data URI)
+    qrCodeUrl?: string; // For TOTP (data URI)
+    method?: string; // The enabled method
+    message?: string; // Success message
 }
 
 export interface Disable2FARequest {

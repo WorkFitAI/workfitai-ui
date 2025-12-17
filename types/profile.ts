@@ -9,11 +9,14 @@ export interface UserProfile {
     email: string;
     fullName: string;
     phoneNumber: string;
-    role: UserRole;
+    userRole: UserRole; // API returns userRole
+    role?: UserRole; // For backward compatibility
     userStatus: "PENDING" | "WAIT_APPROVED" | "ACTIVE" | "INACTIVE";
-    avatarUrl: string | null;
-    createdAt: string;
-    updatedAt: string;
+    avatarUrl?: string | null;
+    createdDate: string; // API returns createdDate
+    createdAt?: string; // For backward compatibility
+    lastModifiedDate: string; // API returns lastModifiedDate
+    updatedAt?: string; // For backward compatibility
 
     // Company info (for HR/HR_MANAGER only)
     companyId?: string;
@@ -21,6 +24,18 @@ export interface UserProfile {
     companyName?: string;
     department?: string;
     address?: string;
+
+    // Additional fields from API
+    careerObjective?: string | null;
+    summary?: string | null;
+    totalExperience?: number;
+    education?: string | null;
+    certifications?: string | null;
+    portfolioLink?: string | null;
+    linkedinUrl?: string | null;
+    githubUrl?: string | null;
+    expectedPosition?: string | null;
+    twoFactorEnabled?: boolean;
 }
 
 // Avatar Upload

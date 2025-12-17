@@ -130,7 +130,7 @@ export default function ChangePasswordForm() {
             )}
 
             {/* Current Password */}
-            <div className="form-group">
+            <div className="form-group mb-3">
                 <label htmlFor="currentPassword" className="form-label">
                     Current Password *
                 </label>
@@ -148,6 +148,7 @@ export default function ChangePasswordForm() {
                         type="button"
                         className="password-toggle-btn"
                         onClick={() => setShowPassword((prev) => ({ ...prev, current: !prev.current }))}
+                        tabIndex={-1}
                     >
                         <i className={showPassword.current ? "fi-rr-eye-crossed" : "fi-rr-eye"}></i>
                     </button>
@@ -158,7 +159,7 @@ export default function ChangePasswordForm() {
             </div>
 
             {/* New Password */}
-            <div className="form-group">
+            <div className="form-group mb-3">
                 <label htmlFor="newPassword" className="form-label">
                     New Password *
                 </label>
@@ -176,6 +177,7 @@ export default function ChangePasswordForm() {
                         type="button"
                         className="password-toggle-btn"
                         onClick={() => setShowPassword((prev) => ({ ...prev, new: !prev.new }))}
+                        tabIndex={-1}
                     >
                         <i className={showPassword.new ? "fi-rr-eye-crossed" : "fi-rr-eye"}></i>
                     </button>
@@ -201,7 +203,7 @@ export default function ChangePasswordForm() {
             </div>
 
             {/* Confirm Password */}
-            <div className="form-group">
+            <div className="form-group mb-3">
                 <label htmlFor="confirmPassword" className="form-label">
                     Confirm New Password *
                 </label>
@@ -219,6 +221,7 @@ export default function ChangePasswordForm() {
                         type="button"
                         className="password-toggle-btn"
                         onClick={() => setShowPassword((prev) => ({ ...prev, confirm: !prev.confirm }))}
+                        tabIndex={-1}
                     >
                         <i className={showPassword.confirm ? "fi-rr-eye-crossed" : "fi-rr-eye"}></i>
                     </button>

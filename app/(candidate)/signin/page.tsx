@@ -8,6 +8,9 @@ import {
   selectAuthStatus,
   selectUserRoles,
   selectAuthErrorType,
+  selectRequire2FA,
+  selectTemp2FAToken,
+  selectTwoFactorMethod,
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import Link from "next/link";
@@ -31,6 +34,9 @@ function SigninContent() {
   const errorType = useAppSelector(selectAuthErrorType);
   const accessToken = useAppSelector((state) => state.auth.accessToken);
   const roles = useAppSelector(selectUserRoles);
+  const require2FA = useAppSelector(selectRequire2FA);
+  const temp2FAToken = useAppSelector(selectTemp2FAToken);
+  const twoFactorMethod = useAppSelector(selectTwoFactorMethod);
 
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -63,6 +69,13 @@ function SigninContent() {
       router.replace("/");
     }
   }, [accessToken, roles, router]);
+
+  // Redirect to 2FA verification if required
+  useEffect(() => {
+    if (require2FA && temp2FAToken) {
+      router.push(`/verify-2fa?tempToken=${temp2FAToken}&method=${twoFactorMethod}`);
+    }
+  }, [require2FA, temp2FAToken, twoFactorMethod, router]);
 
   // Handle 403 Forbidden errors (pending approval)
   useEffect(() => {

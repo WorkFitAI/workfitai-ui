@@ -35,6 +35,10 @@ export interface AuthState {
   approvalType: "hr-manager" | "admin" | null;
   registrationRole: "CANDIDATE" | "HR" | "HR_MANAGER" | null;
   userId: string | null; // For OTP verification after registration
+  // 2FA state
+  temp2FAToken: string | null;
+  require2FA: boolean;
+  twoFactorMethod: 'TOTP' | 'EMAIL' | null;
 }
 
 interface AuthUserProfile {
@@ -136,7 +140,9 @@ const initialAuthState: AuthState = {
   pendingApproval: false,
   approvalType: null,
   registrationRole: null,
-  userId: null,
+  userId: null, temp2FAToken: null,
+  require2FA: false,
+  twoFactorMethod: null,
 };
 
 // Helper to determine error type from caught error
@@ -422,18 +428,28 @@ export const checkApprovalStatus = createAsyncThunk<
 });
 
 export const loginUser = createAsyncThunk<
-  AuthSuccess,
+  AuthSuccess | { require2FA: true; tempToken: string; method: 'TOTP' | 'EMAIL'; message: string },
   LoginPayload,
   { rejectValue: AuthRejectPayload }
 >("auth/login", async (payload, { rejectWithValue }) => {
   try {
-    const response = await postAuth<AuthResponseData>("/login", {
+    const response = await postAuth<any>("/login", {
       body: {
         usernameOrEmail: payload.usernameOrEmail,
         password: payload.password,
       },
       deviceId: payload.deviceId ?? getDeviceId(),
     });
+
+    // Check if 2FA is required
+    if (response.data?.require2FA || response.data?.tempToken) {
+      return {
+        require2FA: true,
+        tempToken: response.data.tempToken,
+        method: response.data.method,
+        message: response.message || "2FA verification required",
+      };
+    }
 
     const parsed = parseAuthResponse(response);
     persistSession(toStoredSession(parsed));
@@ -525,6 +541,16 @@ const authSlice = createSlice({
       state.error = null;
       state.errorType = null;
     },
+    clear2FAState: (state) => {
+      state.temp2FAToken = null;
+      state.require2FA = false;
+      state.twoFactorMethod = null;
+    },
+    updateUserAvatar: (state, action: PayloadAction<string | null>) => {
+      if (state.user) {
+        state.user.avatarUrl = action.payload ?? undefined;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -609,12 +635,21 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = "idle";
-        state.accessToken = action.payload.accessToken;
-        state.expiryTime = action.payload.expiryTime;
-        state.user = action.payload.user ?? null;
+        // Check if 2FA is required
+        if ('require2FA' in action.payload && action.payload.require2FA) {
+          state.temp2FAToken = action.payload.tempToken;
+          state.require2FA = true;
+          state.twoFactorMethod = action.payload.method;
+          state.message = action.payload.message;
+        } else {
+          // Normal login success
+          state.accessToken = action.payload.accessToken;
+          state.expiryTime = action.payload.expiryTime;
+          state.user = action.payload.user ?? null;
+          state.message = action.payload.message;
+        }
         state.error = null;
         state.errorType = null;
-        state.message = action.payload.message;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "idle";
@@ -661,7 +696,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { restoreSessionFromStorage, clearAuthError } = authSlice.actions;
+export const { restoreSessionFromStorage, clearAuthError, clear2FAState, updateUserAvatar } = authSlice.actions;
 
 export const selectAuthToken = (state: RootState) => state.auth.accessToken;
 export const selectAuthStatus = (state: RootState) => state.auth.status;
@@ -684,6 +719,11 @@ export const selectUserRoles = createSelector(
 export const selectUserId = (state: RootState) => state.auth.userId;
 export const selectRegistrationRole = (state: RootState) =>
   state.auth.registrationRole;
+
+// 2FA selectors
+export const selectTemp2FAToken = (state: RootState) => state.auth.temp2FAToken;
+export const selectRequire2FA = (state: RootState) => state.auth.require2FA;
+export const selectTwoFactorMethod = (state: RootState) => state.auth.twoFactorMethod;
 
 /**
  * Simple selector to check if token is valid

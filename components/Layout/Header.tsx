@@ -10,6 +10,7 @@ import {
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import useHasHydrated from "@/util/useHasHydrated";
+import Avatar from "@/components/common/Avatar";
 
 interface HeaderProps {
   handleOpen: () => void;
@@ -34,7 +35,6 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
 
   const displayName = displayUser?.fullName ?? displayUser?.username ?? "User";
   const role = displayUser?.role;
-  const avatar = displayUser?.avatarUrl || "/assets/imgs/avatar/ava_1.png";
 
   useEffect(() => {
     const handleScroll = () => {
@@ -288,9 +288,8 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                 </ul>
               </nav>
               <div
-                className={`burger-icon burger-icon-white ${
-                  openClass && "burger-close"
-                }`}
+                className={`burger-icon burger-icon-white ${openClass && "burger-close"
+                  }`}
                 onClick={() => {
                   handleOpen();
                   handleRemove();
@@ -312,7 +311,12 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                     aria-expanded={isMenuOpen}
                   >
                     <span className="header-user__avatar">
-                      <img src={avatar} alt={displayName} />
+                      <Avatar
+                        src={displayUser?.avatarUrl}
+                        alt={displayName}
+                        username={displayUser?.username}
+                        size={40}
+                      />
                     </span>
                     <span className="header-user__meta">
                       <span className="header-user__name">{displayName}</span>

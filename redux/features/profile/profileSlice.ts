@@ -1,5 +1,6 @@
 import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
 import type { RootState } from "@/redux/store";
+import { updateUserAvatar } from "@/redux/features/auth/authSlice";
 import type {
     UserProfile,
     AvatarUploadResponse,
@@ -23,6 +24,11 @@ export interface ProfileState {
     profile: UserProfile | null;
     notificationSettings: NotificationSettings | null;
     privacySettings: PrivacySettings | null;
+    twoFactorStatus: {
+        enabled: boolean;
+        method: 'TOTP' | 'EMAIL' | null;
+        enabledAt: string | null;
+    } | null;
     sessions: {
         current: SessionInfo | null;
         others: SessionInfo[];
@@ -46,6 +52,7 @@ const initialState: ProfileState = {
     profile: null,
     notificationSettings: null,
     privacySettings: null,
+    twoFactorStatus: null,
     sessions: {
         current: null,
         others: [],
@@ -67,11 +74,15 @@ const initialState: ProfileState = {
 
 export const fetchProfile = createAsyncThunk(
     "profile/fetchProfile",
-    async (_, { rejectWithValue }) => {
+    async (_, { rejectWithValue, dispatch }) => {
         try {
             const response = await profileApi.getCurrentProfile();
             if (response.status === "error") {
                 return rejectWithValue(response.message || "Failed to fetch profile");
+            }
+            // Update avatar in auth state for header display
+            if (response.data?.avatarUrl) {
+                dispatch(updateUserAvatar(response.data.avatarUrl));
             }
             return response.data!;
         } catch (error: any) {
@@ -82,9 +93,13 @@ export const fetchProfile = createAsyncThunk(
 
 export const updateProfile = createAsyncThunk(
     "profile/updateProfile",
-    async (data: UpdateProfileRequest, { rejectWithValue }) => {
+    async (
+        data: UpdateProfileRequest & { role: "CANDIDATE" | "HR" | "HR_MANAGER" | "ADMIN" },
+        { rejectWithValue }
+    ) => {
         try {
-            const response = await profileApi.updateProfile(data);
+            const { role, ...profileData } = data;
+            const response = await profileApi.updateProfile(profileData, role);
             if (response.status === "error") {
                 return rejectWithValue(response.message || "Failed to update profile");
             }
@@ -97,11 +112,15 @@ export const updateProfile = createAsyncThunk(
 
 export const uploadAvatar = createAsyncThunk(
     "profile/uploadAvatar",
-    async (file: File, { rejectWithValue }) => {
+    async (file: File, { rejectWithValue, dispatch }) => {
         try {
             const response = await profileApi.uploadAvatar(file);
             if (response.status === "error") {
                 return rejectWithValue(response.message || "Failed to upload avatar");
+            }
+            // Update avatar in auth state for header display
+            if (response.data?.avatarUrl) {
+                dispatch(updateUserAvatar(response.data.avatarUrl));
             }
             return response.data!;
         } catch (error: any) {
@@ -112,12 +131,14 @@ export const uploadAvatar = createAsyncThunk(
 
 export const deleteAvatar = createAsyncThunk(
     "profile/deleteAvatar",
-    async (_, { rejectWithValue }) => {
+    async (_, { rejectWithValue, dispatch }) => {
         try {
             const response = await profileApi.deleteAvatar();
             if (response.status === "error") {
                 return rejectWithValue(response.message || "Failed to delete avatar");
             }
+            // Clear avatar in auth state
+            dispatch(updateUserAvatar(null));
             return response.data!;
         } catch (error: any) {
             return rejectWithValue(error.message || "Failed to delete avatar");
@@ -268,6 +289,21 @@ export const disable2FA = createAsyncThunk(
             return response.data!;
         } catch (error: any) {
             return rejectWithValue(error.message || "Failed to disable 2FA");
+        }
+    }
+);
+
+export const fetch2FAStatus = createAsyncThunk(
+    "profile/fetch2FAStatus",
+    async (_, { rejectWithValue }) => {
+        try {
+            const response = await profileApi.get2FAStatus();
+            if (response.status === "error") {
+                return rejectWithValue(response.message || "Failed to fetch 2FA status");
+            }
+            return response.data!;
+        } catch (error: any) {
+            return rejectWithValue(error.message || "Failed to fetch 2FA status");
         }
     }
 );
@@ -497,8 +533,14 @@ const profileSlice = createSlice({
                 state.managing2FA = true;
                 state.error = null;
             })
-            .addCase(enable2FA.fulfilled, (state) => {
+            .addCase(enable2FA.fulfilled, (state, action) => {
                 state.managing2FA = false;
+                // Update 2FA status based on enabled method
+                state.twoFactorStatus = {
+                    enabled: true,
+                    method: action.payload.method as 'TOTP' | 'EMAIL',
+                    enabledAt: new Date().toISOString(),
+                };
                 state.successMessage = "2FA enabled successfully";
             })
             .addCase(enable2FA.rejected, (state, action) => {
@@ -513,10 +555,25 @@ const profileSlice = createSlice({
             })
             .addCase(disable2FA.fulfilled, (state) => {
                 state.managing2FA = false;
+                state.twoFactorStatus = { enabled: false, method: null, enabledAt: null };
                 state.successMessage = "2FA disabled successfully";
             })
             .addCase(disable2FA.rejected, (state, action) => {
                 state.managing2FA = false;
+                state.error = action.payload as string;
+            });
+
+        builder
+            .addCase(fetch2FAStatus.pending, (state) => {
+                state.loading = true;
+                state.error = null;
+            })
+            .addCase(fetch2FAStatus.fulfilled, (state, action) => {
+                state.loading = false;
+                state.twoFactorStatus = action.payload;
+            })
+            .addCase(fetch2FAStatus.rejected, (state, action) => {
+                state.loading = false;
                 state.error = action.payload as string;
             });
 
@@ -571,6 +628,7 @@ export const selectProfile = (state: RootState) => state.profile.profile;
 export const selectNotificationSettings = (state: RootState) =>
     state.profile.notificationSettings;
 export const selectPrivacySettings = (state: RootState) => state.profile.privacySettings;
+export const selectTwoFactorStatus = (state: RootState) => state.profile.twoFactorStatus;
 export const selectSessions = (state: RootState) => state.profile.sessions;
 export const selectProfileLoading = (state: RootState) => state.profile.loading;
 export const selectUploadingAvatar = (state: RootState) => state.profile.uploadingAvatar;

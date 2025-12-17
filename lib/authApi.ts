@@ -171,3 +171,13 @@ export const register = async (
     deviceId,
   });
 };
+
+export interface TwoFactorStatus {
+  enabled: boolean;
+  method: 'TOTP' | 'EMAIL' | null;
+  enabledAt: string | null;
+}
+
+export const get2FAStatus = async (): Promise<ApiResponse<TwoFactorStatus>> => {
+  return getAuth<TwoFactorStatus>("/2fa/status", {});
+};

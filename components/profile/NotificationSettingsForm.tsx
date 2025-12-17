@@ -9,12 +9,7 @@ import {
     selectSavingSettings,
     selectProfileError,
 } from "@/redux/features/profile/profileSlice";
-import type {
-    NotificationSettings,
-    NotificationFrequency,
-    EmailNotificationSettings,
-    PushNotificationSettings
-} from "@/types/settings";
+import type { NotificationSettings } from "@/types/settings";
 
 export default function NotificationSettingsForm() {
     const dispatch = useAppDispatch();
@@ -25,9 +20,19 @@ export default function NotificationSettingsForm() {
     const [localSettings, setLocalSettings] = useState<NotificationSettings | null>(null);
     const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
     const [showSaved, setShowSaved] = useState(false);
+    const [isLoading, setIsLoading] = useState(true);
 
     useEffect(() => {
-        dispatch(fetchNotificationSettings());
+        const loadSettings = async () => {
+            try {
+                await dispatch(fetchNotificationSettings()).unwrap();
+            } catch (err: any) {
+                console.error("Failed to load notification settings:", err);
+            } finally {
+                setIsLoading(false);
+            }
+        };
+        loadSettings();
     }, [dispatch]);
 
     useEffect(() => {
@@ -51,217 +56,169 @@ export default function NotificationSettingsForm() {
                 } catch (error) {
                     console.error("Failed to save settings:", error);
                 }
-            }, 500);
+            }, 800);
 
             setSaveTimeout(timeout);
         },
         [dispatch, saveTimeout]
     );
 
-    const handleEmailMasterToggle = (enabled: boolean) => {
-        if (!localSettings) return;
+    const handleToggle = useCallback(
+        (category: "email" | "push" | "sms", field: string) => {
+            if (!localSettings) return;
 
-        const newSettings = {
-            ...localSettings,
-            emailNotifications: {
-                ...localSettings.emailNotifications,
-                enabled,
-            },
-        };
-        setLocalSettings(newSettings);
-        debouncedSave(newSettings);
-    };
+            const newSettings = {
+                ...localSettings,
+                [category]: {
+                    ...localSettings[category],
+                    [field]: !(localSettings[category] as any)[field],
+                },
+            };
 
-    const handleEmailToggle = (key: keyof EmailNotificationSettings, value: boolean) => {
-        if (!localSettings) return;
+            setLocalSettings(newSettings);
+            debouncedSave(newSettings);
+        },
+        [localSettings, debouncedSave]
+    );
 
-        const newSettings = {
-            ...localSettings,
-            emailNotifications: {
-                ...localSettings.emailNotifications,
-                [key]: value,
-            },
-        };
-        setLocalSettings(newSettings);
-        debouncedSave(newSettings);
-    };
-
-    const handlePushMasterToggle = (enabled: boolean) => {
-        if (!localSettings) return;
-
-        const newSettings = {
-            ...localSettings,
-            pushNotifications: {
-                ...localSettings.pushNotifications,
-                enabled,
-            },
-        };
-        setLocalSettings(newSettings);
-        debouncedSave(newSettings);
-    };
-
-    const handlePushToggle = (key: keyof PushNotificationSettings, value: boolean) => {
-        if (!localSettings) return;
-
-        const newSettings = {
-            ...localSettings,
-            pushNotifications: {
-                ...localSettings.pushNotifications,
-                [key]: value,
-            },
-        };
-        setLocalSettings(newSettings);
-        debouncedSave(newSettings);
-    };
-
-    const handleFrequencyChange = (frequency: NotificationFrequency) => {
-        if (!localSettings) return;
-
-        const newSettings = {
-            ...localSettings,
-            frequency,
-        };
-        setLocalSettings(newSettings);
-        debouncedSave(newSettings);
-    };
-
-    if (!localSettings) {
+    if (isLoading) {
         return (
-            <div className="notification-settings-loading">
-                <div className="spinner-border text-primary" role="status">
+            <div className="text-center py-4">
+                <div className="spinner-border spinner-border-sm text-primary" role="status">
                     <span className="visually-hidden">Loading...</span>
                 </div>
             </div>
         );
     }
 
+    if (!localSettings) return null;
+
     return (
-        <div className="notification-settings-form">
+        <div className="notification-settings-enhanced">
             {/* Save Indicator */}
             {showSaved && (
-                <div className="alert alert-success save-indicator">
-                    <i className="fi-rr-check-circle"></i> Settings saved automatically
-                </div>
-            )}
-
-            {/* Error Message */}
-            {error && (
-                <div className="alert alert-danger">
-                    <i className="fi-rr-exclamation"></i> {error}
+                <div className="alert alert-success alert-sm mb-3">
+                    <i className="fi-rr-check-circle me-2"></i>
+                    Settings saved
                 </div>
             )}
 
             {/* Email Notifications */}
             <div className="settings-section">
-                <div className="settings-section-header">
-                    <div className="settings-section-title">
+                <div className="section-header">
+                    <div className="section-icon bg-primary">
                         <i className="fi-rr-envelope"></i>
-                        <h5>Email Notifications</h5>
                     </div>
-                    <div className="form-check form-switch">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            role="switch"
-                            checked={localSettings.emailNotifications.enabled}
-                            onChange={(e) => handleEmailMasterToggle(e.target.checked)}
-                            disabled={saving}
-                        />
+                    <div>
+                        <h6 className="mb-0">Email Notifications</h6>
+                        <small className="text-muted">Manage email preferences</small>
                     </div>
                 </div>
-
                 <div className="settings-list">
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-briefcase"></i>
-                                <span>New Job Match</span>
+                            <i className="fi-rr-briefcase text-primary"></i>
+                            <div>
+                                <label>Job Alerts</label>
+                                <small>Get notified about new job matches</small>
                             </div>
-                            <p className="setting-description">Get notified when jobs match your profile</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.emailNotifications.newJobMatch}
-                                onChange={(e) => handleEmailToggle("newJobMatch", e.target.checked)}
-                                disabled={!localSettings.emailNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.email.jobAlerts}
+                                onChange={() => handleToggle("email", "jobAlerts")}
                             />
                         </div>
                     </div>
 
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-document"></i>
-                                <span>Application Status</span>
+                            <i className="fi-rr-document text-success"></i>
+                            <div>
+                                <label>Application Updates</label>
+                                <small>Status changes on your applications</small>
                             </div>
-                            <p className="setting-description">Updates on your job applications</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.emailNotifications.applicationStatus}
-                                onChange={(e) => handleEmailToggle("applicationStatus", e.target.checked)}
-                                disabled={!localSettings.emailNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.email.applicationUpdates}
+                                onChange={() => handleToggle("email", "applicationUpdates")}
                             />
                         </div>
                     </div>
 
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-comment"></i>
-                                <span>Messages</span>
+                            <i className="fi-rr-comment text-info"></i>
+                            <div>
+                                <label>Messages</label>
+                                <small>New messages from recruiters</small>
                             </div>
-                            <p className="setting-description">New messages from recruiters</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.emailNotifications.messages}
-                                onChange={(e) => handleEmailToggle("messages", e.target.checked)}
-                                disabled={!localSettings.emailNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.email.messages}
+                                onChange={() => handleToggle("email", "messages")}
                             />
                         </div>
                     </div>
 
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-calendar"></i>
-                                <span>Weekly Digest</span>
+                            <i className="fi-rr-newspaper text-warning"></i>
+                            <div>
+                                <label>Newsletter</label>
+                                <small>Weekly job market insights</small>
                             </div>
-                            <p className="setting-description">Weekly summary of activity</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.emailNotifications.weeklyDigest}
-                                onChange={(e) => handleEmailToggle("weeklyDigest", e.target.checked)}
-                                disabled={!localSettings.emailNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.email.newsletter}
+                                onChange={() => handleToggle("email", "newsletter")}
                             />
                         </div>
                     </div>
 
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-megaphone"></i>
-                                <span>Promotions</span>
+                            <i className="fi-rr-megaphone text-danger"></i>
+                            <div>
+                                <label>Marketing Emails</label>
+                                <small>Promotional offers and updates</small>
                             </div>
-                            <p className="setting-description">Marketing and promotional emails</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.emailNotifications.promotions}
-                                onChange={(e) => handleEmailToggle("promotions", e.target.checked)}
-                                disabled={!localSettings.emailNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.email.marketingEmails}
+                                onChange={() => handleToggle("email", "marketingEmails")}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <i className="fi-rr-shield-check text-success"></i>
+                            <div>
+                                <label>Security Alerts</label>
+                                <small>Account security notifications</small>
+                            </div>
+                        </div>
+                        <div className="form-check form-switch">
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={localSettings.email.securityAlerts}
+                                onChange={() => handleToggle("email", "securityAlerts")}
                             />
                         </div>
                     </div>
@@ -269,156 +226,155 @@ export default function NotificationSettingsForm() {
             </div>
 
             {/* Push Notifications */}
-            <div className="settings-section mt-4">
-                <div className="settings-section-header">
-                    <div className="settings-section-title">
+            <div className="settings-section">
+                <div className="section-header">
+                    <div className="section-icon bg-success">
                         <i className="fi-rr-bell"></i>
-                        <h5>Push Notifications</h5>
                     </div>
-                    <div className="form-check form-switch">
-                        <input
-                            className="form-check-input"
-                            type="checkbox"
-                            role="switch"
-                            checked={localSettings.pushNotifications.enabled}
-                            onChange={(e) => handlePushMasterToggle(e.target.checked)}
-                            disabled={saving}
-                        />
+                    <div>
+                        <h6 className="mb-0">Push Notifications</h6>
+                        <small className="text-muted">Browser and mobile alerts</small>
                     </div>
                 </div>
-
                 <div className="settings-list">
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-briefcase"></i>
-                                <span>New Job Match</span>
+                            <i className="fi-rr-briefcase text-primary"></i>
+                            <div>
+                                <label>Job Alerts</label>
+                                <small>Instant job match notifications</small>
                             </div>
-                            <p className="setting-description">Push notifications for job matches</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.pushNotifications.newJobMatch}
-                                onChange={(e) => handlePushToggle("newJobMatch", e.target.checked)}
-                                disabled={!localSettings.pushNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.push.jobAlerts}
+                                onChange={() => handleToggle("push", "jobAlerts")}
                             />
                         </div>
                     </div>
 
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-document"></i>
-                                <span>Application Status</span>
+                            <i className="fi-rr-document text-success"></i>
+                            <div>
+                                <label>Application Updates</label>
+                                <small>Real-time application status</small>
                             </div>
-                            <p className="setting-description">Push notifications for application updates</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.pushNotifications.applicationStatus}
-                                onChange={(e) => handlePushToggle("applicationStatus", e.target.checked)}
-                                disabled={!localSettings.pushNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.push.applicationUpdates}
+                                onChange={() => handleToggle("push", "applicationUpdates")}
                             />
                         </div>
                     </div>
 
                     <div className="setting-row">
                         <div className="setting-info">
-                            <div className="setting-label">
-                                <i className="fi-rr-comment"></i>
-                                <span>Messages</span>
+                            <i className="fi-rr-comment text-info"></i>
+                            <div>
+                                <label>Messages</label>
+                                <small>New message alerts</small>
                             </div>
-                            <p className="setting-description">Push notifications for new messages</p>
                         </div>
                         <div className="form-check form-switch">
                             <input
-                                className="form-check-input"
                                 type="checkbox"
-                                checked={localSettings.pushNotifications.messages}
-                                onChange={(e) => handlePushToggle("messages", e.target.checked)}
-                                disabled={!localSettings.pushNotifications.enabled || saving}
+                                className="form-check-input"
+                                checked={localSettings.push.messages}
+                                onChange={() => handleToggle("push", "messages")}
+                            />
+                        </div>
+                    </div>
+
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <i className="fi-rr-clock text-warning"></i>
+                            <div>
+                                <label>Reminders</label>
+                                <small>Application deadlines & tasks</small>
+                            </div>
+                        </div>
+                        <div className="form-check form-switch">
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={localSettings.push.reminders}
+                                onChange={() => handleToggle("push", "reminders")}
                             />
                         </div>
                     </div>
                 </div>
             </div>
 
-            {/* Frequency */}
-            <div className="settings-section mt-4">
-                <div className="settings-section-header">
-                    <div className="settings-section-title">
-                        <i className="fi-rr-time-forward"></i>
-                        <h5>Notification Frequency</h5>
+            {/* SMS Notifications */}
+            <div className="settings-section">
+                <div className="section-header">
+                    <div className="section-icon bg-warning">
+                        <i className="fi-rr-mobile"></i>
+                    </div>
+                    <div>
+                        <h6 className="mb-0">SMS Notifications</h6>
+                        <small className="text-muted">Text message alerts</small>
                     </div>
                 </div>
-
-                <div className="frequency-options">
-                    <div className="form-check">
-                        <input
-                            className="form-check-input"
-                            type="radio"
-                            name="frequency"
-                            id="freq-realtime"
-                            checked={localSettings.frequency === "REAL_TIME"}
-                            onChange={() => handleFrequencyChange("REAL_TIME")}
-                            disabled={saving}
-                        />
-                        <label className="form-check-label" htmlFor="freq-realtime">
-                            <strong>Real-time</strong>
-                            <span className="d-block text-muted">Receive notifications instantly</span>
-                        </label>
+                <div className="settings-list">
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <i className="fi-rr-briefcase text-primary"></i>
+                            <div>
+                                <label>Job Alerts</label>
+                                <small>Critical job opportunities</small>
+                            </div>
+                        </div>
+                        <div className="form-check form-switch">
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={localSettings.sms.jobAlerts}
+                                onChange={() => handleToggle("sms", "jobAlerts")}
+                            />
+                        </div>
                     </div>
 
-                    <div className="form-check">
-                        <input
-                            className="form-check-input"
-                            type="radio"
-                            name="frequency"
-                            id="freq-daily"
-                            checked={localSettings.frequency === "DAILY_DIGEST"}
-                            onChange={() => handleFrequencyChange("DAILY_DIGEST")}
-                            disabled={saving}
-                        />
-                        <label className="form-check-label" htmlFor="freq-daily">
-                            <strong>Daily Digest</strong>
-                            <span className="d-block text-muted">Once per day at 9:00 AM</span>
-                        </label>
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <i className="fi-rr-shield-check text-success"></i>
+                            <div>
+                                <label>Security Alerts</label>
+                                <small>Important security updates</small>
+                            </div>
+                        </div>
+                        <div className="form-check form-switch">
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={localSettings.sms.securityAlerts}
+                                onChange={() => handleToggle("sms", "securityAlerts")}
+                            />
+                        </div>
                     </div>
 
-                    <div className="form-check">
-                        <input
-                            className="form-check-input"
-                            type="radio"
-                            name="frequency"
-                            id="freq-weekly"
-                            checked={localSettings.frequency === "WEEKLY_DIGEST"}
-                            onChange={() => handleFrequencyChange("WEEKLY_DIGEST")}
-                            disabled={saving}
-                        />
-                        <label className="form-check-label" htmlFor="freq-weekly">
-                            <strong>Weekly Digest</strong>
-                            <span className="d-block text-muted">Every Monday at 9:00 AM</span>
-                        </label>
-                    </div>
-
-                    <div className="form-check">
-                        <input
-                            className="form-check-input"
-                            type="radio"
-                            name="frequency"
-                            id="freq-none"
-                            checked={localSettings.frequency === "NONE"}
-                            onChange={() => handleFrequencyChange("NONE")}
-                            disabled={saving}
-                        />
-                        <label className="form-check-label" htmlFor="freq-none">
-                            <strong>None</strong>
-                            <span className="d-block text-muted">Disable all notifications</span>
-                        </label>
+                    <div className="setting-row">
+                        <div className="setting-info">
+                            <i className="fi-rr-exclamation text-danger"></i>
+                            <div>
+                                <label>Important Updates</label>
+                                <small>Urgent account notifications</small>
+                            </div>
+                        </div>
+                        <div className="form-check form-switch">
+                            <input
+                                type="checkbox"
+                                className="form-check-input"
+                                checked={localSettings.sms.importantUpdates}
+                                onChange={() => handleToggle("sms", "importantUpdates")}
+                            />
+                        </div>
                     </div>
                 </div>
             </div>

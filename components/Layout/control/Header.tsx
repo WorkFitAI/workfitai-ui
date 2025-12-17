@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
 import useHasHydrated from "@/util/useHasHydrated";
+import Avatar from "@/components/common/Avatar";
 import React from "react";
 
 type RoleMeta = {
@@ -117,11 +118,10 @@ export default function Header() {
   const user = useAppSelector(selectAuthUser);
   const dispatch = useAppDispatch();
   const router = useRouter();
-  
+
   const displayUser = hasHydrated ? user : null;
   const displayName = displayUser?.fullName || displayUser?.username || "Guest";
   const displayRole = displayUser?.role || (displayUser?.roles && displayUser?.roles[0]) || "Guest";
-  const userAvatar = displayUser?.avatarUrl || "/assets/imgs/page/dashboard/profile.png";
   const roleMeta = useMemo(() => getRoleMeta(displayRole), [displayRole]);
 
   useEffect(() => {
@@ -236,7 +236,12 @@ export default function Header() {
               <div className="member-login">
                 {displayUser ? (
                   <>
-                    <img alt={displayName} src={userAvatar} />
+                    <Avatar
+                      src={displayUser?.avatarUrl}
+                      alt={displayName}
+                      username={displayUser?.username}
+                      size={40}
+                    />
                     <div className="info-member">
                       <strong className="color-brand-1">{displayName}</strong>
                       <Menu as="div" className="dropdown">

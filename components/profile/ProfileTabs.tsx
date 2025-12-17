@@ -8,17 +8,23 @@ export type ProfileTab = "overview" | "settings" | "security";
 interface ProfileTabsProps {
     activeTab: ProfileTab;
     onTabChange?: (tab: ProfileTab) => void;
+    availableTabs?: ProfileTab[]; // Optional: restrict which tabs to show
 }
 
-export default function ProfileTabs({ activeTab, onTabChange }: ProfileTabsProps) {
+export default function ProfileTabs({ activeTab, onTabChange, availableTabs }: ProfileTabsProps) {
     const router = useRouter();
     const searchParams = useSearchParams();
 
-    const tabs: { id: ProfileTab; label: string; icon: string }[] = [
+    const allTabs: { id: ProfileTab; label: string; icon: string }[] = [
         { id: "overview", label: "Overview", icon: "fi-rr-user" },
         { id: "settings", label: "Settings", icon: "fi-rr-settings" },
         { id: "security", label: "Security", icon: "fi-rr-shield-check" },
     ];
+
+    // Filter tabs based on availableTabs prop
+    const tabs = availableTabs
+        ? allTabs.filter(tab => availableTabs.includes(tab.id))
+        : allTabs;
 
     const handleTabClick = (tabId: ProfileTab) => {
         if (onTabChange) {

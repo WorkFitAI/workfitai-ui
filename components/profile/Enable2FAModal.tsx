@@ -12,13 +12,15 @@ interface Enable2FAModalProps {
     currentlyEnabled: boolean;
 }
 
-type Step = 'setup' | 'verify' | 'backup-codes' | 'disable';
+type Step = 'method-selection' | 'setup' | 'verify' | 'backup-codes' | 'disable';
+type TwoFactorMethod = 'TOTP' | 'EMAIL';
 
 const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currentlyEnabled }) => {
     const dispatch = useAppDispatch();
     const { loading, error } = useAppSelector((state) => state.profile);
 
-    const [step, setStep] = useState<Step>('setup');
+    const [step, setStep] = useState<Step>('method-selection');
+    const [selectedMethod, setSelectedMethod] = useState<TwoFactorMethod>('TOTP');
     const [verificationCode, setVerificationCode] = useState('');
     const [backupCodes, setBackupCodes] = useState<string[]>([]);
     const [codesCopied, setCodesCopied] = useState(false);
@@ -30,22 +32,33 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currently
             if (currentlyEnabled) {
                 setStep('disable');
             } else {
-                setStep('setup');
-                // Generate QR code when modal opens
-                handleEnable2FA();
+                setStep('method-selection');
+                setSelectedMethod('TOTP');
             }
             setVerificationCode('');
             setCodesCopied(false);
         }
     }, [show, currentlyEnabled]);
 
-    const handleEnable2FA = async () => {
-        const result = await dispatch(enable2FA({ method: 'TOTP' }));
+    const handleMethodSelect = (method: TwoFactorMethod) => {
+        setSelectedMethod(method);
+    };
+
+    const handleProceedToSetup = async () => {
+        setStep('setup');
+        await handleEnable2FA(selectedMethod);
+    };
+
+    const handleEnable2FA = async (method: TwoFactorMethod = selectedMethod) => {
+        const result = await dispatch(enable2FA({ method }));
         if (enable2FA.fulfilled.match(result)) {
             setTwoFactorSetup(result.payload);
             if (result.payload.backupCodes && result.payload.backupCodes.length > 0) {
                 setBackupCodes(result.payload.backupCodes);
-                setStep('backup-codes');
+                if (method === 'EMAIL') {
+                    // For EMAIL method, skip QR code step
+                    setStep('verify');
+                }
             }
         }
     };
@@ -101,99 +114,82 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currently
         }
     };
 
-    const renderSetupStep = () => (
+    const renderMethodSelectionStep = () => (
         <>
             <Modal.Header closeButton>
                 <Modal.Title>
                     <i className="fi fi-rr-shield-check me-2"></i>
-                    Kích hoạt xác thực hai yếu tố (2FA)
+                    Chọn phương thức xác thực hai yếu tố
                 </Modal.Title>
             </Modal.Header>
             <Modal.Body>
-                <div className="enable-2fa-setup">
+                <div className="method-selection">
                     <div className="alert alert-info">
                         <i className="fi fi-rr-info me-2"></i>
                         <strong>Tăng cường bảo mật tài khoản</strong>
                         <p className="mb-0 mt-2">
-                            Xác thực hai yếu tố (2FA) thêm một lớp bảo mật bổ sung cho tài khoản của bạn.
-                            Ngoài mật khẩu, bạn sẽ cần nhập mã xác thực từ ứng dụng authenticator.
+                            Chọn phương thức xác thực hai yếu tố phù hợp với bạn.
+                            Bạn sẽ cần xác thực khi đăng nhập vào tài khoản.
                         </p>
                     </div>
 
-                    <div className="setup-instructions">
-                        <h6 className="mb-3">Hướng dẫn thiết lập:</h6>
-
-                        <div className="instruction-step mb-4">
-                            <div className="step-number">1</div>
-                            <div className="step-content">
-                                <h6>Tải ứng dụng Authenticator</h6>
-                                <p>Tải một trong các ứng dụng sau:</p>
+                    <div className="method-options">
+                        {/* TOTP Method */}
+                        <div
+                            className={`method-option ${selectedMethod === 'TOTP' ? 'selected' : ''}`}
+                            onClick={() => setSelectedMethod('TOTP')}
+                        >
+                            <div className="method-header">
+                                <div className="method-icon">
+                                    <i className="fi fi-rr-smartphone"></i>
+                                </div>
+                                <div className="method-info">
+                                    <h6>Ứng dụng Authenticator (TOTP)</h6>
+                                    <p className="text-muted mb-0">Khuyến nghị - Bảo mật cao nhất</p>
+                                </div>
+                                <div className="method-check">
+                                    {selectedMethod === 'TOTP' && <i className="fi fi-rr-check-circle text-primary"></i>}
+                                </div>
+                            </div>
+                            <div className="method-description">
+                                <p>
+                                    Sử dụng ứng dụng như Google Authenticator, Microsoft Authenticator,
+                                    hoặc Authy để tạo mã xác thực 6 chữ số.
+                                </p>
                                 <ul>
-                                    <li>Google Authenticator (iOS / Android)</li>
-                                    <li>Microsoft Authenticator (iOS / Android)</li>
-                                    <li>Authy (iOS / Android / Desktop)</li>
+                                    <li>Mã mới mỗi 30 giây</li>
+                                    <li>Hoạt động offline</li>
+                                    <li>Bảo mật cao nhất</li>
                                 </ul>
                             </div>
                         </div>
 
-                        <div className="instruction-step mb-4">
-                            <div className="step-number">2</div>
-                            <div className="step-content">
-                                <h6>Quét mã QR</h6>
-                                <p>Mở ứng dụng và quét mã QR bên dưới:</p>
-
-                                {loading ? (
-                                    <div className="text-center py-4">
-                                        <div className="spinner-border text-primary" role="status">
-                                            <span className="visually-hidden">Đang tải...</span>
-                                        </div>
-                                    </div>
-                                ) : twoFactorSetup?.qrCode ? (
-                                    <div className="qr-code-container">
-                                        {showQRCode ? (
-                                            <img
-                                                src={twoFactorSetup.qrCode}
-                                                alt="2FA QR Code"
-                                                className="qr-code-image"
-                                            />
-                                        ) : (
-                                            <div className="qr-code-placeholder">
-                                                <i className="fi fi-rr-qrcode"></i>
-                                                <button
-                                                    className="btn btn-sm btn-link"
-                                                    onClick={() => setShowQRCode(true)}
-                                                >
-                                                    Hiển thị mã QR
-                                                </button>
-                                            </div>
-                                        )}
-
-                                        <div className="manual-entry mt-3">
-                                            <p className="text-muted small mb-2">Hoặc nhập thủ công:</p>
-                                            <div className="secret-key">
-                                                <code>{twoFactorSetup.secret || ''}</code>
-                                                <button
-                                                    className="btn btn-sm btn-outline-secondary"
-                                                    onClick={() => {
-                                                        if (twoFactorSetup?.secret) {
-                                                            navigator.clipboard.writeText(twoFactorSetup.secret);
-                                                        }
-                                                    }}
-                                                >
-                                                    <i className="fi fi-rr-copy-alt"></i>
-                                                </button>
-                                            </div>
-                                        </div>
-                                    </div>
-                                ) : null}
+                        {/* EMAIL Method */}
+                        <div
+                            className={`method-option ${selectedMethod === 'EMAIL' ? 'selected' : ''}`}
+                            onClick={() => setSelectedMethod('EMAIL')}
+                        >
+                            <div className="method-header">
+                                <div className="method-icon">
+                                    <i className="fi fi-rr-envelope"></i>
+                                </div>
+                                <div className="method-info">
+                                    <h6>Email</h6>
+                                    <p className="text-muted mb-0">Thuận tiện - Dễ sử dụng</p>
+                                </div>
+                                <div className="method-check">
+                                    {selectedMethod === 'EMAIL' && <i className="fi fi-rr-check-circle text-primary"></i>}
+                                </div>
                             </div>
-                        </div>
-
-                        <div className="instruction-step">
-                            <div className="step-number">3</div>
-                            <div className="step-content">
-                                <h6>Xác thực</h6>
-                                <p>Nhấn nút bên dưới để chuyển sang bước xác thực mã.</p>
+                            <div className="method-description">
+                                <p>
+                                    Nhận mã xác thực qua email mỗi khi đăng nhập.
+                                </p>
+                                <ul>
+                                    <li>Không cần cài đặt ứng dụng</li>
+                                    <li>Dễ sử dụng</li>
+                                    <li>Cần có kết nối internet</li>
+                                </ul>
                             </div>
                         </div>
                     </div>
@@ -212,8 +208,175 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currently
                 </button>
                 <button
                     className="btn btn-primary"
+                    onClick={handleProceedToSetup}
+                    disabled={!selectedMethod || loading}
+                >
+                    Tiếp tục với {selectedMethod === 'TOTP' ? 'Authenticator' : 'Email'}
+                    <i className="fi fi-rr-arrow-right ms-2"></i>
+                </button>
+            </Modal.Footer>
+        </>
+    );
+
+    const renderSetupStep = () => (
+        <>
+            <Modal.Header closeButton>
+                <Modal.Title>
+                    <i className="fi fi-rr-shield-check me-2"></i>
+                    {selectedMethod === 'TOTP'
+                        ? 'Thiết lập Authenticator (TOTP)'
+                        : 'Thiết lập xác thực qua Email'}
+                </Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+                <div className="enable-2fa-setup">
+                    {selectedMethod === 'TOTP' ? (
+                        <>
+                            <div className="alert alert-info">
+                                <i className="fi fi-rr-info me-2"></i>
+                                <strong>Thiết lập TOTP</strong>
+                                <p className="mb-0 mt-2">
+                                    Quét mã QR bằng ứng dụng authenticator để bắt đầu tạo mã xác thực.
+                                </p>
+                            </div>
+
+                            <div className="setup-instructions">
+                                <h6 className="mb-3">Hướng dẫn thiết lập:</h6>
+
+                                <div className="instruction-step mb-4">
+                                    <div className="step-number">1</div>
+                                    <div className="step-content">
+                                        <h6>Tải ứng dụng Authenticator</h6>
+                                        <p>Tải một trong các ứng dụng sau:</p>
+                                        <ul>
+                                            <li>Google Authenticator (iOS / Android)</li>
+                                            <li>Microsoft Authenticator (iOS / Android)</li>
+                                            <li>Authy (iOS / Android / Desktop)</li>
+                                        </ul>
+                                    </div>
+                                </div>
+
+                                <div className="instruction-step mb-4">
+                                    <div className="step-number">2</div>
+                                    <div className="step-content">
+                                        <h6>Quét mã QR</h6>
+                                        <p>Mở ứng dụng và quét mã QR bên dưới:</p>
+
+                                        {loading ? (
+                                            <div className="text-center py-4">
+                                                <div className="spinner-border text-primary" role="status">
+                                                    <span className="visually-hidden">Đang tải...</span>
+                                                </div>
+                                            </div>
+                                        ) : twoFactorSetup?.qrCodeUrl ? (
+                                            <div className="qr-code-container">
+                                                {showQRCode ? (
+                                                    <img
+                                                        src={twoFactorSetup.qrCodeUrl}
+                                                        alt="2FA QR Code"
+                                                        className="qr-code-image"
+                                                    />
+                                                ) : (
+                                                    <div className="qr-code-placeholder">
+                                                        <i className="fi fi-rr-qrcode"></i>
+                                                        <button
+                                                            className="btn btn-sm btn-link"
+                                                            onClick={() => setShowQRCode(true)}
+                                                        >
+                                                            Hiển thị mã QR
+                                                        </button>
+                                                    </div>
+                                                )}
+
+                                                <div className="manual-entry mt-3">
+                                                    <p className="text-muted small mb-2">Hoặc nhập thủ công:</p>
+                                                    <div className="secret-key">
+                                                        <code>{twoFactorSetup.secret || ''}</code>
+                                                        <button
+                                                            className="btn btn-sm btn-outline-secondary"
+                                                            onClick={() => {
+                                                                if (twoFactorSetup?.secret) {
+                                                                    navigator.clipboard.writeText(twoFactorSetup.secret);
+                                                                }
+                                                            }}
+                                                        >
+                                                            <i className="fi fi-rr-copy-alt"></i>
+                                                        </button>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        ) : null}
+                                    </div>
+                                </div>
+
+                                <div className="instruction-step">
+                                    <div className="step-number">3</div>
+                                    <div className="step-content">
+                                        <h6>Xác thực</h6>
+                                        <p>Nhấn nút bên dưới để chuyển sang bước xác thực mã.</p>
+                                    </div>
+                                </div>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="alert alert-info">
+                                <i className="fi fi-rr-info me-2"></i>
+                                <strong>Thiết lập Email 2FA</strong>
+                                <p className="mb-0 mt-2">
+                                    Mã xác thực sẽ được gửi tới email của bạn mỗi khi đăng nhập.
+                                </p>
+                            </div>
+
+                            <div className="email-setup-info">
+                                <div className="email-display">
+                                    <i className="fi fi-rr-envelope text-primary"></i>
+                                    <div>
+                                        <h6 className="mb-1">Email nhận mã xác thực</h6>
+                                        <p className="text-muted mb-0">
+                                            Mã sẽ được gửi đến email đăng ký tài khoản của bạn
+                                        </p>
+                                    </div>
+                                </div>
+
+                                <div className="setup-instructions mt-4">
+                                    <h6 className="mb-3">Cách hoạt động:</h6>
+                                    <ol>
+                                        <li>Khi đăng nhập, hệ thống sẽ gửi mã 6 chữ số tới email của bạn</li>
+                                        <li>Mở email và lấy mã xác thực</li>
+                                        <li>Nhập mã vào trang đăng nhập để hoàn tất</li>
+                                        <li>Mã có hiệu lực trong 10 phút</li>
+                                    </ol>
+                                </div>
+
+                                <div className="alert alert-warning mt-3">
+                                    <i className="fi fi-rr-exclamation me-2"></i>
+                                    <strong>Lưu ý:</strong> Đảm bảo bạn có quyền truy cập vào email này.
+                                </div>
+                            </div>
+                        </>
+                    )}
+
+                    {error && (
+                        <div className="alert alert-danger mt-3">
+                            <i className="fi fi-rr-cross-circle me-2"></i>
+                            {error}
+                        </div>
+                    )}
+                </div>
+            </Modal.Body>
+            <Modal.Footer>
+                <button
+                    className="btn btn-secondary"
+                    onClick={() => setStep('method-selection')}
+                >
+                    <i className="fi fi-rr-arrow-left me-2"></i>
+                    Chọn lại phương thức
+                </button>
+                <button
+                    className="btn btn-primary"
                     onClick={() => setStep('verify')}
-                    disabled={!twoFactorSetup?.qrCode}
+                    disabled={selectedMethod === 'TOTP' && !twoFactorSetup?.qrCodeUrl}
                 >
                     Tiếp theo: Xác thực
                     <i className="fi fi-rr-arrow-right ms-2"></i>
@@ -227,15 +390,24 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currently
             <Modal.Header closeButton>
                 <Modal.Title>
                     <i className="fi fi-rr-shield-check me-2"></i>
-                    Xác thực mã 2FA
+                    Xác thực mã {selectedMethod === 'TOTP' ? 'TOTP' : 'Email'}
                 </Modal.Title>
             </Modal.Header>
             <Modal.Body>
                 <div className="enable-2fa-verify">
                     <div className="alert alert-info">
                         <i className="fi fi-rr-info me-2"></i>
-                        Nhập mã 6 chữ số từ ứng dụng authenticator của bạn để xác thực.
+                        {selectedMethod === 'TOTP'
+                            ? 'Nhập mã 6 chữ số từ ứng dụng authenticator của bạn để xác thực.'
+                            : 'Nhập mã 6 chữ số đã được gửi tới email của bạn.'}
                     </div>
+
+                    {selectedMethod === 'EMAIL' && (
+                        <div className="alert alert-success">
+                            <i className="fi fi-rr-envelope me-2"></i>
+                            Mã xác thực đã được gửi tới email của bạn. Vui lòng kiểm tra hộp thư.
+                        </div>
+                    )}
 
                     <div className="verification-input-group">
                         <label className="form-label">Mã xác thực</label>
@@ -257,7 +429,9 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currently
                             }}
                         />
                         <div className="form-text">
-                            Mã sẽ thay đổi sau mỗi 30 giây
+                            {selectedMethod === 'TOTP'
+                                ? 'Mã sẽ thay đổi sau mỗi 30 giây'
+                                : 'Mã có hiệu lực trong 10 phút'}
                         </div>
                     </div>
 
@@ -436,7 +610,8 @@ const Enable2FAModal: React.FC<Enable2FAModalProps> = ({ show, onHide, currently
     );
 
     return (
-        <Modal show={show} onHide={onHide} size="lg" centered>
+        <Modal show={show} onHide={onHide} size="lg" centered className="enable-2fa-modal">
+            {step === 'method-selection' && renderMethodSelectionStep()}
             {step === 'setup' && renderSetupStep()}
             {step === 'verify' && renderVerifyStep()}
             {step === 'backup-codes' && renderBackupCodesStep()}
