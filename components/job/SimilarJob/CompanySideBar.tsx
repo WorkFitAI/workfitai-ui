@@ -1,9 +1,9 @@
 import Image from "next/image";
 import Link from "next/link";
-import { JobDetails } from "@/types/job/job";
+import { JobDetail } from "@/types/job/job";
 
 interface Props {
-  job: JobDetails;
+  job: JobDetail;
 }
 
 export default function CompanySidebar({ job }: Props) {

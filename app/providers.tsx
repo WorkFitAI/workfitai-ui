@@ -12,6 +12,12 @@ import {
   type StoredSession,
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch } from "@/redux/hooks";
+import { setStoreForTokenRefresh } from "@/lib/tokenRefreshHandler";
+
+// Chart.js global registration
+import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
+
+ChartJS.register(ArcElement, Tooltip, Legend);
 
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
@@ -29,15 +35,26 @@ const loadStoredSession = (): StoredSession | null => {
       return parsed;
     }
 
-    const candidate = parsed as Partial<StoredSession>;
+    // Handle old format (expiryInMinutes instead of expiryTime)
+    const candidate = parsed as Partial<StoredSession> & { expiryInMinutes?: number };
     if (candidate?.accessToken) {
+      // Convert old expiryInMinutes to new expiryTime format
+      let expiryTime: number | null = null;
+      if (candidate.expiryTime !== undefined) {
+        expiryTime = typeof candidate.expiryTime === "number" && Number.isFinite(candidate.expiryTime)
+          ? candidate.expiryTime
+          : null;
+      } else if (candidate.expiryInMinutes !== undefined) {
+        // Backward compatibility: convert expiryInMinutes to expiryTime
+        // Assume token was just created (not accurate but safe)
+        expiryTime = typeof candidate.expiryInMinutes === "number" && candidate.expiryInMinutes > 0
+          ? Date.now() + (candidate.expiryInMinutes * 60 * 1000)
+          : null;
+      }
+
       return {
         accessToken: candidate.accessToken,
-        expiryInMinutes:
-          typeof candidate.expiryInMinutes === "number" &&
-          Number.isFinite(candidate.expiryInMinutes)
-            ? candidate.expiryInMinutes
-            : null,
+        expiryTime,
         username:
           typeof candidate.username === "string" ? candidate.username : "",
         roles: Array.isArray(candidate.roles)
@@ -60,9 +77,6 @@ const AuthHydrator = () => {
   useIsomorphicLayoutEffect(() => {
     if (typeof window === "undefined") return;
 
-    const hasRefreshTokenCookie = document.cookie
-      .split(";")
-      .some((cookie) => cookie.trim().toLowerCase().startsWith("rt="));
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     let storageValid = false;
 
@@ -74,16 +88,26 @@ const AuthHydrator = () => {
           dispatch(restoreSessionFromStorage(parsed));
           storageValid = true;
         } else {
-          const candidate = parsed as Partial<StoredSession>;
+          // Handle old format or partial session
+          const candidate = parsed as Partial<StoredSession> & { expiryInMinutes?: number };
           if (candidate?.accessToken) {
+            // Convert old expiryInMinutes to new expiryTime format
+            let expiryTime: number | null = null;
+            if (candidate.expiryTime !== undefined) {
+              expiryTime = typeof candidate.expiryTime === "number" && Number.isFinite(candidate.expiryTime)
+                ? candidate.expiryTime
+                : null;
+            } else if (candidate.expiryInMinutes !== undefined) {
+              // Backward compatibility: convert expiryInMinutes to expiryTime
+              expiryTime = typeof candidate.expiryInMinutes === "number" && candidate.expiryInMinutes > 0
+                ? Date.now() + (candidate.expiryInMinutes * 60 * 1000)
+                : null;
+            }
+
             dispatch(
               restoreSessionFromStorage({
                 accessToken: candidate.accessToken,
-                expiryInMinutes:
-                  typeof candidate.expiryInMinutes === "number" &&
-                  Number.isFinite(candidate.expiryInMinutes)
-                    ? candidate.expiryInMinutes
-                    : null,
+                expiryTime,
                 username:
                   typeof candidate.username === "string"
                     ? candidate.username
@@ -106,7 +130,7 @@ const AuthHydrator = () => {
     }
 
     // Refresh only when RT cookie exists but storage is missing or invalid.
-    if (hasRefreshTokenCookie && !storageValid) {
+    if (!storageValid) {
       dispatch(refreshToken());
     }
   }, [dispatch]);
@@ -115,7 +139,7 @@ const AuthHydrator = () => {
 };
 
 const Providers = ({ children }: { children: React.ReactNode }) => {
-  const storeRef = useRef<AppStore>();
+  const storeRef = useRef<AppStore | undefined>(undefined);
 
   if (!storeRef.current) {
     const storedSession = loadStoredSession();
@@ -123,6 +147,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
       ? { auth: buildAuthStateFromStoredSession(storedSession) }
       : undefined;
     storeRef.current = makeStore(preloadedState);
+
+    // Set store instance for token refresh handler
+    setStoreForTokenRefresh(storeRef.current);
   }
 
   return (

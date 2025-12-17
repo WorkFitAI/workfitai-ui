@@ -1,4 +1,9 @@
-import { createAsyncThunk, createSlice, PayloadAction } from "@reduxjs/toolkit";
+import {
+  createAsyncThunk,
+  createSlice,
+  PayloadAction,
+  createSelector,
+} from "@reduxjs/toolkit";
 import {
   postAuth,
   authRequest,
@@ -7,6 +12,7 @@ import {
   ForbiddenError,
 } from "@/lib/authApi";
 import { getDeviceId } from "@/lib/deviceId";
+import { resetRefreshState } from "@/lib/tokenRefreshHandler";
 import type { RootState } from "@/redux/store";
 
 export const AUTH_STORAGE_KEY = "auth_session";
@@ -18,13 +24,12 @@ export type AuthErrorType = "unauthorized" | "forbidden" | "generic" | null;
 
 export interface AuthState {
   accessToken: string | null;
-  expiryInMinutes: number | null;
+  expiryTime: number | null; // Absolute timestamp when token expires (ms)
   user: AuthUserProfile | null;
   status: RequestStatus;
   error: string | null;
   errorType: AuthErrorType;
   message: string | null;
-  lastUpdated: number | null;
   // Role-specific state
   pendingApproval: boolean;
   approvalType: "hr-manager" | "admin" | null;
@@ -34,11 +39,13 @@ export interface AuthState {
 
 interface AuthUserProfile {
   username?: string;
+  email?: string;
   fullName?: string;
   role?: string;
   roles?: string[];
   avatarUrl?: string;
   // Role-specific data
+  companyId?: string;
   companyName?: string;
   department?: string;
   isApproved?: boolean;
@@ -104,14 +111,14 @@ interface AuthResponseData {
 
 export interface StoredSession {
   accessToken: string;
-  expiryInMinutes: number | null;
+  expiryTime: number | null; // Absolute timestamp (ms)
   username: string;
   roles: string[];
 }
 
 interface AuthSuccess {
   accessToken: string;
-  expiryInMinutes: number | null;
+  expiryTime: number | null; // Absolute timestamp (ms)
   message: string | null;
   user: AuthUserProfile | null;
   tokenType?: string;
@@ -120,13 +127,12 @@ interface AuthSuccess {
 
 const initialAuthState: AuthState = {
   accessToken: null,
-  expiryInMinutes: null,
+  expiryTime: null,
   user: null,
   status: "idle",
   error: null,
   errorType: null,
   message: null,
-  lastUpdated: null,
   pendingApproval: false,
   approvalType: null,
   registrationRole: null,
@@ -170,11 +176,11 @@ export const isCompleteStoredSession = (
   const hasToken =
     typeof candidate.accessToken === "string" &&
     candidate.accessToken.length > 0;
-  // Backend can return null expiry; treat null as valid to avoid re-refreshing on every load.
+  // Backend can return null expiry; treat null as valid (never expires)
   const hasExpiry =
-    candidate.expiryInMinutes === null ||
-    (typeof candidate.expiryInMinutes === "number" &&
-      Number.isFinite(candidate.expiryInMinutes));
+    candidate.expiryTime === null ||
+    (typeof candidate.expiryTime === "number" &&
+      Number.isFinite(candidate.expiryTime));
   const hasUsername =
     typeof candidate.username === "string" && candidate.username.length > 0;
   const hasRoles =
@@ -186,7 +192,7 @@ export const isCompleteStoredSession = (
 
 const toStoredSession = (auth: AuthSuccess): StoredSession => ({
   accessToken: auth.accessToken,
-  expiryInMinutes: auth.expiryInMinutes,
+  expiryTime: auth.expiryTime,
   username: auth.user?.username ?? "",
   roles: auth.user?.roles ?? [],
 });
@@ -213,21 +219,25 @@ export const buildAuthStateFromStoredSession = (
 ): AuthState => ({
   ...initialAuthState,
   accessToken: session.accessToken,
-  expiryInMinutes: session.expiryInMinutes,
+  expiryTime: session.expiryTime,
   user: getUserFromStoredSession(session),
-  lastUpdated: Date.now(),
 });
 
-const normalizeExpiry = (expiry: number | undefined): number | null => {
+/**
+ * Convert expiryInMinutes to absolute timestamp
+ * Returns null if no expiry (never expires)
+ */
+const calculateExpiryTime = (expiryInMinutes: number | undefined): number | null => {
   if (
-    expiry === undefined ||
-    typeof expiry !== "number" ||
-    Number.isNaN(expiry)
+    expiryInMinutes === undefined ||
+    typeof expiryInMinutes !== "number" ||
+    Number.isNaN(expiryInMinutes) ||
+    expiryInMinutes <= 0
   ) {
-    return null;
+    return null; // No expiry or invalid
   }
-  // API returns expiryInMinutes as number (in minutes, not milliseconds)
-  return expiry;
+  // Convert minutes to absolute timestamp
+  return Date.now() + (expiryInMinutes * 60 * 1000);
 };
 
 const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
@@ -262,7 +272,7 @@ const parseAuthResponse = (
 
   return {
     accessToken,
-    expiryInMinutes: normalizeExpiry(expiryInMinutes),
+    expiryTime: calculateExpiryTime(expiryInMinutes),
     message: response.message ?? null,
     user,
     tokenType: response.tokenType,
@@ -475,6 +485,9 @@ export const logoutUser = createAsyncThunk<
   // This ensures UI logout works even if server returns 401 (token already invalid)
   clearPersistedSession();
 
+  // Clear token refresh state to prevent pending refresh requests
+  resetRefreshState();
+
   if (!token) {
     // No token but still consider logout successful since session is cleared
     return;
@@ -504,10 +517,9 @@ const authSlice = createSlice({
         return;
       }
       state.accessToken = action.payload.accessToken;
-      state.expiryInMinutes = action.payload.expiryInMinutes;
+      state.expiryTime = action.payload.expiryTime;
       state.user = getUserFromStoredSession(action.payload);
       state.message = null;
-      state.lastUpdated = Date.now();
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -530,7 +542,6 @@ const authSlice = createSlice({
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message;
-        state.lastUpdated = Date.now();
       })
       .addCase(registerUser.rejected, (state, action) => {
         state.status = "idle";
@@ -551,7 +562,6 @@ const authSlice = createSlice({
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message ?? "OTP verified successfully";
-        state.lastUpdated = Date.now();
       })
       .addCase(verifyOTP.rejected, (state, action) => {
         state.status = "idle";
@@ -600,12 +610,11 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = "idle";
         state.accessToken = action.payload.accessToken;
-        state.expiryInMinutes = action.payload.expiryInMinutes;
+        state.expiryTime = action.payload.expiryTime;
         state.user = action.payload.user ?? null;
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message;
-        state.lastUpdated = Date.now();
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "idle";
@@ -621,21 +630,19 @@ const authSlice = createSlice({
       .addCase(refreshToken.fulfilled, (state, action) => {
         state.status = "idle";
         state.accessToken = action.payload.accessToken;
-        state.expiryInMinutes = action.payload.expiryInMinutes;
+        state.expiryTime = action.payload.expiryTime;
         state.user = action.payload.user ?? state.user;
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message;
-        state.lastUpdated = Date.now();
       })
       .addCase(refreshToken.rejected, (state, action) => {
         state.status = "idle";
         state.accessToken = null;
-        state.expiryInMinutes = null;
+        state.expiryTime = null;
         state.user = null;
         state.error = action.payload?.message ?? "Refresh token failed";
         state.errorType = action.payload?.errorType ?? "generic";
-        state.lastUpdated = Date.now();
       })
       .addCase(logoutUser.pending, (state) => {
         state.status = "loading";
@@ -645,12 +652,11 @@ const authSlice = createSlice({
       .addCase(logoutUser.fulfilled, (state) => {
         state.status = "idle";
         state.accessToken = null;
-        state.expiryInMinutes = null;
+        state.expiryTime = null;
         state.user = null;
         state.error = null;
         state.errorType = null;
         state.message = "Logged out";
-        state.lastUpdated = Date.now();
       });
   },
 });
@@ -667,10 +673,38 @@ export const selectPendingApproval = (state: RootState) =>
   state.auth.pendingApproval;
 export const selectApprovalType = (state: RootState) => state.auth.approvalType;
 export const selectUserRole = (state: RootState) => state.auth.user?.role;
-export const selectUserRoles = (state: RootState) =>
-  state.auth.user?.roles ?? [];
+
+// Memoized selector to prevent unnecessary rerenders when roles array doesn't change
+const EMPTY_ROLES: string[] = [];
+export const selectUserRoles = createSelector(
+  [(state: RootState) => state.auth.user?.roles],
+  (roles) => roles ?? EMPTY_ROLES
+);
+
 export const selectUserId = (state: RootState) => state.auth.userId;
 export const selectRegistrationRole = (state: RootState) =>
   state.auth.registrationRole;
+
+/**
+ * Simple selector to check if token is valid
+ * Just checks if token exists and hasn't expired
+ * FAST: No calculations, just timestamp comparison
+ */
+export const selectIsTokenValid = (state: RootState): boolean => {
+  const { accessToken, expiryTime } = state.auth;
+
+  if (!accessToken) return false;
+
+  // If no expiry time, token never expires
+  if (expiryTime === null) return true;
+
+  // Simple comparison: is expiry time in the future?
+  return expiryTime > Date.now();
+};
+
+/**
+ * Get token expiry time (absolute timestamp)
+ */
+export const selectTokenExpiryTime = (state: RootState) => state.auth.expiryTime;
 
 export default authSlice.reducer;

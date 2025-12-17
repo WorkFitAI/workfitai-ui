@@ -48,11 +48,6 @@ export default function RegistrationSummary({
       </div>
 
       <div className="row mb-10">
-        <div className="col-4 text-muted font-sm">Username:</div>
-        <div className="col-8 font-sm">{personalInfo.username}</div>
-      </div>
-
-      <div className="row mb-10">
         <div className="col-4 text-muted font-sm">Phone:</div>
         <div className="col-8 font-sm">{personalInfo.phoneNumber}</div>
       </div>

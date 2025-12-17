@@ -21,7 +21,6 @@ import FormDivider from "@/components/auth/FormDivider";
 import FormError from "@/components/auth/FormError";
 import FormSuccess from "@/components/auth/FormSuccess";
 import RoleSelector from "@/components/auth/RoleSelector";
-import CompanySelector from "@/components/auth/CompanySelector";
 import CompanyForm, { CompanyFormData } from "@/components/auth/CompanyForm";
 import RegistrationSummary from "@/components/auth/RegistrationSummary";
 import {
@@ -57,7 +56,6 @@ export default function Register() {
   const [confirmPassword, setConfirmPassword] = useState("");
 
   // Company state (for HR/HR_MANAGER)
-  const [companyName, setCompanyName] = useState<string>("");
   const [companyData, setCompanyData] = useState<CompanyFormData>({
     name: "",
     address: "",
@@ -222,7 +220,28 @@ export default function Register() {
     setLocalError(null);
 
     // Build registration payload according to API spec
-    const payload: any = {
+  interface RegistrationPayload {
+    fullName: string;
+    email: string;
+    password: string;
+    phoneNumber: string;
+    role: UserRole;
+    hrProfile?: {
+      department: string;
+      hrManagerEmail?: string;
+      address: string;
+    };
+    company?: {
+      name: string;
+      logoUrl?: string;
+      websiteUrl?: string;
+      description?: string;
+      address: string;
+      size?: string;
+    };
+  }
+
+    const payload: RegistrationPayload = {
       fullName,
       email,
       password,
@@ -458,13 +477,7 @@ export default function Register() {
           email,
           phoneNumber,
         }}
-        companyName={
-          role === "HR"
-            ? companyName
-            : role === "HR_MANAGER"
-            ? companyData.name
-            : undefined
-        }
+        companyName={role === "HR_MANAGER" ? companyData.name : undefined}
         // department can be added later
       />
     </div>

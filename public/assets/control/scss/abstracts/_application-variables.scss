@@ -1,0 +1,237 @@
+// ============================================
+// APPLICATION DESIGN SYSTEM VARIABLES
+// WorkfitAI - Application Management
+// ============================================
+
+// ============================================
+// 1. BRAND COLORS
+// ============================================
+$app-primary: #2D3E50;           // Dark blue-grey
+$app-secondary: #3498DB;         // Bright blue
+$app-accent: #E74C3C;            // Red accent
+
+// ============================================
+// 2. STATUS COLORS
+// ============================================
+$status-draft: #95A5A6;          // Grey
+$status-applied: #3498DB;        // Blue
+$status-reviewing: #F39C12;      // Orange
+$status-interview: #9B59B6;      // Purple
+$status-offer: #2ECC71;          // Green
+$status-hired: #27AE60;          // Dark green
+$status-rejected: #E74C3C;       // Red
+$status-withdrawn: #7F8C8D;      // Dark grey
+
+// ============================================
+// 3. SEMANTIC COLORS
+// ============================================
+$app-success: #27AE60;
+$app-warning: #F39C12;
+$app-danger: #E74C3C;
+$app-info: #3498DB;
+
+// ============================================
+// 4. NEUTRAL COLORS (Grey Scale)
+// ============================================
+$grey-50: #F8F9FA;
+$grey-100: #E9ECEF;
+$grey-200: #DEE2E6;
+$grey-300: #CED4DA;
+$grey-400: #ADB5BD;
+$grey-500: #6C757D;
+$grey-600: #495057;
+$grey-700: #343A40;
+$grey-800: #212529;
+$grey-900: #000000;
+
+// ============================================
+// 5. TYPOGRAPHY
+// ============================================
+// Font Family
+$app-font-family-base: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+$app-font-family-heading: 'Inter', sans-serif;
+
+// Font Sizes
+$app-font-size-xs: 12px;
+$app-font-size-sm: 14px;
+$app-font-size-base: 16px;
+$app-font-size-lg: 18px;
+$app-font-size-xl: 20px;
+$app-font-size-2xl: 24px;
+$app-font-size-3xl: 30px;
+$app-font-size-4xl: 36px;
+
+// Font Weights
+$app-font-weight-normal: 400;
+$app-font-weight-medium: 500;
+$app-font-weight-semibold: 600;
+$app-font-weight-bold: 700;
+
+// Line Heights
+$app-line-height-tight: 1.2;
+$app-line-height-normal: 1.5;
+$app-line-height-relaxed: 1.75;
+
+// ============================================
+// 6. SPACING SYSTEM
+// ============================================
+$space-0: 0;
+$space-1: 4px;
+$space-2: 8px;
+$space-3: 12px;
+$space-4: 16px;
+$space-5: 20px;
+$space-6: 24px;
+$space-8: 32px;
+$space-10: 40px;
+$space-12: 48px;
+$space-16: 64px;
+$space-20: 80px;
+
+// ============================================
+// 7. BORDER RADIUS
+// ============================================
+$radius-none: 0;
+$radius-sm: 4px;
+$radius-md: 8px;
+$radius-lg: 12px;
+$radius-xl: 16px;
+$radius-2xl: 20px;
+$radius-full: 9999px;
+
+// ============================================
+// 8. SHADOWS
+// ============================================
+$shadow-sm: 0 1px 2px 0 rgba(0, 0, 0, 0.05);
+$shadow-md: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06);
+$shadow-lg: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+$shadow-xl: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+$shadow-2xl: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+$shadow-inner: inset 0 2px 4px 0 rgba(0, 0, 0, 0.06);
+
+// ============================================
+// 9. TRANSITIONS
+// ============================================
+$transition-fast: 150ms ease-in-out;
+$transition-base: 200ms ease-in-out;
+$transition-slow: 300ms ease-in-out;
+
+// ============================================
+// 10. Z-INDEX LAYERS
+// ============================================
+$z-dropdown: 1000;
+$z-sticky: 1020;
+$z-fixed: 1030;
+$z-modal-backdrop: 1040;
+$z-modal: 1050;
+$z-popover: 1060;
+$z-tooltip: 1070;
+$z-toast: 1080;
+
+// ============================================
+// 11. BREAKPOINTS (Using existing system)
+// ============================================
+// Reuse existing breakpoints from _variables.scss
+
+// ============================================
+// 12. COMPONENT-SPECIFIC VARIABLES
+// ============================================
+
+// Status Badge
+$badge-padding-x: $space-3;
+$badge-padding-y: $space-1;
+$badge-font-size: $app-font-size-xs;
+$badge-font-weight: $app-font-weight-semibold;
+$badge-border-radius: $radius-full;
+
+// Buttons
+$btn-padding-x: $space-4;
+$btn-padding-y: $space-3;
+$btn-font-size: $app-font-size-sm;
+$btn-font-weight: $app-font-weight-semibold;
+$btn-border-radius: $radius-md;
+$btn-transition: all $transition-base;
+
+// Cards
+$card-padding: $space-6;
+$card-border-radius: $radius-lg;
+$card-shadow: $shadow-md;
+$card-border: 1px solid $grey-200;
+
+// Table
+$table-cell-padding: $space-4;
+$table-header-bg: $grey-50;
+$table-border-color: $grey-200;
+$table-row-hover-bg: $grey-50;
+$table-row-selected-bg: lighten($app-primary, 45%);
+
+// Forms
+$input-padding-x: $space-4;
+$input-padding-y: $space-3;
+$input-font-size: $app-font-size-base;
+$input-border-width: 2px;
+$input-border-color: $grey-200;
+$input-border-radius: $radius-md;
+$input-focus-border-color: $app-primary;
+$input-focus-shadow: 0 0 0 3px rgba($app-primary, 0.1);
+
+// Toast Notifications
+$toast-width: 400px;
+$toast-padding: $space-4;
+$toast-border-radius: $radius-lg;
+$toast-shadow: $shadow-2xl;
+$toast-success-bg: $app-success;
+$toast-error-bg: $app-danger;
+$toast-warning-bg: $app-warning;
+$toast-info-bg: $app-info;
+
+// Modal
+$modal-content-padding: $space-8;
+$modal-content-border-radius: $radius-xl;
+$modal-backdrop-bg: rgba(0, 0, 0, 0.5);
+$modal-shadow: $shadow-2xl;
+
+// Filter Chips
+$chip-padding-x: $space-4;
+$chip-padding-y: $space-2;
+$chip-border-radius: $radius-full;
+$chip-font-size: $app-font-size-sm;
+$chip-font-weight: $app-font-weight-medium;
+$chip-border-width: 2px;
+$chip-transition: all $transition-base;
+
+// ============================================
+// 13. UTILITY CLASSES MAP
+// ============================================
+$status-colors: (
+  'draft': $status-draft,
+  'applied': $status-applied,
+  'reviewing': $status-reviewing,
+  'interview': $status-interview,
+  'offer': $status-offer,
+  'hired': $status-hired,
+  'rejected': $status-rejected,
+  'withdrawn': $status-withdrawn
+);
+
+$semantic-colors: (
+  'success': $app-success,
+  'warning': $app-warning,
+  'danger': $app-danger,
+  'info': $app-info
+);
+
+$spacings: (
+  '0': $space-0,
+  '1': $space-1,
+  '2': $space-2,
+  '3': $space-3,
+  '4': $space-4,
+  '5': $space-5,
+  '6': $space-6,
+  '8': $space-8,
+  '10': $space-10,
+  '12': $space-12,
+  '16': $space-16,
+  '20': $space-20
+);

@@ -1,11 +1,26 @@
-import type { ReactNode } from "react";
-import AdminLayout from "@/components/layout/control/Layout";
-import "@/public/assets/control/css/style.css";
+"use client";
 
-export default function AdminGroupLayout({ children }: { children: ReactNode }) {
+import type { ReactNode } from "react";
+import AdminLayout from "@/components/Layout/control/Layout";
+import { ToastProvider } from "@/components/application/common/Toast";
+import "@/public/assets/control/css/style.css";
+import "@/public/assets/control/css/application-table.css";
+import "@/public/assets/control/css/search-filters.css";
+
+export default function AdminGroupLayout({
+  children,
+}: {
+  children: ReactNode;
+}) {
   return (
-    <AdminLayout headTitle="Admin Dashboard" breadcrumbTitle="Dashboard" breadcrumbActive="Dashboard">
-      {children}
-    </AdminLayout>
+    <ToastProvider>
+      <AdminLayout
+        headTitle="Admin Dashboard"
+        breadcrumbTitle="Dashboard"
+        breadcrumbActive="Dashboard"
+      >
+        {children}
+      </AdminLayout>
+    </ToastProvider>
   );
 }

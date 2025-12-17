@@ -51,7 +51,7 @@ export default function CompanySelector({
         ))}
       </select>
       <small className="text-muted">
-        Select the company you work for. You will need approval from the company's HR Manager.
+        Select the company you work for. You will need approval from the company&apos;s HR Manager.
       </small>
       {error && <div className="invalid-feedback d-block">{error}</div>}
     </div>
