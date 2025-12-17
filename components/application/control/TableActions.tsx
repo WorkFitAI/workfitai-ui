@@ -49,7 +49,7 @@ const TableActions = ({
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
-  
+
   // Get user role from Redux store
   const userRoles = useAppSelector((state) => state.auth.user?.roles || []);
   const isHRManager = userRoles.includes("HR_MANAGER");
