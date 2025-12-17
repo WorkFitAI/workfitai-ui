@@ -38,14 +38,14 @@ export default function Layout({
     import("wowjs")
       .then((mod) => {
         if (!isMounted) return;
+        type WowConstructor = new (options?: Record<string, unknown>) => {
+          init: () => void;
+        };
         const WowCtor =
-          (
-            mod as {
-              WOW?: new (options?: Record<string, unknown>) => {
-                init: () => void;
-              };
-            }
-          ).WOW ?? mod.default;
+          (mod as unknown as {
+            WOW?: WowConstructor;
+            default?: WowConstructor;
+          }).WOW ?? (mod as unknown as { default?: WowConstructor }).default;
         if (!WowCtor) return;
         const wow = new WowCtor({ live: false });
         wow.init();
@@ -78,13 +78,7 @@ export default function Layout({
       <main className="main">
         <Sidebar />
         <div className="box-content">
-          {breadcrumbTitle && (
-            <Breadcrumb
-              breadcrumbTitle={breadcrumbTitle}
-              breadcrumbActive={breadcrumbActive}
-            />
-          )}
-          <div className="row">{children}</div>
+          {children}
           <Footer />
         </div>
       </main>

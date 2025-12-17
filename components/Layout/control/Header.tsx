@@ -6,13 +6,14 @@ import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
 import useHasHydrated from "@/util/useHasHydrated";
+import React from "react";
 
 type RoleMeta = {
   label: string;
   accent: string;
   shadow: string;
   background: string;
-  Icon: (props: { color: string; size?: number }) => JSX.Element;
+  Icon: (props: { color: string; size?: number }) => React.ReactElement;
 };
 
 const ShieldIcon = ({ color, size = 22 }: { color: string; size?: number }) => (

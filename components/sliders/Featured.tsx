@@ -45,8 +45,8 @@ const JobSlider = () => {
         const res = await getJobs<ApiResponse>(
           `/public/jobs/featured?page=${page}`
         );
-        setJobs(res.data.result || []);
-        setTotalPages(res.data.meta.pages || 1);
+        setJobs(res.data?.result || []);
+        setTotalPages(res.data?.totalPages || 1);
       } catch (err) {
         console.error("Error fetching jobs:", err);
       } finally {

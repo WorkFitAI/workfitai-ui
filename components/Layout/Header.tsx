@@ -2,7 +2,12 @@
 import Link from "next/link";
 import React, { useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
+import {
+  logoutUser,
+  selectAuthUser,
+  selectIsTokenValid,
+  selectAuthToken,
+} from "@/redux/features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import useHasHydrated from "@/util/useHasHydrated";
 
@@ -20,8 +25,12 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
   const router = useRouter();
   const hasHydrated = useHasHydrated();
   const authUser = useAppSelector(selectAuthUser);
-  const displayUser = hasHydrated ? authUser : null;
+  const accessToken = useAppSelector(selectAuthToken);
+  const isTokenValid = useAppSelector(selectIsTokenValid);
   const menuRef = useRef<HTMLDivElement | null>(null);
+
+  // Only display user if hydrated AND token is valid
+  const displayUser = hasHydrated && accessToken && isTokenValid ? authUser : null;
 
   const displayName = displayUser?.fullName ?? displayUser?.username ?? "User";
   const role = displayUser?.role;

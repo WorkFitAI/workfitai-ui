@@ -1,0 +1,548 @@
+import type {
+  Application,
+  ApplicationResponse,
+  CreateApplicationRequest,
+  UpdateStatusRequest,
+  BulkUpdateStatusRequest,
+  AddNoteRequest,
+  Note,
+  AssignApplicationRequest,
+  ExportResponse,
+  DashboardStats,
+  JobStats,
+  ManagerStats,
+  SystemStats,
+  AuditLog,
+  StatusChange,
+} from "@/types/application/application";
+import {
+  handle401WithTokenRefresh,
+  getCurrentAccessToken,
+} from "@/lib/tokenRefreshHandler";
+import { shouldAttemptRefresh, isPublicEndpoint } from "@/lib/endpointUtils";
+
+const BASE_URL =
+  process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace("/auth", "/application") ||
+  "http://localhost:9085/application";
+
+// Generic request wrapper with automatic token refresh on 401
+async function applicationRequest<T>(
+  path: string,
+  options: RequestInit = {},
+  isRetry = false
+): Promise<T> {
+  // Check if endpoint is public
+  const isPublic = isPublicEndpoint(path);
+
+  // Only get access token for protected endpoints
+  const accessToken = isPublic ? null : getCurrentAccessToken();
+
+  const headers: HeadersInit = {
+    ...(options.body instanceof FormData
+      ? {}
+      : { "Content-Type": "application/json" }),
+    ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+    ...options.headers,
+  };
+
+  const response = await fetch(`${BASE_URL}${path}`, {
+    ...options,
+    headers,
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    console.log(
+      `[ApplicationAPI] Request to ${path} failed with status ${response.status}`
+    );
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Request failed" }));
+
+    // On 401, check if we should attempt refresh
+    // Skip refresh for retry loops
+    if (response.status === 401 && !isRetry && shouldAttemptRefresh(path)) {
+      console.log(
+        `[ApplicationAPI] 401 detected on ${path}, attempting token refresh...`
+      );
+
+      // Attempt to refresh the token using centralized queue
+      const newAccessToken = await handle401WithTokenRefresh();
+
+      if (newAccessToken) {
+        console.log(`[ApplicationAPI] Token refreshed, retrying ${path}...`);
+        // Retry the original request with the new token
+        const retryHeaders: HeadersInit = {
+          ...(options.body instanceof FormData
+            ? {}
+            : { "Content-Type": "application/json" }),
+          Authorization: `Bearer ${newAccessToken}`,
+          ...options.headers,
+        };
+
+        return applicationRequest<T>(
+          path,
+          {
+            ...options,
+            headers: retryHeaders,
+          },
+          true // Mark as retry to prevent infinite loops
+        );
+      } else {
+        console.error(`[ApplicationAPI] Token refresh failed for ${path}`);
+      }
+    }
+
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  if (response.status === 204) {
+    return null as T;
+  }
+
+  const data = await response.json();
+  return data.data || data;
+}
+
+// Candidate endpoints
+export const createApplication = async (
+  request: CreateApplicationRequest
+): Promise<Application> => {
+  const formData = new FormData();
+  formData.append("jobId", request.jobId);
+  formData.append("email", request.email);
+  formData.append("cvPdfFile", request.cvPdfFile);
+  if (request.coverLetter) {
+    formData.append("coverLetter", request.coverLetter);
+  }
+
+  return applicationRequest<Application>("", {
+    method: "POST",
+    body: formData,
+  });
+};
+
+export const getMyApplications = async (params: {
+  page: number;
+  size: number;
+  status?: string;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+    ...(params.status && { status: params.status }),
+  });
+
+  return applicationRequest<ApplicationResponse>(`/my?${query}`);
+};
+
+export const getApplicationById = async (id: string): Promise<Application> => {
+  // Fetch both application and history in parallel
+  const [application, history] = await Promise.all([
+    applicationRequest<Application>(`/${id}`),
+    applicationRequest<StatusChange[]>(`/${id}/history`),
+  ]);
+
+  // Merge history into application
+  return {
+    ...application,
+    statusHistory: history,
+  };
+};
+
+export const getApplicationHistory = async (
+  id: string
+): Promise<StatusChange[]> => {
+  return applicationRequest<StatusChange[]>(`/${id}/history`);
+};
+
+export const checkIfApplied = async (
+  jobId: string
+): Promise<{ applied: boolean }> => {
+  return applicationRequest<{ applied: boolean }>(`/check?jobId=${jobId}`);
+};
+
+export const withdrawApplication = async (id: string): Promise<void> => {
+  return applicationRequest<void>(`/${id}`, { method: "DELETE" });
+};
+
+export const getMyApplicationCount = async (): Promise<{ count: number }> => {
+  return applicationRequest<{ count: number }>("/my/count");
+};
+
+export const getPublicNotes = async (id: string): Promise<Note[]> => {
+  return applicationRequest<Note[]>(`/${id}/notes/public`);
+};
+
+// HR endpoints
+export const getApplicationsForJob = async (params: {
+  jobId: string;
+  page: number;
+  size: number;
+  status?: string;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+    ...(params.status && { status: params.status }),
+  });
+
+  return applicationRequest<ApplicationResponse>(
+    `/job/${params.jobId}?${query}`
+  );
+};
+
+export const getMyAssignedApplications = async (params: {
+  page: number;
+  size: number;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+  });
+
+  return applicationRequest<ApplicationResponse>(`/assigned/my?${query}`);
+};
+
+export const updateStatus = async (
+  id: string,
+  request: UpdateStatusRequest
+): Promise<Application> => {
+  const params = new URLSearchParams({
+    status: request.status,
+    ...(request.reason && { reason: request.reason }),
+  });
+
+  return applicationRequest<Application>(`/${id}/status?${params}`, {
+    method: "PUT",
+  });
+};
+
+export const bulkUpdateStatus = async (
+  request: BulkUpdateStatusRequest
+): Promise<{ successCount: number; failureCount: number }> => {
+  return applicationRequest<{ successCount: number; failureCount: number }>(
+    "/bulk/status",
+    {
+      method: "PUT",
+      body: JSON.stringify(request),
+    }
+  );
+};
+
+export const addNote = async (
+  id: string,
+  request: AddNoteRequest
+): Promise<Note> => {
+  return applicationRequest<Note>(`/${id}/notes`, {
+    method: "POST",
+    body: JSON.stringify(request),
+  });
+};
+
+export const getAllNotes = async (id: string): Promise<Note[]> => {
+  return applicationRequest<Note[]>(`/${id}/notes`);
+};
+
+export const updateNote = async (
+  id: string,
+  noteId: string,
+  request: Partial<AddNoteRequest>
+): Promise<Note> => {
+  return applicationRequest<Note>(`/${id}/notes/${noteId}`, {
+    method: "PUT",
+    body: JSON.stringify(request),
+  });
+};
+
+export const deleteNote = async (id: string, noteId: string): Promise<void> => {
+  return applicationRequest<void>(`/${id}/notes/${noteId}`, {
+    method: "DELETE",
+  });
+};
+
+export const downloadCV = async (id: string): Promise<Blob> => {
+  const accessToken = getCurrentAccessToken();
+
+  const response = await fetch(`${BASE_URL}/${id}/cv/download`, {
+    method: "GET",
+    headers: {
+      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+    },
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const error = await response
+      .json()
+      .catch(() => ({ message: "Download failed" }));
+    throw new Error(error.message || `HTTP ${response.status}`);
+  }
+
+  return response.blob();
+};
+
+// HR Manager endpoints
+export const getCompanyApplications = async (params: {
+  companyId: string;
+  page: number;
+  size: number;
+  status?: string;
+  assignedTo?: string;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+    ...(params.status && { status: params.status }),
+    ...(params.assignedTo && { assignedTo: params.assignedTo }),
+  });
+
+  return applicationRequest<ApplicationResponse>(
+    `/company/${params.companyId}?${query}`
+  );
+};
+
+export const assignApplication = async (
+  id: string,
+  request: AssignApplicationRequest
+): Promise<Application> => {
+  return applicationRequest<Application>(`/${id}/assign`, {
+    method: "PUT",
+    body: JSON.stringify(request),
+  });
+};
+
+export const unassignApplication = async (id: string): Promise<Application> => {
+  return applicationRequest<Application>(`/${id}/assign`, { method: "DELETE" });
+};
+
+export const getAssignedApplications = async (params: {
+  hrUsername: string;
+  page: number;
+  size: number;
+  status?: string;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+    ...(params.status && { status: params.status }),
+  });
+
+  return applicationRequest<ApplicationResponse>(
+    `/assigned/${params.hrUsername}?${query}`
+  );
+};
+
+export const getUnassignedApplications = async (params: {
+  page: number;
+  size: number;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+  });
+
+  return applicationRequest<ApplicationResponse>(
+    `/company/unassigned?${query}`
+  );
+};
+
+// Admin endpoints
+export const getAllApplications = async (params: {
+  page: number;
+  size: number;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+  });
+
+  return applicationRequest<ApplicationResponse>(`/admin/all?${query}`);
+};
+
+export const getAuditLogs = async (params: {
+  entityId?: string;
+  performedBy?: string;
+  action?: string;
+  fromDate?: string;
+  toDate?: string;
+  page: number;
+  size: number;
+}): Promise<{
+  content: AuditLog[];
+  totalElements: number;
+  totalPages: number;
+}> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+    ...(params.entityId && { entityId: params.entityId }),
+    ...(params.performedBy && { performedBy: params.performedBy }),
+    ...(params.action && { action: params.action }),
+    ...(params.fromDate && { fromDate: params.fromDate }),
+    ...(params.toDate && { toDate: params.toDate }),
+  });
+
+  return applicationRequest<{
+    content: AuditLog[];
+    totalElements: number;
+    totalPages: number;
+  }>(`/admin/audit?${query}`);
+};
+
+export const adminExportApplications = async (params: {
+  includeDeleted?: boolean;
+  fromDate?: string;
+  toDate?: string;
+  columns?: string[];
+}): Promise<ExportResponse> => {
+  const query = new URLSearchParams({
+    ...(params.includeDeleted && { includeDeleted: "true" }),
+    ...(params.fromDate && { fromDate: params.fromDate }),
+    ...(params.toDate && { toDate: params.toDate }),
+  });
+
+  return applicationRequest<ExportResponse>(`/admin/export?${query}`, {
+    method: "POST",
+    body: JSON.stringify({ columns: params.columns }),
+  });
+};
+
+export const getSystemStats = async (): Promise<SystemStats> => {
+  return applicationRequest<SystemStats>("/admin/stats");
+};
+
+export const adminOverrideApplication = async (
+  id: string,
+  data: { status?: string; assignedTo?: string; reason: string }
+): Promise<Application> => {
+  return applicationRequest<Application>(`/admin/${id}/override`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+};
+
+export const getDeletedApplications = async (params: {
+  page: number;
+  size: number;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams({
+    page: params.page.toString(),
+    size: params.size.toString(),
+  });
+
+  return applicationRequest<ApplicationResponse>(`/admin/deleted?${query}`);
+};
+
+export const restoreApplication = async (id: string): Promise<Application> => {
+  return applicationRequest<Application>(`/admin/${id}/restore`, {
+    method: "PUT",
+  });
+};
+
+// =============================================================================
+// ANALYTICS & STATS ENDPOINTS (Phase 2)
+// =============================================================================
+
+/**
+ * Get HR Dashboard Statistics
+ * GET /application/hr/dashboard
+ */
+export const getHRDashboardStats = async (): Promise<DashboardStats> => {
+  return applicationRequest<DashboardStats>("/hr/dashboard");
+};
+
+/**
+ * Get HR Manager Statistics (Company-wide)
+ * GET /application/manager/stats
+ */
+export const getManagerStats = async (
+  companyId: string
+): Promise<ManagerStats> => {
+  return applicationRequest<ManagerStats>(
+    `/manager/stats?companyId=${companyId}`
+  );
+};
+
+/**
+ * Get Job-specific Statistics
+ * GET /application/job/{jobId}/stats
+ */
+export const getJobStats = async (jobId: string): Promise<JobStats> => {
+  return applicationRequest<JobStats>(`/job/${jobId}/stats`);
+};
+
+/**
+ * Get Application Count for a Job
+ * GET /application/job/{jobId}/count
+ */
+export const getJobApplicationCount = async (
+  jobId: string
+): Promise<number> => {
+  const response = await applicationRequest<{ count: number }>(
+    `/job/${jobId}/count`
+  );
+  return response.count;
+};
+
+/**
+ * Search Applications with Advanced Filters
+ * GET /application/search
+ */
+export const searchApplications = async (filters: {
+  keyword?: string;
+  status?: string[];
+  jobIds?: string[];
+  companyIds?: string[];
+  assignedTo?: string[];
+  dateFrom?: string;
+  dateTo?: string;
+  page?: number;
+  size?: number;
+}): Promise<ApplicationResponse> => {
+  const query = new URLSearchParams();
+
+  if (filters.keyword) query.append("keyword", filters.keyword);
+  if (filters.status) filters.status.forEach((s) => query.append("status", s));
+  if (filters.jobIds) filters.jobIds.forEach((id) => query.append("jobId", id));
+  if (filters.companyIds)
+    filters.companyIds.forEach((id) => query.append("companyId", id));
+  if (filters.assignedTo)
+    filters.assignedTo.forEach((u) => query.append("assignedTo", u));
+  if (filters.dateFrom) query.append("dateFrom", filters.dateFrom);
+  if (filters.dateTo) query.append("dateTo", filters.dateTo);
+  query.append("page", (filters.page || 0).toString());
+  query.append("size", (filters.size || 20).toString());
+
+  return applicationRequest<ApplicationResponse>(`/search?${query}`);
+};
+
+/**
+ * Export Applications to CSV or Excel
+ * POST /application/export
+ */
+export const exportApplications = async (request: {
+  format: "csv" | "excel";
+  companyId?: string;
+  jobId?: string;
+  status?: string[];
+  dateRange?: {
+    from: string;
+    to: string;
+  };
+}): Promise<Blob> => {
+  const response = await fetch(`${BASE_URL}/export`, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${getCurrentAccessToken()}`,
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Export failed: ${response.statusText}`);
+  }
+
+  return response.blob();
+};

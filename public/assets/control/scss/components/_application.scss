@@ -1,0 +1,717 @@
+// ============================================
+// APPLICATION MANAGEMENT COMPONENTS
+// WorkfitAI - Application Management UI
+// ============================================
+
+@import '../abstracts/application-variables';
+
+// ============================================
+// STATUS BADGE
+// ============================================
+.status-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-1;
+  padding: $badge-padding-y $badge-padding-x;
+  font-size: $badge-font-size;
+  font-weight: $badge-font-weight;
+  border-radius: $badge-border-radius;
+  line-height: 1;
+  white-space: nowrap;
+  transition: $transition-base;
+
+  // Size variants
+  &--sm {
+    padding: 2px $space-2;
+    font-size: 10px;
+  }
+
+  &--md {
+    padding: $badge-padding-y $badge-padding-x;
+    font-size: $badge-font-size;
+  }
+
+  &--lg {
+    padding: $space-2 $space-4;
+    font-size: $app-font-size-sm;
+  }
+
+  // Status variants
+  &--draft {
+    background-color: lighten($status-draft, 35%);
+    color: darken($status-draft, 15%);
+    border: 1px solid $status-draft;
+  }
+
+  &--applied {
+    background-color: lighten($status-applied, 45%);
+    color: darken($status-applied, 10%);
+    border: 1px solid $status-applied;
+  }
+
+  &--reviewing {
+    background-color: lighten($status-reviewing, 40%);
+    color: darken($status-reviewing, 15%);
+    border: 1px solid $status-reviewing;
+  }
+
+  &--interview {
+    background-color: lighten($status-interview, 40%);
+    color: darken($status-interview, 10%);
+    border: 1px solid $status-interview;
+  }
+
+  &--offer {
+    background-color: lighten($status-offer, 45%);
+    color: darken($status-offer, 15%);
+    border: 1px solid $status-offer;
+  }
+
+  &--hired {
+    background-color: lighten($status-hired, 50%);
+    color: darken($status-hired, 10%);
+    border: 1px solid $status-hired;
+  }
+
+  &--rejected {
+    background-color: lighten($status-rejected, 40%);
+    color: darken($status-rejected, 10%);
+    border: 1px solid $status-rejected;
+  }
+
+  &--withdrawn {
+    background-color: lighten($status-withdrawn, 40%);
+    color: darken($status-withdrawn, 15%);
+    border: 1px solid $status-withdrawn;
+  }
+}
+
+// ============================================
+// FILTER CHIPS
+// ============================================
+.filter-chips {
+  display: flex;
+  gap: $space-2;
+  flex-wrap: wrap;
+  margin-bottom: $space-4;
+}
+
+.filter-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: $space-2;
+  padding: $chip-padding-y $chip-padding-x;
+  font-size: $chip-font-size;
+  font-weight: $chip-font-weight;
+  color: $grey-700;
+  background: white;
+  border: $chip-border-width solid transparent;
+  border-radius: $chip-border-radius;
+  cursor: pointer;
+  transition: $chip-transition;
+
+  &:hover {
+    background: $grey-100;
+  }
+
+  &.active {
+    border-color: $app-primary;
+    background: $app-primary;
+    color: white;
+  }
+
+  .count {
+    margin-left: $space-1;
+    padding: 0 $space-2;
+    background: rgba(0, 0, 0, 0.1);
+    border-radius: $radius-full;
+    font-size: 11px;
+  }
+
+  // Status-specific active states
+  &--blue.active {
+    background: $status-applied;
+    border-color: $status-applied;
+  }
+
+  &--orange.active {
+    background: $status-reviewing;
+    border-color: $status-reviewing;
+  }
+
+  &--purple.active {
+    background: $status-interview;
+    border-color: $status-interview;
+  }
+
+  &--green.active {
+    background: $status-offer;
+    border-color: $status-offer;
+  }
+
+  &--success.active {
+    background: $status-hired;
+    border-color: $status-hired;
+  }
+}
+
+// ============================================
+// APPLICATION TABLE
+// ============================================
+.application-table-wrapper {
+  background: white;
+  border-radius: $card-border-radius;
+  box-shadow: $card-shadow;
+  overflow: hidden;
+
+  .table-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: $space-4;
+    border-bottom: 1px solid $grey-200;
+    background: $grey-50;
+
+    .table-info {
+      font-size: $app-font-size-sm;
+      color: $grey-600;
+      font-weight: $app-font-weight-medium;
+    }
+
+    .table-actions {
+      display: flex;
+      gap: $space-2;
+    }
+  }
+
+  .application-table {
+    width: 100%;
+    border-collapse: collapse;
+
+    thead {
+      background: $table-header-bg;
+      border-bottom: 2px solid $table-border-color;
+
+      th {
+        padding: $table-cell-padding;
+        text-align: left;
+        font-size: $app-font-size-sm;
+        font-weight: $app-font-weight-semibold;
+        color: $grey-700;
+
+        &.center {
+          text-align: center;
+        }
+
+        &.right {
+          text-align: right;
+        }
+
+        .sort-button {
+          display: flex;
+          align-items: center;
+          gap: $space-1;
+          background: none;
+          border: none;
+          font-size: $app-font-size-sm;
+          font-weight: $app-font-weight-semibold;
+          color: $grey-700;
+          cursor: pointer;
+          transition: $transition-base;
+
+          &:hover {
+            color: $app-primary;
+          }
+
+          .sort-icon {
+            font-size: 12px;
+            color: $grey-400;
+
+            &.active {
+              color: $app-primary;
+            }
+          }
+        }
+      }
+    }
+
+    tbody {
+      tr {
+        border-bottom: 1px solid $grey-100;
+        transition: background $transition-fast;
+
+        &:hover {
+          background: $table-row-hover-bg;
+        }
+
+        &.selected {
+          background: $table-row-selected-bg;
+        }
+
+        td {
+          padding: $table-cell-padding;
+          font-size: $app-font-size-sm;
+          color: $grey-800;
+
+          .candidate-cell {
+            display: flex;
+            align-items: center;
+            gap: $space-3;
+
+            .candidate-avatar {
+              width: 40px;
+              height: 40px;
+              border-radius: $radius-full;
+              background: $app-primary;
+              color: white;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+              font-weight: $app-font-weight-bold;
+              font-size: $app-font-size-base;
+              flex-shrink: 0;
+            }
+
+            .candidate-info {
+              .candidate-name {
+                font-weight: $app-font-weight-medium;
+                color: $grey-900;
+                margin-bottom: 2px;
+              }
+
+              .candidate-email {
+                font-size: $app-font-size-xs;
+                color: $grey-500;
+              }
+            }
+          }
+
+          .job-cell {
+            .job-title {
+              font-weight: $app-font-weight-medium;
+              color: $grey-900;
+              margin-bottom: 2px;
+            }
+
+            .job-company {
+              font-size: $app-font-size-xs;
+              color: $grey-500;
+            }
+          }
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// SEARCH FILTERS
+// ============================================
+.search-filters {
+  background: $grey-50;
+  border-radius: $card-border-radius;
+  padding: $space-4;
+  margin-bottom: $space-6;
+
+  .search-input-wrapper {
+    display: flex;
+    gap: $space-2;
+    margin-bottom: $space-3;
+
+    input {
+      flex: 1;
+      padding: $input-padding-y $input-padding-x;
+      border: $input-border-width solid $input-border-color;
+      border-radius: $input-border-radius;
+      font-size: $input-font-size;
+      transition: $transition-base;
+
+      &:focus {
+        outline: none;
+        border-color: $input-focus-border-color;
+        box-shadow: $input-focus-shadow;
+      }
+
+      &::placeholder {
+        color: $grey-400;
+      }
+    }
+
+    button {
+      padding: $btn-padding-y $btn-padding-x;
+      background: $app-primary;
+      color: white;
+      border: none;
+      border-radius: $btn-border-radius;
+      font-weight: $btn-font-weight;
+      font-size: $btn-font-size;
+      cursor: pointer;
+      transition: $btn-transition;
+
+      &:hover {
+        background: darken($app-primary, 10%);
+      }
+
+      &:active {
+        transform: scale(0.98);
+      }
+    }
+  }
+
+  .advanced-filters-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: $space-2;
+    padding: $space-2 $space-3;
+    background: white;
+    border: 1px solid $grey-300;
+    border-radius: $radius-md;
+    font-size: $app-font-size-sm;
+    color: $grey-700;
+    cursor: pointer;
+    transition: $transition-base;
+
+    &:hover {
+      background: $grey-100;
+    }
+  }
+}
+
+// ============================================
+// TOAST NOTIFICATIONS
+// ============================================
+.toast-container {
+  position: fixed;
+  top: $space-6;
+  right: $space-6;
+  z-index: $z-toast;
+  display: flex;
+  flex-direction: column;
+  gap: $space-3;
+  max-width: $toast-width;
+}
+
+.toast {
+  display: flex;
+  align-items: flex-start;
+  gap: $space-3;
+  padding: $toast-padding;
+  background: white;
+  border-radius: $toast-border-radius;
+  box-shadow: $toast-shadow;
+  border-left: 4px solid $grey-300;
+  animation: slideIn 0.3s ease-out;
+
+  &--success {
+    border-left-color: $toast-success-bg;
+
+    .toast-icon {
+      color: $toast-success-bg;
+    }
+  }
+
+  &--error {
+    border-left-color: $toast-error-bg;
+
+    .toast-icon {
+      color: $toast-error-bg;
+    }
+  }
+
+  &--warning {
+    border-left-color: $toast-warning-bg;
+
+    .toast-icon {
+      color: $toast-warning-bg;
+    }
+  }
+
+  &--info {
+    border-left-color: $toast-info-bg;
+
+    .toast-icon {
+      color: $toast-info-bg;
+    }
+  }
+
+  .toast-icon {
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+
+  .toast-content {
+    flex: 1;
+
+    .toast-title {
+      font-weight: $app-font-weight-semibold;
+      font-size: $app-font-size-sm;
+      color: $grey-900;
+      margin-bottom: 2px;
+    }
+
+    .toast-message {
+      font-size: $app-font-size-sm;
+      color: $grey-600;
+      line-height: $app-line-height-normal;
+    }
+  }
+
+  .toast-close {
+    background: none;
+    border: none;
+    color: $grey-400;
+    font-size: 18px;
+    cursor: pointer;
+    padding: 0;
+    width: 24px;
+    height: 24px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: $radius-sm;
+    transition: $transition-fast;
+
+    &:hover {
+      background: $grey-100;
+      color: $grey-600;
+    }
+  }
+}
+
+@keyframes slideIn {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+// ============================================
+// LOADING STATES
+// ============================================
+.skeleton-loader {
+  background: linear-gradient(
+    90deg,
+    $grey-100 0%,
+    $grey-200 50%,
+    $grey-100 100%
+  );
+  background-size: 200% 100%;
+  animation: loading 1.5s ease-in-out infinite;
+  border-radius: $radius-md;
+}
+
+@keyframes loading {
+  0% {
+    background-position: 200% 0;
+  }
+  100% {
+    background-position: -200% 0;
+  }
+}
+
+.loading-state {
+  padding: $space-8 $space-4;
+  text-align: center;
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 4px solid $grey-200;
+    border-top-color: $app-primary;
+    border-radius: $radius-full;
+    animation: spin 1s linear infinite;
+    margin: 0 auto $space-4;
+  }
+
+  .loading-text {
+    font-size: $app-font-size-sm;
+    color: $grey-500;
+  }
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+// ============================================
+// EMPTY STATES
+// ============================================
+.empty-state {
+  padding: $space-12 $space-6;
+  text-align: center;
+
+  .empty-icon {
+    font-size: 64px;
+    color: $grey-300;
+    margin-bottom: $space-4;
+  }
+
+  .empty-title {
+    font-size: $app-font-size-xl;
+    font-weight: $app-font-weight-semibold;
+    color: $grey-700;
+    margin-bottom: $space-2;
+  }
+
+  .empty-description {
+    font-size: $app-font-size-sm;
+    color: $grey-500;
+    margin-bottom: $space-6;
+    max-width: 400px;
+    margin-left: auto;
+    margin-right: auto;
+  }
+
+  .empty-action {
+    padding: $space-3 $space-6;
+    background: $app-primary;
+    color: white;
+    border: none;
+    border-radius: $btn-border-radius;
+    font-weight: $app-font-weight-semibold;
+    font-size: $app-font-size-sm;
+    cursor: pointer;
+    transition: $btn-transition;
+
+    &:hover {
+      background: darken($app-primary, 10%);
+    }
+  }
+}
+
+// ============================================
+// BULK ACTIONS TOOLBAR
+// ============================================
+.bulk-actions-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: $space-3 $space-4;
+  background: lighten($app-primary, 48%);
+  border: 1px solid lighten($app-primary, 40%);
+  border-radius: $radius-md;
+  margin-bottom: $space-4;
+
+  .bulk-info {
+    display: flex;
+    align-items: center;
+    gap: $space-3;
+
+    .bulk-count {
+      font-weight: $app-font-weight-semibold;
+      color: $app-primary;
+    }
+  }
+
+  .bulk-actions {
+    display: flex;
+    gap: $space-2;
+
+    button {
+      padding: $space-2 $space-4;
+      font-size: $app-font-size-sm;
+      font-weight: $app-font-weight-medium;
+      border: 1px solid $grey-300;
+      background: white;
+      border-radius: $radius-sm;
+      cursor: pointer;
+      transition: $transition-base;
+
+      &:hover {
+        background: $grey-100;
+      }
+
+      &.btn-primary {
+        background: $app-primary;
+        color: white;
+        border-color: $app-primary;
+
+        &:hover {
+          background: darken($app-primary, 10%);
+        }
+      }
+
+      &.btn-danger {
+        background: $app-danger;
+        color: white;
+        border-color: $app-danger;
+
+        &:hover {
+          background: darken($app-danger, 10%);
+        }
+      }
+    }
+  }
+}
+
+// ============================================
+// RESPONSIVE UTILITIES
+// ============================================
+@media (max-width: 768px) {
+  .application-table-wrapper {
+    .application-table {
+      thead {
+        display: none;
+      }
+
+      tbody tr {
+        display: block;
+        margin-bottom: $space-4;
+        border: 1px solid $grey-200;
+        border-radius: $radius-md;
+
+        td {
+          display: flex;
+          justify-content: space-between;
+          padding: $space-3 $space-4;
+          border-bottom: 1px solid $grey-100;
+
+          &:last-child {
+            border-bottom: none;
+          }
+
+          &::before {
+            content: attr(data-label);
+            font-weight: $app-font-weight-semibold;
+            color: $grey-600;
+          }
+        }
+      }
+    }
+  }
+
+  .search-filters {
+    .search-input-wrapper {
+      flex-direction: column;
+
+      button {
+        width: 100%;
+      }
+    }
+  }
+
+  .bulk-actions-toolbar {
+    flex-direction: column;
+    gap: $space-3;
+
+    .bulk-actions {
+      width: 100%;
+
+      button {
+        flex: 1;
+      }
+    }
+  }
+
+  .toast-container {
+    right: $space-4;
+    left: $space-4;
+    max-width: none;
+  }
+}

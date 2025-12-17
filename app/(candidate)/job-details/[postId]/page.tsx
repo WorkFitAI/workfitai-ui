@@ -5,16 +5,17 @@ import Image from "next/image";
 import { getJobs } from "@/lib/jobApi";
 import SimilarJobs from "@/components/job/SimilarJob/SimilarJobs";
 import CompanySidebar from "@/components/job/SimilarJob/CompanySideBar";
-// import JobDescriptionEditorClient from "@/components/job/JobDescriptionEditor/JobDescriptionEditorClient";
+
+import ApplySection from "@/components/application/ApplySection";
 
 import { JobDetail } from "@/types/job/job";
 import JobStatusBadge from "@/components/job/JobStatusAction/JobStatusBadge";
 // import BannerUploader from "@/components/job/Banner/BannerUploader";
 import JobDescriptionRender from "@/components/job/JobDescriptionRender/JobDescriptionRender";
 interface Props {
-  params: {
+  params: Promise<{
     postId: string;
-  };
+  }>;
 }
 
 export default async function JobDetails({ params }: Props) {
@@ -288,6 +289,8 @@ export default async function JobDetails({ params }: Props) {
               {/* Similar Jobs */}
               <div className="col-lg-4 col-md-12 col-sm-12 col-12 pl-40 pl-lg-15 mt-lg-30">
                 <CompanySidebar job={job} />
+
+                <ApplySection jobId={job.postId} />
 
                 <SimilarJobs postId={job.postId} />
               </div>

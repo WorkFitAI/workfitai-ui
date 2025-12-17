@@ -7,7 +7,6 @@ import {
   selectAuthMessage,
   selectAuthStatus,
   verifyOTP,
-  selectUserId,
   selectRegistrationRole,
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";

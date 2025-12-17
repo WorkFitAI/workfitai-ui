@@ -29,6 +29,7 @@ TABLE CONTENT
 
 // Configuration and helpers
 @import 'abstracts/variables',
+'abstracts/application-variables',
 'abstracts/functions',
 'abstracts/mixins';
 // Vendors
@@ -44,7 +45,9 @@ TABLE CONTENT
 'components/circle-chart',
 'components/slider',
 'components/form',
-'components/misc';
+'components/misc',
+'components/application',
+'components/search-filters';
 
 // Layout-related sections
 @import 'layout/header',

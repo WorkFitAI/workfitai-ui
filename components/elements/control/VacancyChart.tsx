@@ -35,17 +35,14 @@ const options: ChartOptions<"line"> = {
 
   scales: {
     x: {
-      barPercentage: 0.5,
       grid: {
         display: true,
-        drawBorder: true,
       },
     },
 
     y: {
       grid: {
         display: true,
-        drawBorder: true,
       },
       ticks: {
         stepSize: 50,

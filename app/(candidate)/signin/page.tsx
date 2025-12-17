@@ -54,7 +54,7 @@ function SigninContent() {
       if (roles.includes("ADMIN")) {
         router.replace("/admin");
       } else if (roles.includes("HR")) {
-        router.replace("/hr-dashboard");
+        router.replace("/hr/applications");
       } else {
         router.replace("/");
       }

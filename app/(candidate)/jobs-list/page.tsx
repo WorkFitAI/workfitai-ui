@@ -11,6 +11,7 @@ import FilterDropdown from "@/components/job/Dropdown/FilterDropdown";
 import Link from "next/link";
 import Image from "next/image";
 import { useDebounce } from "@/hooks/useDebounce";
+import type { Job } from "@/types/job/job";
 
 export default function JobList() {
   const dispatch = useAppDispatch();
@@ -95,7 +96,7 @@ export default function JobList() {
 
                 {/* Job Rows */}
                 <div className="row display-list">
-                  {jobs?.map((job) => (
+                  {jobs?.map((job: Job) => (
                     <div className="col-xl-12 col-12" key={job?.postId}>
                       <div className="card-grid-2 hover-up">
                         <span className="flash" />

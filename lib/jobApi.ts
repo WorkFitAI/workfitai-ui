@@ -1,3 +1,9 @@
+import {
+  handle401WithTokenRefresh,
+  getCurrentAccessToken,
+} from "@/lib/tokenRefreshHandler";
+import { isPublicEndpoint, shouldAttemptRefresh } from "@/lib/endpointUtils";
+
 const JOB_BASE_URL =
   process.env.NEXT_PUBLIC_JOB_BASE_URL ?? "http://localhost:9085/job";
 
@@ -45,13 +51,15 @@ export interface RequestOptions {
 const buildUrl = (path: string) =>
   `${JOB_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
-const buildHeaders = (options?: RequestOptions): HeadersInit => {
+const buildHeaders = (options?: RequestOptions, path?: string): HeadersInit => {
   const headers: Record<string, string> = {
     Accept: "application/json",
     "Content-Type": "application/json",
   };
 
-  if (options?.accessToken) {
+  // Only add Authorization header for protected endpoints
+  const isPublic = path ? isPublicEndpoint(path) : false;
+  if (!isPublic && options?.accessToken) {
     headers["Authorization"] = `Bearer ${options.accessToken}`;
   }
 
@@ -64,8 +72,12 @@ const parseErrors = (errors: unknown): string[] => {
   return [String(errors)];
 };
 
-const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
-  const isJson = response.headers.get("content-type")?.includes("application/json");
+const handleResponse = async <T>(
+  response: Response
+): Promise<ApiResponse<T>> => {
+  const isJson = response.headers
+    .get("content-type")
+    ?.includes("application/json");
   const body = isJson ? await response.json().catch(() => null) : null;
 
   const apiResponse: ApiResponse<T> = body ?? {
@@ -91,16 +103,60 @@ const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> =>
 // MAIN REQUEST WRAPPER
 export const jobRequest = async <T>(
   path: string,
-  options?: RequestOptions
+  options?: RequestOptions,
+  isRetry = false
 ): Promise<ApiResponse<T>> => {
+  // Check if endpoint is public
+  const isPublic = isPublicEndpoint(path);
+
+  // Only get access token for protected endpoints
+  const accessToken = isPublic
+    ? null
+    : (options?.accessToken || getCurrentAccessToken());
+
   const response = await fetch(buildUrl(path), {
     method: options?.method ?? "GET",
-    headers: buildHeaders(options),
+    headers: buildHeaders({ ...options, accessToken: accessToken || undefined }, path),
     body: options?.body ? JSON.stringify(options.body) : undefined,
     credentials: "include",
   });
 
-  return handleResponse<T>(response);
+  try {
+    return await handleResponse<T>(response);
+  } catch (error) {
+    // On 401 UnauthorizedError, check if we should attempt refresh
+    // Skip refresh for public endpoints and retry loops
+    if (
+      error instanceof UnauthorizedError &&
+      !isRetry &&
+      shouldAttemptRefresh(path)
+    ) {
+      console.log(
+        `[JobAPI] 401 detected on ${path}, attempting token refresh...`
+      );
+
+      // Attempt to refresh the token using centralized queue
+      const newAccessToken = await handle401WithTokenRefresh();
+
+      if (newAccessToken) {
+        console.log(`[JobAPI] Token refreshed, retrying ${path}...`);
+        // Retry the original request with the new token
+        return jobRequest<T>(
+          path,
+          {
+            ...options,
+            accessToken: newAccessToken,
+          },
+          true // Mark as retry to prevent infinite loops
+        );
+      } else {
+        console.error(`[JobAPI] Token refresh failed for ${path}`);
+      }
+    }
+
+    // Re-throw the error if refresh failed or wasn't attempted
+    throw error;
+  }
 };
 
 export const getJobs = async <T>(path: string, options?: RequestOptions) =>
