@@ -159,6 +159,51 @@ export const jobRequest = async <T>(
   }
 };
 
+export const jobRequestFormData = async <T>(
+  path: string,
+  formData: FormData,
+  isRetry = false
+): Promise<ApiResponse<T>> => {
+  const isPublic = isPublicEndpoint(path);
+
+  const accessToken = isPublic ? null : getCurrentAccessToken();
+
+  const headers: HeadersInit = {};
+  if (!isPublic && accessToken) {
+    headers["Authorization"] = `Bearer ${accessToken}`;
+  }
+
+  const response = await fetch(buildUrl(path), {
+    method: "POST",
+    headers,
+    body: formData,
+    credentials: "include",
+  });
+
+  try {
+    return await handleResponse<T>(response);
+  } catch (error) {
+    if (
+      error instanceof UnauthorizedError &&
+      !isRetry &&
+      shouldAttemptRefresh(path)
+    ) {
+      console.log(`[JobAPI] 401 on ${path}, refreshing token...`);
+
+      const newAccessToken = await handle401WithTokenRefresh();
+
+      if (newAccessToken) {
+        headers["Authorization"] = `Bearer ${newAccessToken}`;
+
+        return jobRequestFormData<T>(path, formData, true);
+      }
+    }
+
+    throw error;
+  }
+};
+
+
 export const getJobs = async <T>(path: string, options?: RequestOptions) =>
   jobRequest<T>(path, { ...options, method: "GET" });
 
@@ -171,17 +216,9 @@ export const putJob = async <T>(path: string, options?: RequestOptions) =>
 export const deleteJob = async <T>(path: string, options?: RequestOptions) =>
   jobRequest<T>(path, { ...options, method: "DELETE" });
 
-export const postJobFormData = async <T>(path: string, formData: FormData, accessToken?: string) => {
-  const headers: HeadersInit = {};
-  if (accessToken) headers["Authorization"] = `Bearer ${accessToken}`;
+export const postJobFormData = async <T>(
+  path: string,
+  formData: FormData
+) => jobRequestFormData<T>(path, formData);
 
-  const response = await fetch(buildUrl(path), {
-    method: "POST",
-    headers,
-    body: formData,
-    credentials: "include",
-  });
-
-  return handleResponse<T>(response);
-};
 

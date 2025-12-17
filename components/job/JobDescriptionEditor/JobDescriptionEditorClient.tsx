@@ -78,7 +78,7 @@ export default function JobDescriptionEditorClient({ job }: Props) {
     setSaving(true);
     try {
       const dto = mapJobToReqDTO(jobState);
-      await putJob(`/public/hr/jobs`, { body: dto });
+      await putJob(`/hr/jobs`, { body: dto });
       router.refresh();
       toast.success("Job updated successfully!");
     } catch (err) {

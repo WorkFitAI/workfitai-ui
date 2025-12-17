@@ -39,7 +39,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
   return (
     <div className="content-single">
       {/* Title */}
-      <h4>Title</h4>
+      <h5>Title</h5>
       <input
         type="text"
         value={job.title ?? ""}
@@ -47,29 +47,15 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
         className="form-control"
         placeholder="Enter job title"
       />
-      {/* Company */}
-      <h4>Welcome to {job.company?.name || "Company"}</h4>
-      <ParagraphEditor
-        value={job.company?.description ?? ""}
-        onChange={(val) =>
-          onChange({
-            ...job,
-            company: {
-              ...(job.company ?? {}),
-              description: val,
-            },
-          })
-        }
-      />
 
       {/* Job Description */}
-      <h4>Job Description</h4>
+      <h5>Job Description</h5>
       <ParagraphEditor
         value={job.description ?? ""}
         onChange={(val) => updateJobField("description", val)}
       />
       {/* Short Description */}
-      <h4>Short Description</h4>
+      <h5>Short Description</h5>
       <input
         type="text"
         value={job.shortDescription ?? ""}
@@ -78,31 +64,31 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
         placeholder="Enter job title"
       />
       {/* Education Level */}
-      <h4>Education Level</h4>
+      <h5>Education Level</h5>
       <ParagraphEditor
         value={job.educationLevel ?? ""}
         onChange={(val) => updateJobField("educationLevel", val)}
       />
       {/* Skills */}
-      <h4>Essential Knowledge, Skills</h4>
+      <h5>Essential Knowledge, Skills</h5>
       <SkillsSelect
         value={job.skillNames ?? []}
         onChange={(val) => updateJobField("skillNames", val)}
       />
       {/* Preferred Experience */}
-      <h4>Preferred Experience</h4>
+      <h5>Preferred Experience</h5>
       <ParagraphEditor
         value={job.requirements ?? ""}
         onChange={(val) => updateJobField("requirements", val)}
       />
       {/* Responsibilities */}
-      <h4>Responsibilities</h4>
+      <h5>Responsibilities</h5>
       <ParagraphEditor
         value={job.responsibilities ?? ""}
         onChange={(val) => updateJobField("responsibilities", val)}
       />
       {/* Benefits */}
-      <h4>What We Offer</h4>
+      <h5>What We Offer</h5>
       <ParagraphEditor
         value={job.benefits ?? ""}
         onChange={(val) => updateJobField("benefits", val)}
@@ -124,7 +110,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Location</h4>
+          <h5>Location</h5>
           <LocationSelect
             value={job.location ?? ""}
             onChange={(val) => updateJobField("location", val)}
@@ -140,7 +126,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Currency</h4>
+          <h5>Currency</h5>
           <CurrencySelect
             value={job.currency ?? ""}
             onChange={(val) => updateJobField("currency", val)}
@@ -164,7 +150,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
           }}
         >
           {/* JobType */}
-          <h4>Job Type</h4>
+          <h5>Job Type</h5>
           <JobTypeSelect
             value={job.employmentType ?? ""}
             onChange={(val) => updateJobField("employmentType", val)}
@@ -179,7 +165,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Experience Level</h4>
+          <h5>Experience Level</h5>
           <ExperienceLevelSelect
             value={job.experienceLevel ?? ""}
             onChange={(val) => updateJobField("experienceLevel", val)}
@@ -202,7 +188,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Salary Min</h4>
+          <h5>Salary Min</h5>
           <NumberInput
             value={job.salaryMin ?? ""}
             min={0}
@@ -220,7 +206,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Salary Max</h4>
+          <h5>Salary Max</h5>
           <NumberInput
             value={job.salaryMax ?? ""}
             min={job.salaryMin ?? 0}
@@ -245,7 +231,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Opening Positions</h4>
+          <h5>Opening Positions</h5>
           <OpeningPositionSelect
             value={job.quantity ?? ""}
             onChange={(val) => updateJobField("quantity", val)}
@@ -260,7 +246,7 @@ const JobDescriptionEditor: React.FC<JobDescriptionEditorProps> = ({
             flex: 1,
           }}
         >
-          <h4>Expires Date</h4>
+          <h5>Expires Date</h5>
           <ExpiresAtInput
             value={job.expiresAt ?? ""}
             onChange={(val) => updateJobField("expiresAt", val)}
