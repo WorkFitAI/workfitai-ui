@@ -16,9 +16,11 @@ interface ExperienceLevelSelectProps {
 
 // Danh sách cứng
 const EXPERIENCE_OPTIONS: ExperienceOption[] = [
+  { label: "Fresher", value: "FRESHER" },
   { label: "Junior", value: "JUNIOR" },
   { label: "Mid", value: "MID" },
   { label: "Senior", value: "SENIOR" },
+  { label: "Lead", value: "LEAD" },
 ];
 
 const ExperienceLevelSelect: React.FC<ExperienceLevelSelectProps> = ({

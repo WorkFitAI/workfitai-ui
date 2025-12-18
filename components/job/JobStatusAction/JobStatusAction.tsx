@@ -8,6 +8,7 @@ import { JobStatus } from "@/types/job/job";
 interface Props {
   jobId: string;
   currentStatus: JobStatus;
+  onStatusChanged?: (status: JobStatus) => void;
 }
 
 const STATUS_OPTIONS = [
@@ -16,7 +17,11 @@ const STATUS_OPTIONS = [
   { label: "Closed", value: "CLOSED" },
 ];
 
-const JobStatusAction: React.FC<Props> = ({ jobId, currentStatus }) => {
+const JobStatusAction: React.FC<Props> = ({
+  jobId,
+  currentStatus,
+  onStatusChanged,
+}) => {
   const [loading, setLoading] = useState(false);
   const [status, setStatus] = useState<JobStatus>(currentStatus);
 
@@ -25,8 +30,9 @@ const JobStatusAction: React.FC<Props> = ({ jobId, currentStatus }) => {
 
     setLoading(true);
     try {
-      await putJob(`/public/hr/jobs/${jobId}/${newStatus}`, {});
-      setStatus(newStatus); // cập nhật UI ngay lập tức
+      await putJob(`/hr/jobs/${jobId}/${newStatus}`, {});
+      setStatus(newStatus);
+      onStatusChanged?.(newStatus);
       toast.success("Status updated!");
     } catch {
       toast.error("Failed to update status");

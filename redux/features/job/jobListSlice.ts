@@ -8,10 +8,17 @@ interface FetchArgs {
     size?: number;
     filter?: JobFilterState["filter"];
     sort?: string;
+    role?: "USER" | "HR" | "ADMIN" | "HR_MANAGER";
 }
 
-const buildQuery = ({ page = 1, size = 12, filter, sort }: FetchArgs) => {
-    let query = `/public/jobs?page=${page - 1}&size=${size}`;
+const buildQuery = ({ page = 1, size = 12, filter, sort, role }: FetchArgs) => {
+    const base =
+        role === "ADMIN"
+            ? "/admin/jobs"
+            : role === "HR" || role === "HR_MANAGER"
+                ? "/hr/jobs"
+                : "/public/jobs";
+    let query = `${base}?page=${page - 1}&size=${size}`;
 
     if (filter && Object.keys(filter).length) {
         query += `&filter=${encodeURIComponent(buildFilterQuery(filter))}`;
