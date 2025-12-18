@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import Image from "next/image";
+import { useEffect, useState } from "react";
 import { getJobs } from "@/lib/jobApi";
 import { JobDetail } from "@/types/job/job";
 
@@ -7,11 +10,26 @@ interface Props {
   postId: string;
 }
 
-export default async function SimilarJobs({ postId }: Props) {
-  const resSimilar = await getJobs<JobDetail[]>(
-    `/public/jobs/similar/${postId}`
-  );
-  const similarJobs = resSimilar.data;
+export default function SimilarJobs({ postId }: Props) {
+  const [similarJobs, setSimilarJobs] = useState<JobDetail[] | null>(null);
+
+  useEffect(() => {
+    if (!postId) return;
+
+    const fetchSimilarJobs = async () => {
+      try {
+        const res = await getJobs<JobDetail[]>(
+          `/public/jobs/similar/${postId}`
+        );
+        setSimilarJobs(res.data || []);
+      } catch (err) {
+        console.error(err);
+        setSimilarJobs([]);
+      }
+    };
+
+    fetchSimilarJobs();
+  }, [postId]);
 
   if (!similarJobs || similarJobs.length === 0) return null;
 
@@ -23,7 +41,6 @@ export default async function SimilarJobs({ postId }: Props) {
           {similarJobs.map((job) => (
             <li key={job.postId}>
               <div className="card-list-4 hover-up">
-                {/* Avatar company */}
                 <div className="image">
                   <Link href={`/job-details/${job.postId}`}>
                     <span>

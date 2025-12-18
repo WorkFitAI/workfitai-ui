@@ -42,12 +42,12 @@ export default function FormField<T extends object>({
       {options ? (
         <select
           name={name as string}
-          className="form-select"
+          className="form-select form-select-lg"
           value={value as string}
           onChange={onChange}
           required={required}
         >
-          <option value="">-- Select --</option>
+          <option value="">Select</option>
           {options.map((opt) => (
             <option key={opt.value} value={opt.value}>
               {opt.label}

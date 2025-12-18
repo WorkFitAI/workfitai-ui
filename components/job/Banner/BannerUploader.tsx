@@ -39,7 +39,7 @@ export default function BannerUploader({
 
       const res = await postJobFormData<{
         bannerUrl: string;
-      }>(`/public/hr/jobs/${jobId}/banner`, formData);
+      }>(`/hr/jobs/${jobId}/banner`, formData);
 
       if (res.data?.bannerUrl) {
         setPreview(res.data.bannerUrl);
