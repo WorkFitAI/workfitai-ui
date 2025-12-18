@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
+import {
+  logoutUser,
+  selectAuthUser
+} from "@/redux/features/auth/authSlice";
 import useHasHydrated from "@/util/useHasHydrated";
 
 type RoleMeta = {

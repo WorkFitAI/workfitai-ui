@@ -81,6 +81,19 @@ export const fetchAssignedApplications = createAsyncThunk(
   }
 );
 
+export const fetchCompanyApplications = createAsyncThunk(
+  "application/fetchCompany",
+  async (params: {
+    companyId: string;
+    page: number;
+    size: number;
+    status?: string;
+    assignedTo?: string;
+  }) => {
+    return await applicationApi.getCompanyApplications(params);
+  }
+);
+
 export const updateApplicationStatus = createAsyncThunk(
   "application/updateStatus",
   async ({ id, request }: { id: string; request: UpdateStatusRequest }) => {
@@ -185,6 +198,23 @@ const applicationSlice = createSlice({
         state.loading = false;
         state.error =
           action.error.message || "Failed to fetch assigned applications";
+      });
+
+    // Fetch company applications
+    builder
+      .addCase(fetchCompanyApplications.pending, (state) => {
+        state.loading = true;
+        state.error = null;
+      })
+      .addCase(fetchCompanyApplications.fulfilled, (state, action) => {
+        state.loading = false;
+        state.applications = action.payload.items;
+        state.meta = action.payload.meta;
+      })
+      .addCase(fetchCompanyApplications.rejected, (state, action) => {
+        state.loading = false;
+        state.error =
+          action.error.message || "Failed to fetch company applications";
       });
 
     // Fetch by ID

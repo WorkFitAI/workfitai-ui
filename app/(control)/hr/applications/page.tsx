@@ -1,19 +1,20 @@
 "use client";
 
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useEffect, useMemo, useRef } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
   fetchApplicationsForJob,
   fetchAssignedApplications,
+  fetchCompanyApplications,
   selectApplications,
   selectApplicationLoading,
   selectApplicationMeta,
 } from "@/redux/features/application/applicationSlice";
+import { selectAuthUser } from "@/redux/features/auth/authSlice";
 import ApplicationTable from "@/components/application/control/ApplicationTable";
 import { useToast } from "@/components/application/common/Toast";
 import { ErrorBoundary } from "@/components/application/common/ErrorBoundary";
-import type { ApplicationFilters } from "@/components/application/control/SearchFilters";
 
 export default function ApplicationsPage(): React.ReactElement {
   const searchParams = useSearchParams();
@@ -22,17 +23,42 @@ export default function ApplicationsPage(): React.ReactElement {
   const { showToast } = useToast();
   const allApplications = useAppSelector(selectApplications);
   const loading = useAppSelector(selectApplicationLoading);
+  const user = useAppSelector(selectAuthUser);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [sortBy, setSortBy] = useState<string>("submittedAt");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [currentStatus, setCurrentStatus] = useState<string | undefined>(
     searchParams.get("status") || undefined
   );
+  const [assignedToFilter, setAssignedToFilter] = useState<string | undefined>(
+    searchParams.get("assignedTo") || undefined
+  );
 
   const jobId = searchParams.get("jobId");
   const page = parseInt(searchParams.get("page") || "0");
   const size = parseInt(searchParams.get("size") || "5");
   const paginationMeta = useAppSelector(selectApplicationMeta);
+
+  // Determine user role
+  const userRole = user?.role;
+  const isHRManager = userRole === "HR_MANAGER";
+  const isHR = userRole === "HR";
+  const companyId = user?.companyId;
+
+  // Sync filters with URL params (only when URL changes)
+  const prevSearchParamsRef = useRef<string>("");
+  useEffect(() => {
+    const currentSearchParamsStr = searchParams.toString();
+    if (prevSearchParamsRef.current !== currentSearchParamsStr) {
+      prevSearchParamsRef.current = currentSearchParamsStr;
+
+      const statusParam = searchParams.get("status") || undefined;
+      const assignedToParam = searchParams.get("assignedTo") || undefined;
+
+      setCurrentStatus(statusParam);
+      setAssignedToFilter(assignedToParam);
+    }
+  }, [searchParams]);
 
   // Fetch applications on initial load and when dependencies change
   useEffect(() => {
@@ -46,8 +72,19 @@ export default function ApplicationsPage(): React.ReactElement {
           status: currentStatus,
         })
       );
-    } else {
-      // Fetch assigned applications (no status filter in API, filter client-side)
+    } else if (isHRManager && companyId) {
+      // HR_MANAGER: Fetch company applications with status and assignedTo filters
+      dispatch(
+        fetchCompanyApplications({
+          companyId,
+          page,
+          size,
+          status: currentStatus,
+          assignedTo: assignedToFilter,
+        })
+      );
+    } else if (isHR) {
+      // HR: Fetch assigned applications (their own assignments)
       dispatch(
         fetchAssignedApplications({
           page,
@@ -55,15 +92,30 @@ export default function ApplicationsPage(): React.ReactElement {
         })
       );
     }
-  }, [dispatch, jobId, page, size, currentStatus]);
+  }, [
+    dispatch,
+    jobId,
+    page,
+    size,
+    currentStatus,
+    assignedToFilter,
+    isHRManager,
+    isHR,
+    companyId,
+  ]);
 
-  // Filter applications client-side by status when no jobId
+  // Filter applications client-side for HR role only (HR_MANAGER filters server-side)
   const applications = useMemo(() => {
-    if (jobId || !currentStatus) {
+    if (jobId || isHRManager) {
+      // For jobId view or HR_MANAGER, filtering is done server-side
+      return allApplications;
+    }
+    // For HR role, apply client-side status filter
+    if (!currentStatus) {
       return allApplications;
     }
     return allApplications.filter((app) => app.status === currentStatus);
-  }, [allApplications, currentStatus, jobId]);
+  }, [allApplications, currentStatus, jobId, isHRManager]);
 
   // Handlers for pagination - update URL params which triggers API refetch
   const handlePageChange = (newPage: number) => {
@@ -101,16 +153,6 @@ export default function ApplicationsPage(): React.ReactElement {
     return counts;
   }, [allApplications]);
 
-  const handleFiltersChange = (filters: ApplicationFilters) => {
-    // Update current status filter which will trigger client-side filtering
-    setCurrentStatus(filters.status?.[0]);
-  };
-
-  const handleReset = () => {
-    setCurrentStatus(undefined);
-    // Additional reset logic if needed
-  };
-
   const handleSort = (field: string) => {
     if (sortBy === field) {
       setSortOrder(sortOrder === "asc" ? "desc" : "asc");
@@ -118,6 +160,23 @@ export default function ApplicationsPage(): React.ReactElement {
       setSortBy(field);
       setSortOrder("asc");
     }
+  };
+
+  const handleBulkAction = (action: string) => {
+    if (selectedIds.length === 0) {
+      showToast({
+        type: "warning",
+        title: "No Selection",
+        message: "Please select applications to perform bulk actions",
+      });
+      return;
+    }
+
+    showToast({
+      type: "info",
+      title: "Bulk Action",
+      message: `Bulk ${action} will be implemented for ${selectedIds.length} applications`,
+    });
   };
 
   const handleRowAction = (action: string, applicationId: string) => {
@@ -152,7 +211,17 @@ export default function ApplicationsPage(): React.ReactElement {
           status: currentStatus,
         })
       );
-    } else {
+    } else if (isHRManager && companyId) {
+      dispatch(
+        fetchCompanyApplications({
+          companyId,
+          page,
+          size,
+          status: currentStatus,
+          assignedTo: assignedToFilter,
+        })
+      );
+    } else if (isHR) {
       dispatch(
         fetchAssignedApplications({
           page,
@@ -503,6 +572,7 @@ export default function ApplicationsPage(): React.ReactElement {
                   loading={loading}
                   selectedIds={selectedIds}
                   onSelectionChange={setSelectedIds}
+                  onBulkAction={handleBulkAction}
                   sortBy={sortBy}
                   sortOrder={sortOrder}
                   onSort={handleSort}
