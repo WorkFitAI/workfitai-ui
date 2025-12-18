@@ -4,6 +4,7 @@ import React, { useState, useEffect, useMemo } from "react";
 import type {
   Application,
   PaginationMeta,
+  HRUser,
 } from "@/types/application/application";
 import { ApplicationStatus } from "@/types/application/application";
 import BulkActionsToolbar from "./BulkActionsToolbar";
@@ -27,6 +28,7 @@ interface ApplicationTableProps {
   pagination?: PaginationMeta;
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (size: number) => void;
+  hrUsers?: HRUser[];
 }
 
 const DEFAULT_COLUMNS: Column[] = [
@@ -86,6 +88,7 @@ const ApplicationTable = ({
   pagination,
   onPageChange,
   onPageSizeChange,
+  hrUsers = [],
 }: ApplicationTableProps): React.ReactElement => {
   const [visibleColumns, setVisibleColumns] = useState<string[]>(() => {
     // Load from localStorage
@@ -124,6 +127,7 @@ const ApplicationTable = ({
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "ALL">(
     "ALL"
   );
+  const [hrFilter, setHrFilter] = useState<string>("ALL");
   const [dateFrom, setDateFrom] = useState<Date | null>(null);
   const [dateTo, setDateTo] = useState<Date | null>(null);
 
@@ -158,6 +162,11 @@ const ApplicationTable = ({
     // Filter by status
     if (statusFilter !== "ALL") {
       filtered = filtered.filter((app) => app.status === statusFilter);
+    }
+
+    // Filter by assigned HR
+    if (hrFilter !== "ALL") {
+      filtered = filtered.filter((app) => app.assignedTo === hrFilter);
     }
 
     // Filter by date range
@@ -218,6 +227,7 @@ const ApplicationTable = ({
   }, [
     applications,
     statusFilter,
+    hrFilter,
     dateFrom,
     dateTo,
     localSortBy,
@@ -256,6 +266,7 @@ const ApplicationTable = ({
 
   const handleClearFilters = (): void => {
     setStatusFilter("ALL");
+    setHrFilter("ALL");
     setDateFrom(null);
     setDateTo(null);
   };
@@ -366,6 +377,59 @@ const ApplicationTable = ({
               flexWrap: "wrap",
             }}
           >
+            {/* HR Filter */}
+            {hrUsers && hrUsers.length > 0 && (
+              <div style={{ minWidth: "180px" }}>
+                <label
+                  htmlFor="hr-filter"
+                  style={{
+                    display: "block",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    color: "#495057",
+                    marginBottom: "6px",
+                    textTransform: "uppercase",
+                    letterSpacing: "0.5px",
+                  }}
+                >
+                  Assigned HR
+                </label>
+                <select
+                  id="hr-filter"
+                  value={hrFilter}
+                  onChange={(e) => setHrFilter(e.target.value)}
+                  style={{
+                    width: "100%",
+                    marginLeft: "0px",
+                    padding: "10px 12px",
+                    fontSize: "14px",
+                    color: "#2D3E50",
+                    backgroundColor: "#FFFFFF",
+                    border: "2px solid #DEE2E6",
+                    borderRadius: "6px",
+                    cursor: "pointer",
+                    transition: "all 0.2s ease",
+                    fontWeight: 500,
+                  }}
+                  onFocus={(e) => {
+                    e.currentTarget.style.borderColor = "#3498DB";
+                    e.currentTarget.style.backgroundColor = "#F8F9FA";
+                  }}
+                  onBlur={(e) => {
+                    e.currentTarget.style.borderColor = "#DEE2E6";
+                    e.currentTarget.style.backgroundColor = "#FFFFFF";
+                  }}
+                >
+                  <option value="ALL">All HRs</option>
+                  {hrUsers.map((hr) => (
+                    <option key={hr.userId} value={hr.username}>
+                      {hr.fullName} ({hr.username})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            )}
+
             {/* Status Filter */}
             <div style={{ minWidth: "180px" }}>
               <label
@@ -538,6 +602,12 @@ const ApplicationTable = ({
                   <span>
                     {" "}
                     • Status: <strong>{statusFilter}</strong>
+                  </span>
+                )}
+                {hrFilter !== "ALL" && (
+                  <span>
+                    {" "}
+                    • Assigned HR: <strong>{hrFilter}</strong>
                   </span>
                 )}
                 {dateFrom && (

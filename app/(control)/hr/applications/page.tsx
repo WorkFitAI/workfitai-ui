@@ -15,6 +15,8 @@ import { selectAuthUser } from "@/redux/features/auth/authSlice";
 import ApplicationTable from "@/components/application/control/ApplicationTable";
 import { useToast } from "@/components/application/common/Toast";
 import { ErrorBoundary } from "@/components/application/common/ErrorBoundary";
+import { getCompanyHRUsers } from "@/lib/applicationApi";
+import type { HRUser } from "@/types/application/application";
 
 export default function ApplicationsPage(): React.ReactElement {
   const searchParams = useSearchParams();
@@ -33,6 +35,7 @@ export default function ApplicationsPage(): React.ReactElement {
   const [assignedToFilter, setAssignedToFilter] = useState<string | undefined>(
     searchParams.get("assignedTo") || undefined
   );
+  const [hrUsers, setHrUsers] = useState<HRUser[]>([]);
 
   const jobId = searchParams.get("jobId");
   const page = parseInt(searchParams.get("page") || "0");
@@ -59,6 +62,27 @@ export default function ApplicationsPage(): React.ReactElement {
       setAssignedToFilter(assignedToParam);
     }
   }, [searchParams]);
+
+  // Fetch HR users for company (for HR_MANAGER only)
+  useEffect(() => {
+    const fetchHRUsers = async () => {
+      if (isHRManager && companyId) {
+        try {
+          const users = await getCompanyHRUsers(companyId);
+          setHrUsers(users);
+        } catch (error) {
+          console.error("Failed to fetch HR users:", error);
+          showToast({
+            type: "error",
+            title: "Failed to Load HR Users",
+            message: "Could not load HR users for filtering",
+          });
+        }
+      }
+    };
+
+    fetchHRUsers();
+  }, [isHRManager, companyId, showToast]);
 
   // Fetch applications on initial load and when dependencies change
   useEffect(() => {
@@ -581,6 +605,7 @@ export default function ApplicationsPage(): React.ReactElement {
                   pagination={paginationMeta}
                   onPageChange={handlePageChange}
                   onPageSizeChange={handlePageSizeChange}
+                  hrUsers={hrUsers}
                 />
               </div>
             </div>

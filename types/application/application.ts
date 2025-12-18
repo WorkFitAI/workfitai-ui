@@ -101,31 +101,25 @@ export interface JobStats {
 }
 
 export interface ManagerStats {
-  companyId: string;
   totalApplications: number;
-  statusBreakdown: Record<ApplicationStatus, number>;
+  byStatus: Record<string, number>;
   teamPerformance: TeamMember[];
   topJobs: TopJob[];
-  monthlyTrend: {
-    thisMonth: number;
-    lastMonth: number;
-    change: number;
-  };
+  byDepartment: Record<string, number>;
 }
 
 export interface TeamMember {
   hrUsername: string;
-  assignedCount: number;
-  completedCount: number;
-  avgTimeToReview: number;
+  assigned: number;
+  reviewed: number;
+  avgTimeToReviewDays: number;
+  conversionRate: number;
 }
 
 export interface TopJob {
   jobId: string;
   jobTitle: string;
-  companyName: string;
-  applicationCount: number;
-  hiredCount: number;
+  applicantCount: number;
 }
 
 export interface SystemStats {
@@ -221,4 +215,35 @@ export interface AuditLog {
   afterState: Record<string, unknown>;
   metadata: Record<string, unknown>;
   containsPII: boolean;
+}
+
+export interface HRUser {
+  userId: string;
+  username: string;
+  fullName: string;
+  email: string;
+  phoneNumber: string | null;
+  userRole: string;
+  companyId: string;
+}
+
+export interface HRActivity {
+  id: string;
+  entityType: string;
+  entityId: string;
+  action: string;
+  performedBy: string;
+  performedAt: string;
+  metadata: {
+    description?: string;
+    timestamp?: number;
+    [key: string]: unknown;
+  };
+  performerFullName: string;
+  performerRole: string;
+}
+
+export interface HRActivitiesResponse {
+  items: HRActivity[];
+  meta: PaginationMeta;
 }
