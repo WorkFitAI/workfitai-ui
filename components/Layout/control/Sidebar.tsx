@@ -76,6 +76,15 @@ export default function Sidebar() {
                   <span className="name">HR Approvals</span>
                 </Link>
               </li>
+              <li>
+                <Link
+                  className={isActive("/admin/user-activity") ? "dashboard2 active" : "dashboard2"}
+                  href="/admin/user-activity"
+                >
+                  <img src="/assets/control/imgs/page/dashboard/profiles.svg" alt="jobBox" />
+                  <span className="name">User Activity</span>
+                </Link>
+              </li>
             </>
           )}
           {mounted && userRole === 'HR_MANAGER' && (
@@ -120,15 +129,6 @@ export default function Sidebar() {
           </li>
           <li>
             <Link
-              className={isActive("/profile") ? "dashboard2 active" : "dashboard2"}
-              href="/profile"
-            >
-              <img src="/assets/control/imgs/page/dashboard/profiles.svg" alt="jobBox" />
-              <span className="name">My Profiles</span>
-            </Link>
-          </li>
-          <li>
-            <Link
               className={isActive("/my-resume") ? "dashboard2 active" : "dashboard2"}
               href="/my-resume"
             >
@@ -138,11 +138,20 @@ export default function Sidebar() {
           </li>
           <li>
             <Link
+              className={isActive("/profile") ? "dashboard2 active" : "dashboard2"}
+              href="/profile"
+            >
+              <img src="/assets/control/imgs/page/dashboard/profiles.svg" alt="jobBox" />
+              <span className="name">My Profile</span>
+            </Link>
+          </li>
+          <li>
+            <Link
               className={isActive("/settings") ? "dashboard2 active" : "dashboard2"}
               href="/settings"
             >
               <img src="/assets/control/imgs/page/dashboard/settings.svg" alt="jobBox" />
-              <span className="name">Setting</span>
+              <span className="name">Settings</span>
             </Link>
           </li>
           <li>

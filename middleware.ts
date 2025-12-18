@@ -23,7 +23,7 @@ export const config = {
   matcher: [
     "/candidate/:path*",
     "/hr/applications/:path*",
-    "/hr-manager-dashboard/:path*",
+    "/hr-manager/:path*",
     "/admin/:path*",
     "/auth/:path*",
   ],

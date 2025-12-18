@@ -169,7 +169,7 @@ export const userApi = {
         blocked: boolean
     ): Promise<ResponseData<void>> => {
         return apiRequest<ResponseData<void>>(
-            `/admins/users/${username}/block?blocked=${blocked}`,
+            `/admins/users/username/${username}/block?blocked=${blocked}`,
             { method: "PUT" }
         );
     },
@@ -178,7 +178,7 @@ export const userApi = {
      * Delete user by username (soft delete)
      */
     deleteUser: async (username: string): Promise<ResponseData<void>> => {
-        return apiRequest<ResponseData<void>>(`/admins/users/${username}`, {
+        return apiRequest<ResponseData<void>>(`/admins/users/username/${username}`, {
             method: "DELETE",
         });
     },

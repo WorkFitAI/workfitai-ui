@@ -7,6 +7,7 @@ import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
 import useHasHydrated from "@/util/useHasHydrated";
 import Avatar from "@/components/common/Avatar";
+import NotificationBell from "@/components/common/NotificationBell";
 import React from "react";
 
 type RoleMeta = {
@@ -215,7 +216,8 @@ export default function Header() {
               >
                 Post Job
               </Link>
-              <Menu as="div" className="dropdown d-inline-block">
+              <NotificationBell />
+              <Menu as="div" className="dropdown d-inline-block" style={{ marginLeft: '0.5rem' }}>
                 <Menu.Button as="a" className="btn btn-notify" />
                 <Menu.Items
                   as="ul"

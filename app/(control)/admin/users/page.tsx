@@ -294,8 +294,8 @@ export default function UsersManagementPage() {
                                                     </svg>
                                                 </div>
                                                 <div>
-                                                    <h3 className="mb-0 fw-bold fs-4">{statusAggregations.PENDING || 0}</h3>
-                                                    <p className="mb-0 text-muted small">Pending</p>
+                                                    <h3 className="mb-0 fw-bold fs-4">{statusAggregations.WAIT_APPROVED || 0}</h3>
+                                                    <p className="mb-0 text-muted small">Waiting Approval</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -348,7 +348,7 @@ export default function UsersManagementPage() {
                                                     >
                                                         <option value="">All Status</option>
                                                         <option value="ACTIVE">Active</option>
-                                                        <option value="PENDING">Pending</option>
+                                                        <option value="WAIT_APPROVED">Wait Approved</option>
                                                         <option value="SUSPENDED">Suspended</option>
                                                     </select>
                                                 </div>

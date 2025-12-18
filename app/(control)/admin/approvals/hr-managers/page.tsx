@@ -4,6 +4,7 @@ import { useState, useEffect, useCallback } from "react";
 import Link from "next/link";
 import { approvalApi, HRApprovalUser } from "@/lib/approvalApi";
 import { showToast, getErrorMessage } from "@/lib/toast";
+import ConfirmModal from "@/components/common/ConfirmModal";
 
 export default function AdminHRManagerApprovalsPage() {
     const [pendingUsers, setPendingUsers] = useState<HRApprovalUser[]>([]);
@@ -12,6 +13,13 @@ export default function AdminHRManagerApprovalsPage() {
     const [page, setPage] = useState(0);
     const [size] = useState(10);
     const [keyword, setKeyword] = useState("");
+    const [confirmModal, setConfirmModal] = useState<{
+        show: boolean;
+        title: string;
+        message: string;
+        variant: "danger" | "warning" | "info" | "primary";
+        onConfirm: () => void;
+    } | null>(null);
 
     const loadPendingUsers = useCallback(async () => {
         setLoading(true);
@@ -41,18 +49,23 @@ export default function AdminHRManagerApprovalsPage() {
     }, [loadPendingUsers]);
 
     const handleApprove = async (username: string) => {
-        if (!confirm("Are you sure you want to approve this HR Manager?")) {
-            return;
-        }
-
-        try {
-            await approvalApi.approveHRManager(username);
-            showToast.success("HR Manager approved successfully");
-            loadPendingUsers();
-        } catch (error) {
-            console.error("Failed to approve HR Manager:", error);
-            showToast.error(getErrorMessage(error));
-        }
+        setConfirmModal({
+            show: true,
+            title: "Approve HR Manager",
+            message: "Are you sure you want to approve this HR Manager? They will gain access to post jobs and manage applications.",
+            variant: "primary",
+            onConfirm: async () => {
+                setConfirmModal(null);
+                try {
+                    await approvalApi.approveHRManager(username);
+                    showToast.success("HR Manager approved successfully");
+                    loadPendingUsers();
+                } catch (error) {
+                    console.error("Failed to approve HR Manager:", error);
+                    showToast.error(getErrorMessage(error));
+                }
+            }
+        });
     };
 
     const handleSearch = (e: React.FormEvent) => {
@@ -224,6 +237,18 @@ export default function AdminHRManagerApprovalsPage() {
                     </div>
                 </div>
             </div>
+
+            {/* Confirm Modal */}
+            {confirmModal && (
+                <ConfirmModal
+                    show={confirmModal.show}
+                    title={confirmModal.title}
+                    message={confirmModal.message}
+                    variant={confirmModal.variant}
+                    onConfirm={confirmModal.onConfirm}
+                    onCancel={() => setConfirmModal(null)}
+                />
+            )}
         </div>
     );
 }
