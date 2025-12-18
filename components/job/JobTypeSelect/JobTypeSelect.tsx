@@ -18,7 +18,7 @@ interface JobTypeSelectProps {
 const JOB_TYPE_OPTIONS: JobTypeOption[] = [
   { label: "Full-time", value: "FULL_TIME" },
   { label: "Part-time", value: "PART_TIME" },
-  { label: "Internship", value: "INTERNSHIP" },
+  { label: "Internship", value: "INTERN" },
   { label: "Contract", value: "CONTRACT" },
 ];
 
