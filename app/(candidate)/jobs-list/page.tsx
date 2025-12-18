@@ -12,6 +12,8 @@ import Link from "next/link";
 import Image from "next/image";
 import { useDebounce } from "@/hooks/useDebounce";
 import type { Job } from "@/types/job/job";
+import { selectUserRole } from "@/redux/features/auth/authSlice";
+import { useSelector } from "react-redux";
 
 export default function JobList() {
   const dispatch = useAppDispatch();
@@ -20,6 +22,7 @@ export default function JobList() {
     (state) => state.jobFilter
   );
   const { jobs, meta, loading } = useAppSelector((state) => state.jobList);
+  const role = useSelector(selectUserRole);
 
   const [currentPage, setCurrentPage] = React.useState(1);
 
@@ -37,6 +40,7 @@ export default function JobList() {
         size: debouncedShowSize,
         filter: debouncedFilter,
         sort: debouncedSort,
+        role: role as "USER" | "HR" | "ADMIN" | "HR_MANAGER",
       })
     );
   }, [
@@ -45,12 +49,12 @@ export default function JobList() {
     debouncedFilter,
     debouncedSort,
     debouncedShowSize,
+    role,
   ]);
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [filter, sortBy, showSize]); // Đảm bảo khi filter, sortBy hoặc showSize thay đổi thì trang hiện tại sẽ về 1
-
+  }, [filter, sortBy, showSize]);
   if (loading) return <Preloader />;
 
   return (

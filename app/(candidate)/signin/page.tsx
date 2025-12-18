@@ -91,8 +91,18 @@ function SigninContent() {
     event.preventDefault();
     if (!usernameOrEmail || !password) return;
 
-    setLocalMessage(null); // Clear local success message on submit
-    await dispatch(loginUser({ usernameOrEmail, password }));
+    setLocalMessage(null);
+
+    try {
+      const result = await dispatch(loginUser({ usernameOrEmail, password })).unwrap();
+
+      // Check if 2FA is required and redirect
+      if ('require2FA' in result && result.require2FA) {
+        router.push(`/verify-2fa?tempToken=${result.tempToken}&method=${result.method}`);
+      }
+    } catch (error) {
+      // Error is already handled by Redux reducer
+    }
   };
 
   const handleGoogleLogin = () => {
