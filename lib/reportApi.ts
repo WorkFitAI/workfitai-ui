@@ -18,7 +18,7 @@ export const getReportedJobs = async (params: {
     }
 
     return getJobs<ReportedJobResponse>(
-        `/public/admin/reports/grouped?${query.toString()}`
+        `/admin/reports/grouped?${query.toString()}`
     );
 };
 
@@ -27,11 +27,11 @@ export const updateReportedJobStatus = async (
     newStatus: ReportStatus
 ) => {
     return putJob<void>(
-        `/public/admin/reports/${jobId}/status/${newStatus}`
+        `/admin/reports/${jobId}/status/${newStatus}`
     );
 };
 
 
 export const deleteReportedJob = async (jobId: string) => {
-    return deleteJob<void>(`/public/admin/jobs/${jobId}`);
+    return deleteJob<void>(`/admin/jobs/${jobId}`);
 };
