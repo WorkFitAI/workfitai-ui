@@ -35,7 +35,13 @@ const ShieldIcon = ({ color, size = 22 }: { color: string; size?: number }) => (
   </svg>
 );
 
-const BriefcaseIcon = ({ color, size = 22 }: { color: string; size?: number }) => (
+const BriefcaseIcon = ({
+  color,
+  size = 22,
+}: {
+  color: string;
+  size?: number;
+}) => (
   <svg width={size} height={size} viewBox="0 0 24 24" fill="none">
     <rect
       x="4"
@@ -117,11 +123,15 @@ export default function Header() {
   const user = useAppSelector(selectAuthUser);
   const dispatch = useAppDispatch();
   const router = useRouter();
-  
+
   const displayUser = hasHydrated ? user : null;
   const displayName = displayUser?.fullName || displayUser?.username || "Guest";
-  const displayRole = displayUser?.role || (displayUser?.roles && displayUser?.roles[0]) || "Guest";
-  const userAvatar = displayUser?.avatarUrl || "/assets/imgs/page/dashboard/profile.png";
+  const displayRole =
+    displayUser?.role ||
+    (displayUser?.roles && displayUser?.roles[0]) ||
+    "Guest";
+  const userAvatar =
+    displayUser?.avatarUrl || "/assets/imgs/page/dashboard/profile.png";
   const roleMeta = useMemo(() => getRoleMeta(displayRole), [displayRole]);
 
   useEffect(() => {
@@ -204,7 +214,7 @@ export default function Header() {
             <div className="block-signin">
               <Link
                 className="btn btn-default icon-edit hover-up"
-                href="/post-job"
+                href="/hr/post-job"
               >
                 Post Job
               </Link>
