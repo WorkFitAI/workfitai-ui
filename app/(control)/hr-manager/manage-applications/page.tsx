@@ -8,6 +8,7 @@ import {
 } from '@/lib/applicationApi';
 import AssignmentBoard from '@/components/application/control/AssignmentBoard';
 import type { Application } from '@/types/application/application';
+import { showToast, getErrorMessage } from '@/lib/toast';
 
 export default function ManageApplicationsPage(): React.ReactElement {
   const [unassignedApps, setUnassignedApps] = useState<Application[]>([]);
@@ -33,9 +34,9 @@ export default function ManageApplicationsPage(): React.ReactElement {
     try {
       await assignApplication(applicationId, { assignedTo: hrUsername });
       fetchUnassigned();
-      alert('Application assigned successfully');
-    } catch {
-      alert('Failed to assign application');
+      showToast.success('Application assigned successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -45,9 +46,9 @@ export default function ManageApplicationsPage(): React.ReactElement {
     try {
       await unassignApplication(applicationId);
       fetchUnassigned();
-      alert('Application unassigned successfully');
-    } catch {
-      alert('Failed to unassign application');
+      showToast.success('Application unassigned successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 

@@ -87,6 +87,16 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
         });
     };
 
+    const formatLocation = (location: any) => {
+        if (!location) return 'Unknown';
+        if (typeof location === 'string') return location;
+        const parts = [];
+        if (location.city && location.city !== 'Unknown') parts.push(location.city);
+        if (location.region && location.region !== 'Unknown') parts.push(location.region);
+        if (location.country && location.country !== 'Unknown') parts.push(location.country);
+        return parts.length > 0 ? parts.join(', ') : 'Unknown';
+    };
+
     const getDeviceIcon = (deviceName: string) => {
         const lower = deviceName.toLowerCase();
         if (lower.includes("iphone") || lower.includes("android")) return "fi-rr-smartphone";
@@ -217,7 +227,7 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
                                         </span>
                                         {sessions.current.location && (
                                             <span className="session-detail-item">
-                                                <i className="fi-rr-marker"></i> {sessions.current.location}
+                                                <i className="fi-rr-marker"></i> {formatLocation(sessions.current.location)}
                                             </span>
                                         )}
                                         <span className="session-detail-item">
@@ -244,7 +254,7 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
                                         </span>
                                         {session.location && (
                                             <span className="session-detail-item">
-                                                <i className="fi-rr-marker"></i> {session.location}
+                                                <i className="fi-rr-marker"></i> {formatLocation(session.location)}
                                             </span>
                                         )}
                                         <span className="session-detail-item">

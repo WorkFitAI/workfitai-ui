@@ -55,9 +55,9 @@ export default function ProfilePage() {
 
     if (loading && !profile) {
         return (
-            <div className="section-box">
+            <div className="section-box mt-20">
                 <div className="container">
-                    <div className="panel-white text-center py-5">
+                    <div className="text-center py-5">
                         <div className="spinner-border text-primary" role="status">
                             <span className="visually-hidden">Loading profile...</span>
                         </div>
@@ -70,7 +70,7 @@ export default function ProfilePage() {
 
     if (error && !profile) {
         return (
-            <div className="section-box">
+            <div className="section-box mt-20">
                 <div className="container">
                     <div className="alert alert-danger">
                         <i className="fi-rr-exclamation me-2"></i>
@@ -90,11 +90,11 @@ export default function ProfilePage() {
     }
 
     return (
-        <div className="section-box">
+        <div className="section-box mt-20">
             <div className="container">
                 {/* Success Message */}
                 {successMessage && (
-                    <div className="alert alert-success alert-dismissible fade show" role="alert">
+                    <div className="alert alert-success alert-dismissible fade show mb-4" role="alert">
                         <i className="fi-rr-check-circle me-2"></i> {successMessage}
                         <button
                             type="button"
@@ -135,7 +135,6 @@ export default function ProfilePage() {
                 )}
 
                 {/* Main Profile Content */}
-                {/* Profile Overview with enhanced header */}
                 <ProfileOverview
                     profile={profile}
                     isOwnProfile={isOwnProfile}
@@ -144,54 +143,58 @@ export default function ProfilePage() {
 
                 {/* Settings Grid - 2x2 layout */}
                 <div className="row mt-4 g-4">
-                    {/* Row 1: Basic Info & Notifications */}
+                    {/* Row 1: Notifications */}
                     <div className="col-lg-6">
-                        <div className="settings-card">
-                            <div className="settings-card-header">
-                                <div className="settings-icon bg-primary">
-                                    <i className="fi-rr-bell"></i>
+                        <div className="card card-style-1">
+                            <div className="card-body">
+                                <div className="d-flex align-items-center mb-4">
+                                    <div className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style={{ width: '48px', height: '48px', backgroundColor: 'rgba(59, 130, 246, 0.1)' }}>
+                                        <i className="fi-rr-bell" style={{ color: '#3b82f6', fontSize: '20px' }}></i>
+                                    </div>
+                                    <div>
+                                        <h5 className="mb-1">Notifications</h5>
+                                        <p className="text-muted mb-0 small">Manage your notification preferences</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h5 className="mb-1">Notifications</h5>
-                                    <p className="text-muted mb-0">Manage your notification preferences</p>
-                                </div>
-                            </div>
-                            <div className="settings-card-body">
                                 <NotificationSettingsForm />
                             </div>
                         </div>
                     </div>
 
-                    {/* Row 2: Privacy & Security */}
+                    {/* Row 2: Privacy */}
                     <div className="col-lg-6">
-                        <div className="settings-card">
-                            <div className="settings-card-header">
-                                <div className="settings-icon bg-success">
-                                    <i className="fi-rr-eye"></i>
+                        <div className="card card-style-1">
+                            <div className="card-body">
+                                <div className="d-flex align-items-center mb-4">
+                                    <div className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style={{ width: '48px', height: '48px', backgroundColor: 'rgba(34, 197, 94, 0.1)' }}>
+                                        <i className="fi-rr-eye" style={{ color: '#22c55e', fontSize: '20px' }}></i>
+                                    </div>
+                                    <div>
+                                        <h5 className="mb-1">Privacy</h5>
+                                        <p className="text-muted mb-0 small">Control who can see your profile</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h5 className="mb-1">Privacy</h5>
-                                    <p className="text-muted mb-0">Control who can see your profile</p>
-                                </div>
-                            </div>
-                            <div className="settings-card-body">
                                 <PrivacySettingsForm />
                             </div>
                         </div>
                     </div>
 
+                    {/* Row 3: Security - Full Width */}
                     <div className="col-12">
-                        <div className="settings-card">
-                            <div className="settings-card-header">
-                                <div className="settings-icon bg-warning">
-                                    <i className="fi-rr-shield-check"></i>
+                        <div className="card card-style-1">
+                            <div className="card-body">
+                                <div className="d-flex align-items-center mb-4">
+                                    <div className="rounded-circle d-flex align-items-center justify-content-center me-3"
+                                        style={{ width: '48px', height: '48px', backgroundColor: 'rgba(251, 191, 36, 0.1)' }}>
+                                        <i className="fi-rr-shield-check" style={{ color: '#fbbf24', fontSize: '20px' }}></i>
+                                    </div>
+                                    <div>
+                                        <h5 className="mb-1">Security</h5>
+                                        <p className="text-muted mb-0 small">Password & account security</p>
+                                    </div>
                                 </div>
-                                <div>
-                                    <h5 className="mb-1">Security</h5>
-                                    <p className="text-muted mb-0">Password & account security</p>
-                                </div>
-                            </div>
-                            <div className="settings-card-body">
                                 <SecuritySettings twoFactorStatus={twoFactorStatus} />
                             </div>
                         </div>

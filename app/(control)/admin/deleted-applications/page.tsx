@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { getDeletedApplications, restoreApplication } from '@/lib/applicationApi';
 import StatusBadge from '@/components/application/StatusBadge';
 import type { Application } from '@/types/application/application';
+import { showToast, getErrorMessage } from '@/lib/toast';
 
 export default function DeletedApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
@@ -33,10 +34,10 @@ export default function DeletedApplicationsPage() {
     try {
       await restoreApplication(id);
       fetchDeleted();
-      alert('Application restored successfully');
-    } catch (err) {
-      console.error('Failed to restore application:', err);
-      alert('Failed to restore application');
+      showToast.success('Application restored successfully');
+    } catch (error) {
+      console.error('Failed to restore application:', error);
+      showToast.error(getErrorMessage(error));
     }
   };
 

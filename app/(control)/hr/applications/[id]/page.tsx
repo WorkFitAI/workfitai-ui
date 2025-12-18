@@ -15,6 +15,7 @@ import {
   deleteNote,
   downloadCV
 } from '@/lib/applicationApi';
+import { showToast, getErrorMessage } from '@/lib/toast';
 
 import StatusBadge from '@/components/application/StatusBadge';
 import StatusTimeline from '@/components/application/StatusTimeline';
@@ -67,10 +68,17 @@ export default function ApplicationDetailPage({ params }: PageProps): React.Reac
 
     setDownloadingCV(true);
     try {
-      const response = await downloadCV(applicationId);
-      window.open(response.url, '_blank');
-    } catch {
-      alert('Failed to download CV');
+      const blob = await downloadCV(applicationId);
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = application?.cvFileName || 'cv.pdf';
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     } finally {
       setDownloadingCV(false);
     }
@@ -84,9 +92,9 @@ export default function ApplicationDetailPage({ params }: PageProps): React.Reac
         id: applicationId,
         request: { status: status as ApplicationStatus, reason }
       })).unwrap();
-      alert('Status updated successfully');
-    } catch {
-      alert('Failed to update status');
+      showToast.success('Status updated successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -96,8 +104,9 @@ export default function ApplicationDetailPage({ params }: PageProps): React.Reac
     try {
       const newNote = await addNote(applicationId, { content, candidateVisible });
       setNotes([...notes, newNote]);
-    } catch {
-      alert('Failed to add note');
+      showToast.success('Note added successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -107,8 +116,9 @@ export default function ApplicationDetailPage({ params }: PageProps): React.Reac
     try {
       const updatedNote = await updateNote(applicationId, noteId, { content, candidateVisible });
       setNotes(notes.map(note => note.id === noteId ? updatedNote : note));
-    } catch {
-      alert('Failed to update note');
+      showToast.success('Note updated successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -119,8 +129,9 @@ export default function ApplicationDetailPage({ params }: PageProps): React.Reac
     try {
       await deleteNote(applicationId, noteId);
       setNotes(notes.filter(note => note.id !== noteId));
-    } catch {
-      alert('Failed to delete note');
+      showToast.success('Note deleted successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 

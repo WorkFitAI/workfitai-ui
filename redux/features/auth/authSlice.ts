@@ -12,6 +12,7 @@ import {
   ForbiddenError,
 } from "@/lib/authApi";
 import { getDeviceId } from "@/lib/deviceId";
+import { getUserGeolocation } from "@/lib/geolocation";
 import { resetRefreshState } from "@/lib/tokenRefreshHandler";
 import type { RootState } from "@/redux/store";
 
@@ -427,11 +428,21 @@ export const loginUser = createAsyncThunk<
   { rejectValue: AuthRejectPayload }
 >("auth/login", async (payload, { rejectWithValue }) => {
   try {
+    // Get user geolocation (non-blocking)
+    const geolocation = await getUserGeolocation();
+
+    const requestBody: any = {
+      usernameOrEmail: payload.usernameOrEmail,
+      password: payload.password,
+    };
+
+    // Add geolocation if available
+    if (geolocation) {
+      requestBody.geolocation = geolocation;
+    }
+
     const response = await postAuth<any>("/login", {
-      body: {
-        usernameOrEmail: payload.usernameOrEmail,
-        password: payload.password,
-      },
+      body: requestBody,
       deviceId: payload.deviceId ?? getDeviceId(),
     });
 

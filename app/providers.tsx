@@ -13,6 +13,8 @@ import {
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch } from "@/redux/hooks";
 import { setStoreForTokenRefresh } from "@/lib/tokenRefreshHandler";
+import { ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 
 // Chart.js global registration
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from "chart.js";
@@ -59,8 +61,8 @@ const loadStoredSession = (): StoredSession | null => {
           typeof candidate.username === "string" ? candidate.username : "",
         roles: Array.isArray(candidate.roles)
           ? candidate.roles.filter(
-              (role): role is string => typeof role === "string"
-            )
+            (role): role is string => typeof role === "string"
+          )
           : [],
       };
     }
@@ -114,8 +116,8 @@ const AuthHydrator = () => {
                     : "",
                 roles: Array.isArray(candidate.roles)
                   ? candidate.roles.filter(
-                      (role): role is string => typeof role === "string"
-                    )
+                    (role): role is string => typeof role === "string"
+                  )
                   : [],
               })
             );
@@ -155,6 +157,18 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   return (
     <Provider store={storeRef.current}>
       <AuthHydrator />
+      <ToastContainer
+        position="bottom-right"
+        autoClose={5000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        rtl={false}
+        pauseOnFocusLoss
+        draggable
+        pauseOnHover
+        theme="light"
+      />
       {children}
     </Provider>
   );
