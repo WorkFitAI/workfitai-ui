@@ -422,12 +422,12 @@ export const checkApprovalStatus = createAsyncThunk<
 });
 
 export const loginUser = createAsyncThunk<
-  AuthSuccess,
+  AuthSuccess | { require2FA: true; tempToken: string; method: 'TOTP' | 'EMAIL'; message: string },
   LoginPayload,
   { rejectValue: AuthRejectPayload }
 >("auth/login", async (payload, { rejectWithValue }) => {
   try {
-    const response = await postAuth<AuthResponseData>("/login", {
+    const response = await postAuth<any>("/login", {
       body: {
         usernameOrEmail: payload.usernameOrEmail,
         password: payload.password,
@@ -435,6 +435,17 @@ export const loginUser = createAsyncThunk<
       deviceId: payload.deviceId ?? getDeviceId(),
     });
 
+    // Check if 2FA is required - backend returns { data: { require2FA, tempToken, method } }
+    if (response.data?.require2FA === true || response.data?.tempToken) {
+      return {
+        require2FA: true,
+        tempToken: response.data.tempToken,
+        method: response.data.method,
+        message: response.data.message || response.message || "2FA verification required",
+      };
+    }
+
+    // Normal login
     const parsed = parseAuthResponse(response);
     persistSession(toStoredSession(parsed));
     return parsed;
@@ -525,6 +536,11 @@ const authSlice = createSlice({
       state.error = null;
       state.errorType = null;
     },
+    updateUserAvatar: (state, action: PayloadAction<string | null>) => {
+      if (state.user) {
+        state.user.avatarUrl = action.payload ?? undefined;
+      }
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -609,12 +625,18 @@ const authSlice = createSlice({
       })
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = "idle";
-        state.accessToken = action.payload.accessToken;
-        state.expiryTime = action.payload.expiryTime;
-        state.user = action.payload.user ?? null;
+        // Only update state for normal login (not 2FA)
+        if (!('require2FA' in action.payload)) {
+          state.accessToken = action.payload.accessToken;
+          state.expiryTime = action.payload.expiryTime;
+          state.user = action.payload.user ?? null;
+          state.message = action.payload.message;
+        } else {
+          // For 2FA, just show the message
+          state.message = action.payload.message;
+        }
         state.error = null;
         state.errorType = null;
-        state.message = action.payload.message;
       })
       .addCase(loginUser.rejected, (state, action) => {
         state.status = "idle";
@@ -661,7 +683,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { restoreSessionFromStorage, clearAuthError } = authSlice.actions;
+export const { restoreSessionFromStorage, clearAuthError, updateUserAvatar } = authSlice.actions;
 
 export const selectAuthToken = (state: RootState) => state.auth.accessToken;
 export const selectAuthStatus = (state: RootState) => state.auth.status;
