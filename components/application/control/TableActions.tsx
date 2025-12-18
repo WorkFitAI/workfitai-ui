@@ -4,7 +4,11 @@ import React, { useState, useRef, useEffect } from "react";
 import Link from "next/link";
 import type { Application } from "@/types/application/application";
 import { ApplicationStatus } from "@/types/application/application";
-import { downloadCV, updateStatus } from "@/lib/applicationApi";
+import {
+  downloadCV,
+  updateStatus,
+  assignApplication,
+} from "@/lib/applicationApi";
 import { useToast } from "@/components/application/common/Toast";
 import { useAppSelector } from "@/redux/hooks";
 
@@ -12,6 +16,7 @@ interface TableActionsProps {
   application: Application;
   onAction?: (action: string, applicationId: string) => void;
   onStatusUpdated?: () => void;
+  hrList?: string[]; // List of available HR usernames for assignment
 }
 
 // Status transitions map - defines valid status changes
@@ -42,11 +47,14 @@ const TableActions = ({
   application,
   onAction,
   onStatusUpdated,
+  hrList = [],
 }: TableActionsProps): React.ReactElement => {
   const [isOpen, setIsOpen] = useState(false);
   const [isDownloading, setIsDownloading] = useState(false);
   const [showStatusSubmenu, setShowStatusSubmenu] = useState(false);
   const [isUpdatingStatus, setIsUpdatingStatus] = useState(false);
+  const [showAssignSubmenu, setShowAssignSubmenu] = useState(false);
+  const [isAssigning, setIsAssigning] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const { showToast } = useToast();
 
@@ -177,20 +185,54 @@ const TableActions = ({
     }
   };
 
-  const handleAssign = (): void => {
+  const handleToggleAssignSubmenu = (): void => {
+    setShowAssignSubmenu(!showAssignSubmenu);
+  };
+
+  const handleAssignToHR = async (hrUsername: string): Promise<void> => {
     setIsOpen(false);
+    setShowAssignSubmenu(false);
+    setIsAssigning(true);
 
-    // For now, show info message - in a real implementation, this would open a modal
-    // with HR user selection dropdown
-    showToast({
-      type: "info",
-      title: "Assign Application",
-      message: "Assignment modal will open here",
-    });
+    try {
+      showToast({
+        type: "info",
+        title: "Assigning Application",
+        message: "Processing assignment...",
+        duration: 3000,
+      });
 
-    // Notify parent component
-    if (onAction) {
-      onAction("assign", application.id);
+      await assignApplication(application.id, { assignedTo: hrUsername });
+
+      showToast({
+        type: "success",
+        title: "Application Assigned",
+        message: `Application assigned to ${hrUsername} successfully`,
+        duration: 5000,
+      });
+
+      // Notify parent to refresh data
+      if (onStatusUpdated) {
+        onStatusUpdated();
+      }
+
+      // Notify parent component
+      if (onAction) {
+        onAction("assign", application.id);
+      }
+    } catch (error) {
+      console.error("[TableActions] Assign application error:", error);
+      showToast({
+        type: "error",
+        title: "Assignment Failed",
+        message:
+          error instanceof Error
+            ? error.message
+            : "Failed to assign application. Please try again.",
+        duration: 5000,
+      });
+    } finally {
+      setIsAssigning(false);
     }
   };
 
@@ -283,12 +325,83 @@ const TableActions = ({
           </div>
 
           {isHRManager && (
-            <button className="action-dropdown-item" onClick={handleAssign}>
-              <svg fill="currentColor" viewBox="0 0 20 20">
-                <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
-              </svg>
-              Assign to HR
-            </button>
+            <div className="action-dropdown-item-wrapper">
+              <button
+                className="action-dropdown-item"
+                onClick={handleToggleAssignSubmenu}
+                disabled={isAssigning || hrList.length === 0}
+                title={
+                  hrList.length === 0
+                    ? "No HR users available for assignment"
+                    : "Assign to HR"
+                }
+              >
+                <svg fill="currentColor" viewBox="0 0 20 20">
+                  <path d="M8 9a3 3 0 100-6 3 3 0 000 6zM8 11a6 6 0 016 6H2a6 6 0 016-6zM16 7a1 1 0 10-2 0v1h-1a1 1 0 100 2h1v1a1 1 0 102 0v-1h1a1 1 0 100-2h-1V7z" />
+                </svg>
+                {isAssigning ? "Assigning..." : "Assign to HR"}
+                {hrList.length > 0 && (
+                  <svg
+                    style={{
+                      marginLeft: "auto",
+                      width: "16px",
+                      height: "16px",
+                    }}
+                    fill="currentColor"
+                    viewBox="0 0 20 20"
+                  >
+                    <path
+                      fillRule="evenodd"
+                      d="M7.293 14.707a1 1 0 010-1.414L10.586 10 7.293 6.707a1 1 0 011.414-1.414l4 4a1 1 0 010 1.414l-4 4a1 1 0 01-1.414 0z"
+                      clipRule="evenodd"
+                    />
+                  </svg>
+                )}
+              </button>
+
+              {showAssignSubmenu && hrList.length > 0 && (
+                <div className="action-dropdown-submenu">
+                  {hrList.map((hr) => (
+                    <button
+                      key={hr}
+                      className="action-dropdown-item"
+                      onClick={() => handleAssignToHR(hr)}
+                      disabled={isAssigning}
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "8px",
+                      }}
+                    >
+                      <svg
+                        style={{ width: "16px", height: "16px" }}
+                        fill="currentColor"
+                        viewBox="0 0 20 20"
+                      >
+                        <path
+                          fillRule="evenodd"
+                          d="M10 9a3 3 0 100-6 3 3 0 000 6zm-7 9a7 7 0 1114 0H3z"
+                          clipRule="evenodd"
+                        />
+                      </svg>
+                      <span>{hr}</span>
+                      {application.assignedTo === hr && (
+                        <span
+                          style={{
+                            marginLeft: "auto",
+                            fontSize: "11px",
+                            color: "#27AE60",
+                            fontWeight: 600,
+                          }}
+                        >
+                          (Current)
+                        </span>
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           )}
           <div className="action-dropdown-divider"></div>
           <button

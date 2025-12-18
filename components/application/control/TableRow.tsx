@@ -13,6 +13,7 @@ interface TableRowProps {
   onSelect: (checked: boolean) => void;
   onRowAction?: (action: string, applicationId: string) => void;
   onStatusUpdated?: () => void;
+  hrList?: string[];
 }
 
 const TableRow = ({
@@ -21,8 +22,8 @@ const TableRow = ({
   selected,
   onRowAction,
   onStatusUpdated,
+  hrList = [],
 }: TableRowProps): React.ReactElement => {
-
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -93,6 +94,7 @@ const TableRow = ({
             application={application}
             onAction={onRowAction}
             onStatusUpdated={onStatusUpdated}
+            hrList={hrList}
           />
         );
 
@@ -103,7 +105,6 @@ const TableRow = ({
 
   return (
     <tr className={selected ? "selected" : ""}>
-      
       {columns.map((column) => (
         <td key={column.id} className={column.align ? column.align : ""}>
           {renderCellContent(column)}

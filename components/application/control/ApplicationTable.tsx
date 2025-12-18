@@ -10,6 +10,8 @@ import BulkActionsToolbar from "./BulkActionsToolbar";
 import TableHeader, { type Column } from "./TableHeader";
 import TableRow from "./TableRow";
 import ColumnSettings from "./ColumnSettings";
+import DatePicker from "react-datepicker";
+import "react-datepicker/dist/react-datepicker.css";
 
 interface ApplicationTableProps {
   applications: Application[];
@@ -100,6 +102,17 @@ const ApplicationTable = ({
     return DEFAULT_COLUMNS.map((c) => c.id);
   });
 
+  // Extract unique HR usernames from assignedTo field in all applications
+  const hrList = useMemo(() => {
+    const hrSet = new Set<string>();
+    applications.forEach((app) => {
+      if (app.assignedTo && app.assignedTo.trim()) {
+        hrSet.add(app.assignedTo);
+      }
+    });
+    return Array.from(hrSet).sort();
+  }, [applications]);
+
   // Save to localStorage when columns change
   useEffect(() => {
     if (typeof window !== "undefined") {
@@ -111,8 +124,8 @@ const ApplicationTable = ({
   const [statusFilter, setStatusFilter] = useState<ApplicationStatus | "ALL">(
     "ALL"
   );
-  const [dateFrom, setDateFrom] = useState<string>("");
-  const [dateTo, setDateTo] = useState<string>("");
+  const [dateFrom, setDateFrom] = useState<Date | null>(null);
+  const [dateTo, setDateTo] = useState<Date | null>(null);
 
   // Local sorting state
   const [localSortBy, setLocalSortBy] = useState<string>(
@@ -168,17 +181,17 @@ const ApplicationTable = ({
 
     // Apply sorting
     filtered.sort((a, b) => {
-      let aValue: any;
-      let bValue: any;
+      let aValue: string | number;
+      let bValue: string | number;
 
       switch (localSortBy) {
         case "candidate":
-          aValue = a.candidate.fullName.toLowerCase();
-          bValue = b.candidate.fullName.toLowerCase();
+          aValue = a.username.toLowerCase();
+          bValue = b.username.toLowerCase();
           break;
         case "job":
-          aValue = a.job.title.toLowerCase();
-          bValue = b.job.title.toLowerCase();
+          aValue = a.jobSnapshot.title.toLowerCase();
+          bValue = b.jobSnapshot.title.toLowerCase();
           break;
         case "status":
           aValue = a.status;
@@ -243,8 +256,8 @@ const ApplicationTable = ({
 
   const handleClearFilters = (): void => {
     setStatusFilter("ALL");
-    setDateFrom("");
-    setDateTo("");
+    setDateFrom(null);
+    setDateTo(null);
   };
 
   const hasActiveFilters = statusFilter !== "ALL" || dateFrom || dateTo;
@@ -408,7 +421,7 @@ const ApplicationTable = ({
             </div>
 
             {/* Date From Filter */}
-            <div style={{ minWidth: "160px" }}>
+            <div style={{ minWidth: "180px" }}>
               <label
                 htmlFor="date-from"
                 style={{
@@ -423,36 +436,22 @@ const ApplicationTable = ({
               >
                 From Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 id="date-from"
-                value={dateFrom}
-                onChange={(e) => setDateFrom(e.target.value)}
-                max={dateTo || undefined}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  fontSize: "14px",
-                  color: "#2D3E50",
-                  backgroundColor: "#FFFFFF",
-                  border: "2px solid #DEE2E6",
-                  borderRadius: "6px",
-                  transition: "all 0.2s ease",
-                  fontWeight: 500,
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#3498DB";
-                  e.currentTarget.style.backgroundColor = "#F8F9FA";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "#DEE2E6";
-                  e.currentTarget.style.backgroundColor = "#FFFFFF";
-                }}
+                selected={dateFrom}
+                onChange={(date) => setDateFrom(date)}
+                maxDate={dateTo || undefined}
+                dateFormat="MMM dd, yyyy"
+                placeholderText="Select start date"
+                isClearable
+                className="custom-datepicker"
+                wrapperClassName="datepicker-wrapper"
+                calendarClassName="custom-calendar"
               />
             </div>
 
             {/* Date To Filter */}
-            <div style={{ minWidth: "160px" }}>
+            <div style={{ minWidth: "180px" }}>
               <label
                 htmlFor="date-to"
                 style={{
@@ -467,31 +466,17 @@ const ApplicationTable = ({
               >
                 To Date
               </label>
-              <input
-                type="date"
+              <DatePicker
                 id="date-to"
-                value={dateTo}
-                onChange={(e) => setDateTo(e.target.value)}
-                min={dateFrom || undefined}
-                style={{
-                  width: "100%",
-                  padding: "10px 12px",
-                  fontSize: "14px",
-                  color: "#2D3E50",
-                  backgroundColor: "#FFFFFF",
-                  border: "2px solid #DEE2E6",
-                  borderRadius: "6px",
-                  transition: "all 0.2s ease",
-                  fontWeight: 500,
-                }}
-                onFocus={(e) => {
-                  e.currentTarget.style.borderColor = "#3498DB";
-                  e.currentTarget.style.backgroundColor = "#F8F9FA";
-                }}
-                onBlur={(e) => {
-                  e.currentTarget.style.borderColor = "#DEE2E6";
-                  e.currentTarget.style.backgroundColor = "#FFFFFF";
-                }}
+                selected={dateTo}
+                onChange={(date) => setDateTo(date)}
+                minDate={dateFrom || undefined}
+                dateFormat="MMM dd, yyyy"
+                placeholderText="Select end date"
+                isClearable
+                className="custom-datepicker"
+                wrapperClassName="datepicker-wrapper"
+                calendarClassName="custom-calendar"
               />
             </div>
 
@@ -558,15 +543,13 @@ const ApplicationTable = ({
                 {dateFrom && (
                   <span>
                     {" "}
-                    • From:{" "}
-                    <strong>{new Date(dateFrom).toLocaleDateString()}</strong>
+                    • From: <strong>{dateFrom.toLocaleDateString()}</strong>
                   </span>
                 )}
                 {dateTo && (
                   <span>
                     {" "}
-                    • To:{" "}
-                    <strong>{new Date(dateTo).toLocaleDateString()}</strong>
+                    • To: <strong>{dateTo.toLocaleDateString()}</strong>
                   </span>
                 )}
               </span>
@@ -722,6 +705,7 @@ const ApplicationTable = ({
                     }
                     onRowAction={onRowAction}
                     onStatusUpdated={onStatusUpdated}
+                    hrList={hrList}
                   />
                 ))
               )}
@@ -963,8 +947,8 @@ const ApplicationTable = ({
         )}
       </div>
 
-      {/* Add animation CSS */}
-      <style jsx>{`
+      {/* Add animation and DatePicker CSS */}
+      <style jsx global>{`
         @keyframes slideDown {
           from {
             opacity: 0;
@@ -974,6 +958,190 @@ const ApplicationTable = ({
             opacity: 1;
             transform: translateY(0);
           }
+        }
+
+        /* DatePicker Custom Styles - Solid Colors, No Gradients, Minimal Shadow */
+        .datepicker-wrapper {
+          width: 100%;
+        }
+
+        .custom-datepicker {
+          width: 100%;
+          padding: 10px 12px;
+          font-size: 14px;
+          color: #2d3e50;
+          background-color: #ffffff;
+          border: 2px solid #dee2e6;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+          font-weight: 500;
+          font-family: inherit;
+          cursor: pointer;
+        }
+
+        .custom-datepicker:focus {
+          outline: none;
+          border-color: #3498db;
+          background-color: #f8f9fa;
+        }
+
+        .custom-datepicker::placeholder {
+          color: #adb5bd;
+        }
+
+        /* Calendar Popup */
+        .react-datepicker-popper {
+          z-index: 9999;
+        }
+
+        .custom-calendar {
+          font-family: inherit;
+          border: 1px solid #dee2e6;
+          border-radius: 8px;
+          box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          background-color: #ffffff;
+        }
+
+        .react-datepicker__header {
+          background-color: #f8f9fa;
+          border-bottom: 1px solid #dee2e6;
+          border-top-left-radius: 8px;
+          border-top-right-radius: 8px;
+          padding: 12px 0;
+        }
+
+        .react-datepicker__current-month {
+          font-size: 14px;
+          font-weight: 700;
+          color: #2d3e50;
+          margin-bottom: 8px;
+        }
+
+        .react-datepicker__day-name {
+          color: #6c757d;
+          font-size: 12px;
+          font-weight: 600;
+          width: 32px;
+          line-height: 32px;
+          margin: 2px;
+        }
+
+        .react-datepicker__day {
+          color: #495057;
+          font-size: 13px;
+          font-weight: 500;
+          width: 32px;
+          line-height: 32px;
+          margin: 2px;
+          border-radius: 6px;
+          transition: all 0.2s ease;
+        }
+
+        .react-datepicker__day:hover {
+          background-color: #e9ecef;
+          color: #2d3e50;
+        }
+
+        .react-datepicker__day--selected {
+          background-color: #3498db;
+          color: #ffffff;
+          font-weight: 600;
+        }
+
+        .react-datepicker__day--selected:hover {
+          background-color: #2980b9;
+        }
+
+        .react-datepicker__day--keyboard-selected {
+          background-color: #aed6f1;
+          color: #2d3e50;
+        }
+
+        .react-datepicker__day--today {
+          font-weight: 700;
+          color: #3498db;
+          background-color: transparent;
+        }
+
+        .react-datepicker__day--disabled {
+          color: #adb5bd;
+          cursor: not-allowed;
+        }
+
+        .react-datepicker__day--disabled:hover {
+          background-color: transparent;
+        }
+
+        .react-datepicker__day--outside-month {
+          color: #adb5bd;
+        }
+
+        .react-datepicker__navigation {
+          top: 14px;
+        }
+
+        .react-datepicker__navigation-icon::before {
+          border-color: #495057;
+          border-width: 2px 2px 0 0;
+          width: 8px;
+          height: 8px;
+        }
+
+        .react-datepicker__navigation:hover
+          .react-datepicker__navigation-icon::before {
+          border-color: #3498db;
+        }
+
+        /* Clear button */
+        .react-datepicker__close-icon {
+          right: 10px;
+          padding: 0;
+        }
+
+        .react-datepicker__close-icon::after {
+          background-color: #e74c3c;
+          color: #ffffff;
+          font-size: 14px;
+          width: 18px;
+          height: 18px;
+          line-height: 18px;
+          border-radius: 50%;
+          padding: 0;
+        }
+
+        .react-datepicker__close-icon:hover::after {
+          background-color: #c0392b;
+        }
+
+        /* Month/Year dropdowns */
+        .react-datepicker__month-select,
+        .react-datepicker__year-select {
+          padding: 4px 8px;
+          border: 1px solid #dee2e6;
+          border-radius: 4px;
+          font-size: 13px;
+          font-weight: 600;
+          color: #2d3e50;
+          background-color: #ffffff;
+        }
+
+        .react-datepicker__month-select:focus,
+        .react-datepicker__year-select:focus {
+          outline: none;
+          border-color: #3498db;
+        }
+
+        /* Triangle pointer */
+        .react-datepicker-popper[data-placement^="bottom"]
+          .react-datepicker__triangle {
+          fill: #f8f9fa;
+          stroke: #dee2e6;
+        }
+
+        .react-datepicker-popper[data-placement^="top"]
+          .react-datepicker__triangle {
+          fill: #f8f9fa;
+          stroke: #dee2e6;
         }
       `}</style>
     </>
