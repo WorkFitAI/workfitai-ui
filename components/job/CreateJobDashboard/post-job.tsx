@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import FormField from "@/components/common/FormField";
 import SkillsSelectInner from "@/components/job/SkillsSelectInner/SkillsSelectInner";
 import { PostJobData, PostJobForm } from "@/types/job/job";
+import { DatePickerField } from "@/components/common/DatePickerField";
 
 interface PostJobProps {
   onSubmit: (data: PostJobData) => void;
@@ -83,7 +84,6 @@ export default function PostJob({ onSubmit }: PostJobProps) {
         />
 
         {/* ================= DESCRIPTION ================= */}
-        <h5 className="mt-4 mb-3">Job Description</h5>
 
         <FormField<PostJobForm>
           label="Job description"
@@ -119,10 +119,8 @@ export default function PostJob({ onSubmit }: PostJobProps) {
         />
 
         {/* ================= JOB DETAILS ================= */}
-        <h5 className="mt-4 mb-3">Job Details</h5>
-
         <div className="row">
-          <div className="col-md-6">
+          <div className="col-md-6 d-flex flex-column">
             <FormField<PostJobForm>
               label="Employment type"
               name="employmentType"
@@ -139,7 +137,7 @@ export default function PostJob({ onSubmit }: PostJobProps) {
             />
           </div>
 
-          <div className="col-md-6">
+          <div className="col-md-6 d-flex flex-column">
             <FormField<PostJobForm>
               label="Experience level"
               name="experienceLevel"
@@ -149,7 +147,7 @@ export default function PostJob({ onSubmit }: PostJobProps) {
               options={[
                 { label: "Intern", value: "INTERN" },
                 { label: "Junior", value: "JUNIOR" },
-                { label: "Middle", value: "MIDDLE" },
+                { label: "Middle", value: "MID" },
                 { label: "Senior", value: "SENIOR" },
                 { label: "Lead", value: "LEAD" },
               ]}
@@ -236,12 +234,10 @@ export default function PostJob({ onSubmit }: PostJobProps) {
           </div>
 
           <div className="col-md-6">
-            <FormField<PostJobForm>
+            <DatePickerField
               label="Expire date"
-              name="expiresAt"
               value={form.expiresAt}
-              onChange={handleChange}
-              type="date"
+              onChange={(v) => setForm((prev) => ({ ...prev, expiresAt: v }))}
               required
             />
           </div>
