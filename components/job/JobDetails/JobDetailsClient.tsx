@@ -18,6 +18,10 @@ import { selectUserRole } from "@/redux/features/auth/authSlice";
 import { useSelector } from "react-redux";
 import JobDescriptionEditorClient from "../JobDescriptionEditor/JobDescriptionEditorClient";
 import Preloader from "@/app/loading";
+import ReportModal from "@/components/report/ReportModal";
+import { BsFlagFill } from "react-icons/bs";
+import { toast, ToastContainer } from "react-toastify";
+import "react-toastify/dist/ReactToastify.css";
 interface Props {
   postId: string;
 }
@@ -26,6 +30,8 @@ export default function JobDetailsClient({ postId }: Props) {
   const role = useSelector(selectUserRole);
   const [job, setJob] = useState<JobDetail | null>(null);
   const [loading, setLoading] = useState(true);
+
+  const [isReportModalOpen, setReportModalOpen] = useState(false);
 
   useEffect(() => {
     if (!postId) return;
@@ -258,10 +264,30 @@ export default function JobDetailsClient({ postId }: Props) {
                 <div className="single-apply-jobs">
                   <div className="row align-items-center">
                     <div className="col-md-5">
-                      <Link href="#">
-                        <span className="btn btn-default mr-15">Apply now</span>
-                      </Link>
+                      {/* Nút Report */}
+                      <button
+                        type="button"
+                        className="btn btn-lg btn-danger me-2"
+                        onClick={() => {
+                          if (role === "CANDIDATE") {
+                            setReportModalOpen(true);
+                          } else {
+                            toast.info(
+                              "Please login as a candidate to report this job"
+                            );
+                          }
+                        }}
+                      >
+                        <BsFlagFill size={18} />
+                        Report Job
+                      </button>
 
+                      {/* Modal Report */}
+                      <ReportModal
+                        jobId={job.postId}
+                        isOpen={isReportModalOpen}
+                        onClose={() => setReportModalOpen(false)}
+                      />
                       <Link href="#">
                         <span className="btn btn-border">Save job</span>
                       </Link>
@@ -379,6 +405,16 @@ export default function JobDetailsClient({ postId }: Props) {
           </div>
         </section>
       </div>
+      <ToastContainer
+        position="top-right"
+        autoClose={3000}
+        hideProgressBar={false}
+        newestOnTop
+        closeOnClick
+        pauseOnHover
+        draggable
+        theme="colored"
+      />
     </>
   );
 }
