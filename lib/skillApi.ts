@@ -1,3 +1,9 @@
+import {
+    handle401WithTokenRefresh,
+    getCurrentAccessToken,
+} from "@/lib/tokenRefreshHandler";
+import { isPublicEndpoint, shouldAttemptRefresh } from "@/lib/endpointUtils";
+
 const SKILL_BASE_URL =
     process.env.NEXT_PUBLIC_SKILL_BASE_URL ?? "http://localhost:9085/job";
 
@@ -42,16 +48,23 @@ export interface RequestOptions {
     accessToken?: string;
 }
 
+/* ===================== HELPERS ===================== */
+
 const buildSkillUrl = (path: string) =>
     `${SKILL_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
 
-const buildHeaders = (options?: RequestOptions): HeadersInit => {
+const buildHeaders = (
+    options?: RequestOptions,
+    path?: string
+): HeadersInit => {
     const headers: Record<string, string> = {
         Accept: "application/json",
         "Content-Type": "application/json",
     };
 
-    if (options?.accessToken) {
+    const isPublic = path ? isPublicEndpoint(path) : false;
+
+    if (!isPublic && options?.accessToken) {
         headers["Authorization"] = `Bearer ${options.accessToken}`;
     }
 
@@ -64,8 +77,13 @@ const parseErrors = (errors: unknown): string[] => {
     return [String(errors)];
 };
 
-const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> => {
-    const isJson = response.headers.get("content-type")?.includes("application/json");
+const handleResponse = async <T>(
+    response: Response
+): Promise<ApiResponse<T>> => {
+    const isJson = response.headers
+        .get("content-type")
+        ?.includes("application/json");
+
     const body = isJson ? await response.json().catch(() => null) : null;
 
     const apiResponse: ApiResponse<T> = body ?? {
@@ -88,22 +106,58 @@ const handleResponse = async <T>(response: Response): Promise<ApiResponse<T>> =>
     return apiResponse;
 };
 
-// MAIN REQUEST WRAPPER
+/* ===================== MAIN REQUEST ===================== */
+
 export const skillRequest = async <T>(
     path: string,
-    options?: RequestOptions
+    options?: RequestOptions,
+    isRetry = false
 ): Promise<ApiResponse<T>> => {
+    const isPublic = isPublicEndpoint(path);
+
+    const accessToken = isPublic
+        ? null
+        : options?.accessToken || getCurrentAccessToken();
+
     const response = await fetch(buildSkillUrl(path), {
         method: options?.method ?? "GET",
-        headers: buildHeaders(options),
+        headers: buildHeaders(
+            { ...options, accessToken: accessToken || undefined },
+            path
+        ),
         body: options?.body ? JSON.stringify(options.body) : undefined,
         credentials: "include",
     });
 
-    return handleResponse<T>(response);
+    try {
+        return await handleResponse<T>(response);
+    } catch (error) {
+        if (
+            error instanceof UnauthorizedError &&
+            !isRetry &&
+            shouldAttemptRefresh(path)
+        ) {
+            console.warn(
+                `[SkillAPI] 401 detected on ${path}, attempting token refresh...`
+            );
+
+            const newAccessToken = await handle401WithTokenRefresh();
+
+            if (newAccessToken) {
+                return skillRequest<T>(
+                    path,
+                    { ...options, accessToken: newAccessToken },
+                    true
+                );
+            }
+        }
+
+        throw error;
+    }
 };
 
-// SHORTCUT FUNCTIONS
+/* ===================== SHORTCUT METHODS ===================== */
+
 export const getSkills = async <T>(path: string, options?: RequestOptions) =>
     skillRequest<T>(path, { ...options, method: "GET" });
 
