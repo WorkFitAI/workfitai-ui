@@ -20,8 +20,7 @@ import JobDescriptionEditorClient from "../JobDescriptionEditor/JobDescriptionEd
 import Preloader from "@/app/loading";
 import ReportModal from "@/components/report/ReportModal";
 import { BsFlagFill } from "react-icons/bs";
-import { toast, ToastContainer } from "react-toastify";
-import "react-toastify/dist/ReactToastify.css";
+import { toast } from "react-toastify";
 interface Props {
   postId: string;
 }
@@ -405,16 +404,6 @@ export default function JobDetailsClient({ postId }: Props) {
           </div>
         </section>
       </div>
-      <ToastContainer
-        position="top-right"
-        autoClose={3000}
-        hideProgressBar={false}
-        newestOnTop
-        closeOnClick
-        pauseOnHover
-        draggable
-        theme="colored"
-      />
     </>
   );
 }
