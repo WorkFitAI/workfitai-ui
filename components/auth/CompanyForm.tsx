@@ -4,6 +4,7 @@ import React from "react";
 import FormInput from "./FormInput";
 
 export interface CompanyFormData {
+  companyNo: string;
   name: string;
   logoUrl?: string;
   websiteUrl?: string;
@@ -23,7 +24,6 @@ export default function CompanyForm({
   onChange,
   errors,
 }: CompanyFormProps) {
-
   const handleChange = (field: keyof CompanyFormData, val: string) => {
     onChange({ ...value, [field]: val });
   };
@@ -31,6 +31,17 @@ export default function CompanyForm({
   return (
     <div className="company-form">
       <h4 className="mb-20 text-brand-1">Company Information</h4>
+
+      <FormInput
+        id="companyNo"
+        label="Company Number"
+        value={value.companyNo}
+        onChange={(val) => handleChange("companyNo", val)}
+        required
+        placeholder="123456789"
+        helpText="Enter your company's registration number or tax ID"
+        error={errors?.companyNo}
+      />
 
       <FormInput
         id="companyName"
@@ -64,7 +75,9 @@ export default function CompanyForm({
               value={value.size || ""}
               onChange={(e) => handleChange("size", e.target.value)}
             >
-              <option value="" disabled>Select size...</option>
+              <option value="" disabled>
+                Select size...
+              </option>
               <option value="1-10">1-10 employees</option>
               <option value="11-50">11-50 employees</option>
               <option value="51-200">51-200 employees</option>
