@@ -4,357 +4,380 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter, useParams } from "next/navigation";
 import { useAppSelector } from "@/redux/hooks";
-import { selectAuthUser, selectUserId } from "@/redux/features/auth/authSlice";
+import { selectAuthUser } from "@/redux/features/auth/authSlice";
 import {
-    userApi,
-    formatUserRole,
-    formatUserStatus,
-    getStatusColor,
-    getRoleColor,
+  userApi,
+  formatUserRole,
+  formatUserStatus,
+  getStatusColor,
+  getRoleColor,
 } from "@/lib/userApi";
 import { UserListItem } from "@/types/users";
 import { showToast, getErrorMessage } from "@/lib/toast";
 import ConfirmModal from "@/components/common/ConfirmModal";
+import {
+  FiUser,
+  FiMail,
+  FiPhone,
+  FiCalendar,
+  FiShield,
+  FiActivity,
+  FiMapPin,
+  FiBriefcase,
+  FiArrowLeft,
+  FiSlash,
+  FiTrash2,
+  FiCheckCircle,
+} from "react-icons/fi";
 
 export default function UserDetailPage() {
-    const params = useParams();
-    const router = useRouter();
-    const currentUser = useAppSelector(selectAuthUser);
-    const currentUserId = useAppSelector(selectUserId);
-    const username = params.id as string; // Route still uses [id] but contains username
+  const params = useParams();
+  const router = useRouter();
+  const currentUser = useAppSelector(selectAuthUser);
+  const username = params.id as string;
 
-    const [user, setUser] = useState<UserListItem | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-    const [confirmModal, setConfirmModal] = useState<{
-        show: boolean;
-        title: string;
-        message: string;
-        variant: "danger" | "warning" | "info" | "primary";
-        onConfirm: () => void;
-    } | null>(null);
+  const [user, setUser] = useState<UserListItem | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [confirmModal, setConfirmModal] = useState<{
+    show: boolean;
+    title: string;
+    message: string;
+    variant: "danger" | "warning" | "info" | "primary";
+    onConfirm: () => void;
+  } | null>(null);
 
-    // Check if viewing own profile (compare username)
-    const isOwnProfile = currentUser?.username === username;
+  const isOwnProfile = currentUser?.username === username;
 
-    useEffect(() => {
-        loadUser();
-    }, [username]);
+  useEffect(() => {
+    loadUser();
+  }, [username]);
 
-    const loadUser = async () => {
-        setLoading(true);
-        setError(null);
+  const loadUser = async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await userApi.getUserByUsername(username);
+      if (response.status === 200 && response.data) {
+        setUser(response.data);
+      } else {
+        setError(response.message || "Failed to load user");
+      }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    } catch (error: any) {
+      setError(getErrorMessage(error));
+      showToast.error(getErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleBlock = async () => {
+    if (!user || isOwnProfile) return;
+    setConfirmModal({
+      show: true,
+      title: user.blocked ? "Unblock User" : "Block User",
+      message: `Are you sure you want to ${
+        user.blocked ? "unblock" : "block"
+      } this user?`,
+      variant: user.blocked ? "info" : "warning",
+      onConfirm: async () => {
+        setConfirmModal(null);
         try {
-            const response = await userApi.getUserByUsername(username);
-            if (response.status === 200 && response.data) {
-                setUser(response.data);
-            } else {
-                setError(response.message || "Failed to load user");
-            }
-        } catch (error: any) {
-            console.error("Failed to load user:", error);
-
-            // Check for UUID conversion error
-            if (error?.message?.includes("UUID") || error?.message?.includes("MethodArgumentTypeMismatchException")) {
-                setError("Backend error: The server is expecting a UUID but received a username. Please contact the administrator to update the backend endpoint to accept usernames.");
-            } else {
-                setError(getErrorMessage(error));
-            }
-            showToast.error(getErrorMessage(error));
-        } finally {
-            setLoading(false);
+          await userApi.blockUser(username, !user.blocked);
+          showToast.success(
+            `User ${user.blocked ? "unblocked" : "blocked"} successfully`
+          );
+          loadUser();
+        } catch (error) {
+          showToast.error(getErrorMessage(error));
         }
-    };
+      },
+    });
+  };
 
-    const handleBlock = async () => {
-        if (!user) return;
-
-        // Prevent blocking yourself
-        if (isOwnProfile) {
-            showToast.error("You cannot block yourself");
-            return;
+  const handleDelete = async () => {
+    if (isOwnProfile) return;
+    setConfirmModal({
+      show: true,
+      title: "Confirm Deletion",
+      message:
+        "This action is irreversible. The user account will be permanently deactivated.",
+      variant: "danger",
+      onConfirm: async () => {
+        setConfirmModal(null);
+        try {
+          await userApi.deleteUser(username);
+          showToast.success("User deleted successfully");
+          router.push("/admin/users");
+        } catch (error) {
+          showToast.error(getErrorMessage(error));
         }
+      },
+    });
+  };
 
-        setConfirmModal({
-            show: true,
-            title: user.blocked ? 'Unblock User' : 'Block User',
-            message: `Are you sure you want to ${user.blocked ? "unblock" : "block"} this user?`,
-            variant: user.blocked ? 'info' : 'warning',
-            onConfirm: async () => {
-                setConfirmModal(null);
-                try {
-                    await userApi.blockUser(username, !user.blocked);
-                    showToast.success(`User ${user.blocked ? "unblocked" : "blocked"} successfully`);
-                    loadUser();
-                } catch (error) {
-                    console.error("Failed to block/unblock user:", error);
-                    showToast.error(getErrorMessage(error));
-                }
-            }
-        });
-    };
-
-    const handleDelete = async () => {
-        // Prevent deleting yourself
-        if (isOwnProfile) {
-            showToast.error("You cannot delete yourself");
-            return;
-        }
-
-        setConfirmModal({
-            show: true,
-            title: 'Confirm Deletion',
-            message: 'Are you sure you want to delete this user? This action cannot be undone.',
-            variant: 'danger',
-            onConfirm: async () => {
-                setConfirmModal(null);
-                try {
-                    await userApi.deleteUser(username);
-                    showToast.success("User deleted successfully");
-                    router.push("/admin/users");
-                } catch (error) {
-                    console.error("Failed to delete user:", error);
-                    showToast.error(getErrorMessage(error));
-                }
-            }
-        });
-    };
-
-    if (loading) {
-        return (
-            <div className="section-box">
-                <div className="container">
-                    <div className="panel-white">
-                        <div className="box-padding text-center py-5">
-                            <div className="spinner-border text-primary mb-3" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                            <p className="mb-0">Loading user details...</p>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
-    if (error || !user) {
-        return (
-            <div className="section-box">
-                <div className="container">
-                    <div className="panel-white">
-                        <div className="box-padding text-center py-5">
-                            <div className="mb-4">
-                                <svg style={{ width: "64px", height: "64px" }} fill="#dc3545" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" />
-                                </svg>
-                            </div>
-                            <h5 className="mb-3">{error ? "Error Loading User" : "User Not Found"}</h5>
-                            {error && (
-                                <div className="alert alert-danger text-start mx-auto mb-4" style={{ maxWidth: "600px" }}>
-                                    <p className="mb-0">{error}</p>
-                                </div>
-                            )}
-                            <Link href="/admin/users" className="btn btn-default">
-                                <svg className="me-2" style={{ width: "16px", height: "16px", display: "inline-block" }} fill="currentColor" viewBox="0 0 20 20">
-                                    <path fillRule="evenodd" d="M9.707 14.707a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414l4-4a1 1 0 011.414 1.414L7.414 9H15a1 1 0 110 2H7.414l2.293 2.293a1 1 0 010 1.414z" clipRule="evenodd" />
-                                </svg>
-                                Back to Users
-                            </Link>
-                        </div>
-                    </div>
-                </div>
-            </div>
-        );
-    }
-
+  if (loading)
     return (
-        <div className="section-box mt-20">
-            <div className="container">
-                <div className="row">
-                    <div className="col-lg-8">
-                        {/* Basic Information */}
-                        <div className="card card-style-1 mb-4">
-                            <div className="card-body">
-                                <h6 className="mb-4">Basic Information</h6>
-                                <div className="table-responsive">
-                                    <table className="table table-borderless mb-0">
-                                        <tbody>
-                                            <tr>
-                                                <td className="text-muted" style={{ width: "35%" }}>User ID:</td>
-                                                <td className="fw-medium">{user.userId}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Username:</td>
-                                                <td className="fw-medium">@{user.username}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Full Name:</td>
-                                                <td className="fw-medium">{user.fullName || "N/A"}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Email:</td>
-                                                <td className="fw-medium">{user.email}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Phone Number:</td>
-                                                <td className="fw-medium">{user.phoneNumber || "N/A"}</td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Role:</td>
-                                                <td>
-                                                    <span className={`badge bg-${getRoleColor(user.role)}`}>
-                                                        {formatUserRole(user.role)}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Status:</td>
-                                                <td>
-                                                    <span className={`badge bg-${getStatusColor(user.status)}`}>
-                                                        {formatUserStatus(user.status)}
-                                                    </span>
-                                                    {user.blocked && (
-                                                        <span className="badge bg-danger ms-2">Blocked</span>
-                                                    )}
-                                                    {user.deleted && (
-                                                        <span className="badge bg-secondary ms-2">Deleted</span>
-                                                    )}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Created At:</td>
-                                                <td className="fw-medium">
-                                                    {new Date(user.createdAt).toLocaleString()}
-                                                </td>
-                                            </tr>
-                                            <tr>
-                                                <td className="text-muted">Last Updated:</td>
-                                                <td className="fw-medium">
-                                                    {new Date(user.updatedAt).toLocaleString()}
-                                                </td>
-                                            </tr>
-                                        </tbody>
-                                    </table>
-                                </div>
-                            </div>
-                        </div>
+      <div
+        className="d-flex justify-content-center align-items-center"
+        style={{ minHeight: "400px" }}
+      >
+        <div className="spinner-grow text-primary" role="status"></div>
+      </div>
+    );
 
-                        {/* HR/HR_MANAGER specific information */}
-                        {(user.role === "HR" || user.role === "HR_MANAGER") && (
-                            <div className="card card-style-1 mb-4">
-                                <div className="card-body">
-                                    <h6 className="mb-4">Company Information</h6>
-                                    <div className="table-responsive">
-                                        <table className="table table-borderless mb-0">
-                                            <tbody>
-                                                {user.companyName && (
-                                                    <tr>
-                                                        <td className="text-muted" style={{ width: "35%" }}>Company:</td>
-                                                        <td className="fw-medium">{user.companyName}</td>
-                                                    </tr>
-                                                )}
-                                                {user.companyNo && (
-                                                    <tr>
-                                                        <td className="text-muted">Company No:</td>
-                                                        <td className="fw-medium">{user.companyNo}</td>
-                                                    </tr>
-                                                )}
-                                                {user.department && (
-                                                    <tr>
-                                                        <td className="text-muted">Department:</td>
-                                                        <td className="fw-medium">{user.department}</td>
-                                                    </tr>
-                                                )}
-                                                {user.address && (
-                                                    <tr>
-                                                        <td className="text-muted">Address:</td>
-                                                        <td className="fw-medium">{user.address}</td>
-                                                    </tr>
-                                                )}
-                                            </tbody>
-                                        </table>
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                    </div>
+  if (error || !user)
+    return (
+      <div className="container mt-50">
+        <div className="text-center p-5 shadow-sm rounded bg-white">
+          <FiSlash size={64} className="text-danger mb-3" />
+          <h4 className="fw-bold">{error || "User not found"}</h4>
+          <Link href="/admin/users" className="btn btn-outline-primary mt-3">
+            <FiArrowLeft className="me-2" /> Back to List
+          </Link>
+        </div>
+      </div>
+    );
 
-                    {/* Sidebar Actions */}
-                    <div className="col-lg-4">
-                        {/* Actions Card */}
-                        <div className="card card-style-1 mb-4">
-                            <div className="card-body">
-                                <h6 className="mb-3">Actions</h6>
-                                {isOwnProfile && (
-                                    <div className="alert alert-warning mb-3">
-                                        <small>You cannot block or delete yourself</small>
-                                    </div>
-                                )}
-                                <div className="d-grid gap-2">
-                                    <button
-                                        className={`btn ${user.blocked ? "btn-success" : "btn-warning"}`}
-                                        onClick={handleBlock}
-                                        disabled={user.deleted || isOwnProfile}
-                                    >
-                                        {user.blocked ? "Unblock User" : "Block User"}
-                                    </button>
-                                    <button
-                                        className="btn btn-danger"
-                                        onClick={handleDelete}
-                                        disabled={user.deleted || isOwnProfile}
-                                    >
-                                        Delete User
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
+  return (
+    <div className="section-box mt-30">
+      <div className="container">
+        {/* Header Section */}
+        <div className="d-flex align-items-center justify-content-between mb-4">
+          <div>
+            <Link
+              href="/admin/users"
+              className="text-muted text-decoration-none small d-flex align-items-center mb-2"
+            >
+              <FiArrowLeft className="me-1" /> BACK TO DIRECTORY
+            </Link>
+            <h3 className="fw-bold mb-0">
+              User Profile:{" "}
+              <span className="text-primary">@{user.username}</span>
+            </h3>
+          </div>
+          <div className="d-flex gap-2">
+            <span className={`badge bg-${getRoleColor(user.role)} px-3 py-2`}>
+              {formatUserRole(user.role)}
+            </span>
+            <span
+              className={`badge bg-${getStatusColor(user.status)} px-3 py-2`}
+            >
+              {formatUserStatus(user.status)}
+            </span>
+          </div>
+        </div>
 
-                        {/* Status Information Card */}
-                        <div className="card card-style-1">
-                            <div className="card-body">
-                                <h6 className="mb-3">Status Information</h6>
-                                <div className={`alert ${user.blocked || user.deleted ? 'alert-warning' : 'alert-success'} mb-0`}>
-                                    {user.blocked && (
-                                        <div className="mb-2">
-                                            <strong>🚫 Blocked</strong>
-                                            <p className="mb-0 small mt-1">This user cannot login</p>
-                                        </div>
-                                    )}
-                                    {user.deleted && (
-                                        <div className="mb-2">
-                                            <strong>🗑️ Deleted</strong>
-                                            <p className="mb-0 small mt-1">This user is soft deleted</p>
-                                        </div>
-                                    )}
-                                    {!user.blocked && !user.deleted && (
-                                        <div>
-                                            <strong>✅ Active</strong>
-                                            <p className="mb-0 small mt-1">User account is normal</p>
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="mt-3">
-                                    <Link href="/admin/users" className="btn btn-default btn-sm w-100">
-                                        Back to Users
-                                    </Link>
-                                </div>
-                            </div>
-                        </div>
-                    </div>
+        <div className="row">
+          {/* Main Info */}
+          <div className="col-lg-8">
+            <div className="card border-0 shadow-sm mb-4">
+              <div className="card-body p-4">
+                <h5 className="card-title fw-bold mb-4 d-flex align-items-center">
+                  <FiUser className="me-2 text-primary" /> Personal Information
+                </h5>
+                <div className="row g-4">
+                  <InfoItem
+                    icon={<FiShield />}
+                    label="User ID"
+                    value={user.userId}
+                  />
+                  <InfoItem
+                    icon={<FiUser />}
+                    label="Full Name"
+                    value={user.fullName || "—"}
+                  />
+                  <InfoItem
+                    icon={<FiMail />}
+                    label="Email Address"
+                    value={user.email}
+                  />
+                  <InfoItem
+                    icon={<FiPhone />}
+                    label="Phone Number"
+                    value={user.phoneNumber || "—"}
+                  />
+                  <InfoItem
+                    icon={<FiCalendar />}
+                    label="Joined Date"
+                    value={new Date(user.createdAt).toLocaleDateString(
+                      "vi-VN",
+                      { day: "2-digit", month: "long", year: "numeric" }
+                    )}
+                  />
+                  <InfoItem
+                    icon={<FiActivity />}
+                    label="Last Updated"
+                    value={new Date(user.updatedAt).toLocaleString()}
+                  />
                 </div>
+              </div>
             </div>
 
-            {/* Confirm Modal */}
-            {confirmModal && (
-                <ConfirmModal
-                    show={confirmModal.show}
-                    title={confirmModal.title}
-                    message={confirmModal.message}
-                    variant={confirmModal.variant}
-                    onConfirm={confirmModal.onConfirm}
-                    onCancel={() => setConfirmModal(null)}
-                />
+            {(user.role === "HR" || user.role === "HR_MANAGER") && (
+              <div className="card border-0 shadow-sm mb-4">
+                <div className="card-body p-4">
+                  <h5 className="card-title fw-bold mb-4 d-flex align-items-center">
+                    <FiBriefcase className="me-2 text-primary" /> Professional
+                    Details
+                  </h5>
+                  <div className="row g-4">
+                    <InfoItem
+                      icon={<FiBriefcase />}
+                      label="Company"
+                      value={user.companyName}
+                    />
+                    <InfoItem
+                      icon={<FiShield />}
+                      label="Tax/Company No"
+                      value={user.companyNo}
+                    />
+                    <InfoItem
+                      icon={<FiActivity />}
+                      label="Department"
+                      value={user.department}
+                    />
+                    <InfoItem
+                      icon={<FiMapPin />}
+                      label="Work Address"
+                      value={user.address}
+                    />
+                  </div>
+                </div>
+              </div>
             )}
+          </div>
+
+          {/* Sidebar Actions */}
+          <div className="col-lg-4">
+            <div className="card border-0 shadow-sm mb-4 bg-light">
+              <div className="card-body p-4 text-center">
+                <div
+                  className="avatar-placeholder mb-3 mx-auto shadow-sm d-flex align-items-center justify-content-center bg-white rounded-circle"
+                  style={{ width: 80, height: 80 }}
+                >
+                  <FiUser size={40} className="text-primary" />
+                </div>
+                <h6 className="fw-bold mb-1">
+                  {user.fullName || user.username}
+                </h6>
+                <p className="text-muted small mb-4">{user.email}</p>
+
+                <div className="d-grid gap-2">
+                  <button
+                    className={`btn ${
+                      user.blocked ? "btn-success" : "btn-warning"
+                    } d-flex align-items-center justify-content-center gap-2`}
+                    onClick={handleBlock}
+                    disabled={user.deleted || isOwnProfile}
+                  >
+                    {user.blocked ? (
+                      <>
+                        <FiCheckCircle /> Unblock Account
+                      </>
+                    ) : (
+                      <>
+                        <FiSlash /> Block Account
+                      </>
+                    )}
+                  </button>
+                  <button
+                    className="btn btn-outline-danger d-flex align-items-center justify-content-center gap-2"
+                    onClick={handleDelete}
+                    disabled={user.deleted || isOwnProfile}
+                  >
+                    <FiTrash2 /> Delete User
+                  </button>
+                </div>
+                {isOwnProfile && (
+                  <div className="mt-3 p-2 bg-white rounded border border-warning">
+                    <small className="text-warning fw-medium">
+                      Self-actions are restricted
+                    </small>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="card border-0 shadow-sm">
+              <div className="card-body p-4">
+                <h6 className="fw-bold mb-3">Account Security</h6>
+                <ul className="list-unstyled mb-0">
+                  <li className="d-flex align-items-center mb-2 small">
+                    <div
+                      className={`dot me-2 ${
+                        user.blocked ? "bg-danger" : "bg-success"
+                      }`}
+                    ></div>
+                    {user.blocked
+                      ? "Access is currently restricted"
+                      : "Account is in good standing"}
+                  </li>
+                  <li className="d-flex align-items-center small">
+                    <div
+                      className={`dot me-2 ${
+                        user.deleted ? "bg-secondary" : "bg-primary"
+                      }`}
+                    ></div>
+                    {user.deleted ? "Marked for deletion" : "Identity verified"}
+                  </li>
+                </ul>
+              </div>
+            </div>
+          </div>
         </div>
-    );
+      </div>
+
+      {confirmModal && (
+        <ConfirmModal
+          show={confirmModal.show}
+          title={confirmModal.title}
+          message={confirmModal.message}
+          variant={confirmModal.variant}
+          onConfirm={confirmModal.onConfirm}
+          onCancel={() => setConfirmModal(null)}
+        />
+      )}
+
+      <style jsx>{`
+        .dot {
+          width: 8px;
+          height: 8px;
+          border-radius: 50%;
+        }
+        .card {
+          border-radius: 12px;
+        }
+      `}</style>
+    </div>
+  );
+}
+
+// Component phụ để hiển thị item thông tin cho gọn
+function InfoItem({
+  icon,
+  label,
+  value,
+}: {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  icon: any;
+  label: string;
+  value?: string | null;
+}) {
+  if (!value) return null;
+  return (
+    <div className="col-md-6">
+      <label
+        className="text-muted small d-block text-uppercase fw-bold mb-1"
+        style={{ letterSpacing: "0.5px" }}
+      >
+        {label}
+      </label>
+      <div className="d-flex align-items-center">
+        <span className="text-primary me-2 opacity-75">{icon}</span>
+        <span className="fw-medium text-dark">{value}</span>
+      </div>
+    </div>
+  );
 }
