@@ -1,0 +1,50 @@
+/* User Management Page Styles */
+
+.hover-bg-light:hover {
+    background-color: #f8f9fa !important;
+}
+
+.dropdown-menu-custom {
+    animation: fadeIn 0.15s ease-in;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-5px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.table tbody tr.hover-up {
+    transition: all 0.2s ease;
+}
+
+.table tbody tr.hover-up:hover {
+    background-color: #f8f9fa;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+}
+
+.min-h-screen {
+    min-height: calc(100vh - 80px);
+}
+
+.bg-gray-50 {
+    background-color: #f8f9fa;
+}
+
+.shadow-sm {
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.shadow-lg {
+    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.rounded-lg {
+    border-radius: 8px;
+}

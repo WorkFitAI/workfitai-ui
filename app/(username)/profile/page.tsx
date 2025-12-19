@@ -1,6 +1,8 @@
 "use client";
 
 import React, { useEffect, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
     fetchProfile,
@@ -12,6 +14,7 @@ import {
     selectTwoFactorStatus,
     clearSuccessMessage,
 } from "@/redux/features/profile/profileSlice";
+import { selectAuthUser } from "@/redux/features/auth/authSlice";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileOverview from "@/components/profile/ProfileOverview";
 import AvatarUploader from "@/components/profile/AvatarUploader";
@@ -21,8 +24,10 @@ import SecuritySettings from "@/components/profile/SecuritySettings";
 
 export default function ProfilePage() {
     const dispatch = useAppDispatch();
+    const router = useRouter();
 
     const profile = useAppSelector(selectProfile);
+    const authUser = useAppSelector(selectAuthUser);
     const loading = useAppSelector(selectProfileLoading);
     const error = useAppSelector(selectProfileError);
     const successMessage = useAppSelector(selectProfileSuccessMessage);
@@ -32,6 +37,29 @@ export default function ProfilePage() {
 
     // Always viewing own profile in this route
     const isOwnProfile = true;
+
+    // Determine breadcrumb link based on user role
+    const getBreadcrumbLink = () => {
+        if (!authUser?.roles) return "/";
+
+        if (authUser.roles.includes("ADMIN")) {
+            return "/admin";
+        } else if (authUser.roles.includes("HR_MANAGER")) {
+            return "/hr-manager";
+        }
+        return "/";
+    };
+
+    const getBreadcrumbLabel = () => {
+        if (!authUser?.roles) return "Home";
+
+        if (authUser.roles.includes("ADMIN")) {
+            return "Admin Dashboard";
+        } else if (authUser.roles.includes("HR_MANAGER")) {
+            return "HR Manager Dashboard";
+        }
+        return "Home";
+    };
 
     // Load profile on mount
     useEffect(() => {
@@ -88,6 +116,21 @@ export default function ProfilePage() {
     return (
         <div className="section-box">
             <div className="container">
+                {/* Breadcrumb Navigation */}
+                <nav aria-label="breadcrumb" className="mb-4">
+                    <ol className="breadcrumb">
+                        <li className="breadcrumb-item">
+                            <Link href={getBreadcrumbLink()} className="text-decoration-none">
+                                <i className="fi-rr-home me-1"></i>
+                                {getBreadcrumbLabel()}
+                            </Link>
+                        </li>
+                        <li className="breadcrumb-item active" aria-current="page">
+                            Profile Settings
+                        </li>
+                    </ol>
+                </nav>
+
                 {/* Success Message */}
                 {successMessage && (
                     <div className="alert alert-success alert-dismissible fade show" role="alert">

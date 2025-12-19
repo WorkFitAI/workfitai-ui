@@ -35,11 +35,18 @@ function SigninContent() {
   const [usernameOrEmail, setUsernameOrEmail] = useState("");
   const [password, setPassword] = useState("");
   const [localMessage, setLocalMessage] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
 
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified");
 
-  const isLoading = status === "loading";
+  // Prevent hydration mismatch by only showing loading state after mount
+  const isLoading = mounted && status === "loading";
+
+  // Set mounted state after hydration
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   // Check for verified query param
   useEffect(() => {
@@ -53,6 +60,8 @@ function SigninContent() {
     if (accessToken && roles.length > 0) {
       if (roles.includes("ADMIN")) {
         router.replace("/admin");
+      } else if (roles.includes("HR_MANAGER")) {
+        router.replace("/hr-manager");
       } else if (roles.includes("HR")) {
         router.replace("/hr/applications");
       } else {

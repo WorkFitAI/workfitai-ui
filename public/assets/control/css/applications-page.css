@@ -1,6 +1,72 @@
 /* Enhanced Application Page Styles */
 
-/* Stat Cards Enhancement */
+/* Compact Stat Cards */
+.stat-card {
+    background: white;
+    border-radius: 8px;
+    padding: 16px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+    transition: all 0.2s ease;
+    height: 100%;
+}
+
+.stat-card:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+    transform: translateY(-2px);
+}
+
+.stat-card .stat-icon {
+    width: 44px;
+    height: 44px;
+    border-radius: 8px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+}
+
+.stat-card .stat-icon.bg-primary {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+
+.stat-card .stat-icon.bg-success {
+    background: linear-gradient(135deg, #06c270 0%, #059862 100%);
+}
+
+.stat-card .stat-icon.bg-info {
+    background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%);
+}
+
+.stat-card .stat-icon.bg-warning {
+    background: linear-gradient(135deg, #fa709a 0%, #fee140 100%);
+}
+
+.stat-card .stat-content {
+    flex: 1;
+    min-width: 0;
+}
+
+.stat-card .stat-number {
+    font-size: 24px;
+    font-weight: 700;
+    color: #1a202c;
+    line-height: 1.2;
+}
+
+.stat-card .stat-label {
+    font-size: 13px;
+    color: #718096;
+    font-weight: 500;
+    margin-top: 2px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* Old Large Stat Cards Enhancement */
 .card-style-1 {
     transition: all 0.3s ease;
     position: relative;
@@ -134,6 +200,10 @@
     .col-xl-4 {
         margin-top: 20px;
     }
+
+    .stat-card .stat-number {
+        font-size: 20px;
+    }
 }
 
 @media (max-width: 767px) {
@@ -143,5 +213,22 @@
 
     .mb-20 {
         margin-bottom: 15px !important;
+    }
+
+    .stat-card {
+        padding: 12px;
+    }
+
+    .stat-card .stat-icon {
+        width: 36px;
+        height: 36px;
+    }
+
+    .stat-card .stat-number {
+        font-size: 18px;
+    }
+
+    .stat-card .stat-label {
+        font-size: 12px;
     }
 }

@@ -15,6 +15,7 @@ import {
   deleteNote,
   downloadCV,
 } from "@/lib/applicationApi";
+import { showToast, getErrorMessage } from '@/lib/toast';
 
 import StatusBadge from "@/components/application/StatusBadge";
 import StatusTimeline from "@/components/application/StatusTimeline";
@@ -82,16 +83,16 @@ export default function ApplicationDetailPage({
     setDownloadingCV(true);
     try {
       const blob = await downloadCV(applicationId);
-      const url = window.URL.createObjectURL(blob);
-      const link = document.createElement("a");
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement('a');
       link.href = url;
-      link.download = application?.cvFileName || "cv.pdf";
+      link.download = application?.cvFileName || 'cv.pdf';
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
-      window.URL.revokeObjectURL(url);
-    } catch {
-      alert("Failed to download CV");
+      URL.revokeObjectURL(url);
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     } finally {
       setDownloadingCV(false);
     }
@@ -110,9 +111,9 @@ export default function ApplicationDetailPage({
           request: { status: status as ApplicationStatus, reason },
         })
       ).unwrap();
-      alert("Status updated successfully");
-    } catch {
-      alert("Failed to update status");
+      showToast.success('Status updated successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -128,8 +129,9 @@ export default function ApplicationDetailPage({
         candidateVisible,
       });
       setNotes([...notes, newNote]);
-    } catch {
-      alert("Failed to add note");
+      showToast.success('Note added successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -146,8 +148,9 @@ export default function ApplicationDetailPage({
         candidateVisible,
       });
       setNotes(notes.map((note) => (note.id === noteId ? updatedNote : note)));
-    } catch {
-      alert("Failed to update note");
+      showToast.success('Note updated successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 
@@ -158,8 +161,9 @@ export default function ApplicationDetailPage({
     try {
       await deleteNote(applicationId, noteId);
       setNotes(notes.filter((note) => note.id !== noteId));
-    } catch {
-      alert("Failed to delete note");
+      showToast.success('Note deleted successfully');
+    } catch (error) {
+      showToast.error(getErrorMessage(error));
     }
   };
 

@@ -13,9 +13,8 @@ export default function MobileMenu({ isToggled }: MobileMenuProps) {
 
   return (
     <div
-      className={`mobile-header-active mobile-header-wrapper-style perfect-scrollbar ${
-        isToggled ? "sidebar-visible" : ""
-      }`}
+      className={`mobile-header-active mobile-header-wrapper-style perfect-scrollbar ${isToggled ? "sidebar-visible" : ""
+        }`}
     >
       <div className="mobile-header-wrapper-inner">
         <div className="mobile-header-content-area">

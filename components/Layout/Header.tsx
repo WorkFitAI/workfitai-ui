@@ -11,6 +11,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import useHasHydrated from "@/util/useHasHydrated";
 import Avatar from "@/components/common/Avatar";
+import NotificationBell from "@/components/common/NotificationBell";
 
 interface HeaderProps {
   handleOpen: () => void;
@@ -300,46 +301,49 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                 <span className="burger-icon-bottom" />
               </div>
             </div>
-            <div className="header-right">
+            <div className="header-right" suppressHydrationWarning>
               {displayUser ? (
-                <div className="header-user" ref={menuRef}>
-                  <button
-                    type="button"
-                    className={`header-user__button ${isMenuOpen ? "is-open" : ""}`}
-                    onClick={() => setIsMenuOpen((open) => !open)}
-                    aria-haspopup="menu"
-                    aria-expanded={isMenuOpen}
-                  >
-                    <span className="header-user__avatar">
-                      <Avatar
-                        src={displayUser?.avatarUrl}
-                        alt={displayName}
-                        username={displayUser?.username}
-                        size={40}
-                      />
-                    </span>
-                    <span className="header-user__meta">
-                      <span className="header-user__name">{displayName}</span>
-                      {role ? <span className="header-user__role">{role}</span> : null}
-                    </span>
-                    <span className={`fi-rr-angle-small-${isMenuOpen ? "up" : "down"}`} aria-hidden="true" />
-                  </button>
-                  {isMenuOpen ? (
-                    <div className="header-user__dropdown" role="menu">
-                      <Link href="/profile" className="header-user__item" onClick={closeMenu}>
-                        <span>Hồ sơ</span>
-                      </Link>
-                      <button
-                        type="button"
-                        className="header-user__item header-user__item--action"
-                        onClick={handleLogout}
-                        disabled={isLoggingOut}
-                      >
-                        {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
-                      </button>
-                    </div>
-                  ) : null}
-                </div>
+                <>
+                  <NotificationBell />
+                  <div className="header-user" ref={menuRef} style={{ marginLeft: '1rem' }}>
+                    <button
+                      type="button"
+                      className={`header-user__button ${isMenuOpen ? "is-open" : ""}`}
+                      onClick={() => setIsMenuOpen((open) => !open)}
+                      aria-haspopup="menu"
+                      aria-expanded={isMenuOpen}
+                    >
+                      <span className="header-user__avatar">
+                        <Avatar
+                          src={displayUser?.avatarUrl}
+                          alt={displayName}
+                          username={displayUser?.username}
+                          size={40}
+                        />
+                      </span>
+                      <span className="header-user__meta">
+                        <span className="header-user__name">{displayName}</span>
+                        {role ? <span className="header-user__role">{role}</span> : null}
+                      </span>
+                      <span className={`fi-rr-angle-small-${isMenuOpen ? "up" : "down"}`} aria-hidden="true" />
+                    </button>
+                    {isMenuOpen ? (
+                      <div className="header-user__dropdown" role="menu">
+                        <Link href="/profile" className="header-user__item" onClick={closeMenu}>
+                          <span>Hồ sơ</span>
+                        </Link>
+                        <button
+                          type="button"
+                          className="header-user__item header-user__item--action"
+                          onClick={handleLogout}
+                          disabled={isLoggingOut}
+                        >
+                          {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+                        </button>
+                      </div>
+                    ) : null}
+                  </div>
+                </>
               ) : (
                 <div className="block-signin">
                   <Link href="register">

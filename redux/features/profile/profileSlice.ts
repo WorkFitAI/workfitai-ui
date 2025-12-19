@@ -16,6 +16,7 @@ import type {
     Disable2FARequest,
     RegenerateBackupCodesRequest,
     SessionInfo,
+    SessionsResponse,
 } from "@/types/settings";
 import * as profileApi from "@/lib/profileApi";
 
@@ -331,7 +332,16 @@ export const fetchActiveSessions = createAsyncThunk(
             if (response.status === "error") {
                 return rejectWithValue(response.message || "Failed to fetch active sessions");
             }
-            return response.data!;
+
+            // Backend returns List<SessionResponse>, need to transform to {current, others}
+            const sessions = response.data! as any as SessionInfo[];
+            const current = sessions.find(s => s.isCurrent);
+            const others = sessions.filter(s => !s.isCurrent);
+
+            return {
+                current: current || null,
+                others: others || []
+            } as SessionsResponse;
         } catch (error: any) {
             return rejectWithValue(error.message || "Failed to fetch active sessions");
         }

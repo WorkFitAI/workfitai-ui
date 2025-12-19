@@ -5,7 +5,6 @@ import { useAppSelector } from "@/redux/hooks";
 import { selectAuthUser } from "@/redux/features/auth/authSlice";
 import { getManagerStats, getHRActivities } from "@/lib/applicationApi";
 import type { ManagerStats, HRActivity } from "@/types/application/application";
-import Link from "next/link";
 import { formatDistanceToNow } from "date-fns";
 
 export default function HRManagerDashboard() {

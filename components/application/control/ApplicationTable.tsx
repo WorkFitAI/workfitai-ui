@@ -7,7 +7,6 @@ import type {
   HRUser,
 } from "@/types/application/application";
 import { ApplicationStatus } from "@/types/application/application";
-import BulkActionsToolbar from "./BulkActionsToolbar";
 import TableHeader, { type Column } from "./TableHeader";
 import TableRow from "./TableRow";
 import ColumnSettings from "./ColumnSettings";
@@ -79,7 +78,6 @@ const ApplicationTable = ({
   loading,
   selectedIds,
   onSelectionChange,
-  onBulkAction,
   sortBy,
   sortOrder = "desc",
   onSort,
