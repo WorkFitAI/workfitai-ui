@@ -140,7 +140,30 @@ async function apiRequest<T>(
 
 export const monitoringApi = {
     /**
-     * Get user activity for admin dashboard
+     * Get user activities for admin dashboard (NEW ENDPOINT)
+     */
+    getUserActivities: async (params: {
+        username?: string;
+        role?: string;
+        hours?: number;
+        page?: number;
+        size?: number;
+    }): Promise<UserActivityResponse> => {
+        const queryParams = new URLSearchParams();
+        if (params.username) queryParams.append("username", params.username);
+        if (params.role) queryParams.append("role", params.role);
+        if (params.hours !== undefined) queryParams.append("hours", String(params.hours));
+        if (params.page !== undefined) queryParams.append("page", String(params.page));
+        if (params.size !== undefined) queryParams.append("size", String(params.size));
+
+        return apiRequest<UserActivityResponse>(
+            `/api/admin/user-activities?${queryParams.toString()}`
+        );
+    },
+
+    /**
+     * Get user activity for admin dashboard (OLD ENDPOINT - DEPRECATED)
+     * @deprecated Use getUserActivities instead
      */
     getUserActivity: async (params: {
         username?: string;
@@ -193,11 +216,20 @@ export const monitoringApi = {
     },
 
     /**
-     * Get currently active/online users
+     * Get currently active/online users (NEW ENDPOINT)
      */
     getOnlineUsers: async (minutes: number = 15): Promise<UserActivityResponse> => {
         return apiRequest<UserActivityResponse>(
-            `/api/logs/activity/online?minutes=${minutes}`
+            `/api/admin/online-users?minutes=${minutes}`
+        );
+    },
+
+    /**
+     * Get activity summary statistics (NEW ENDPOINT)
+     */
+    getActivitySummary: async (hours: number = 24): Promise<ActivitySummary> => {
+        return apiRequest<ActivitySummary>(
+            `/api/admin/activity-summary?hours=${hours}`
         );
     },
 
