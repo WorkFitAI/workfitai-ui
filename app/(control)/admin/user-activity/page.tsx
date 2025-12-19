@@ -164,24 +164,18 @@ export default function UserActivityPage() {
     const fetchActivities = async (silent = false) => {
         if (!silent) setLoading(true);
         try {
-            const fromTime = new Date(Date.now() - parseInt(timeRange) * 60 * 60 * 1000).toISOString();
+            // Use new admin endpoint with hours parameter
+            const hours = parseInt(timeRange);
 
-            const response = await monitoringApi.getUserActivity({
+            const response = await monitoringApi.getUserActivities({
                 username: usernameFilter || undefined,
-                from: fromTime,
-                includeSummary: true,
+                role: roleFilter || undefined,
+                hours: hours,
                 page,
                 size: 20,
             });
 
-            let filteredActivities = response.activities || [];
-
-            // Apply role filter on frontend
-            if (roleFilter) {
-                filteredActivities = filteredActivities.filter((activity) =>
-                    activity.roles?.includes(roleFilter)
-                );
-            }
+            const filteredActivities = response.activities || [];
 
             setActivities(filteredActivities);
             setSummary(response.summary || null);
