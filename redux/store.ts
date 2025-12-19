@@ -5,6 +5,7 @@ import { jobFilterReducer } from "./features/job/jobFilterSlice";
 import applicationReducer from "./features/application/applicationSlice";
 import applicationFilterReducer from "./features/application/applicationFilterSlice";
 import profileReducer from "./features/profile/profileSlice";
+import cvReducer from "./features/cv/cvSlice";
 
 const rootReducer = {
   auth: authReducer,
@@ -13,6 +14,7 @@ const rootReducer = {
   application: applicationReducer,
   applicationFilter: applicationFilterReducer,
   profile: profileReducer,
+  cv: cvReducer,
 };
 
 // Create a temp store to infer the state type
@@ -27,4 +29,4 @@ export const makeStore = (preloadedState?: Partial<RootState>) => {
 };
 
 export type AppStore = ReturnType<typeof makeStore>;
-export type AppDispatch = AppStore['dispatch'];
+export type AppDispatch = AppStore["dispatch"];
