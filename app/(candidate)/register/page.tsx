@@ -57,6 +57,7 @@ export default function Register() {
 
   // Company state (for HR/HR_MANAGER)
   const [companyData, setCompanyData] = useState<CompanyFormData>({
+    companyNo: "",
     name: "",
     address: "",
   });
@@ -163,6 +164,10 @@ export default function Register() {
         isValid = false;
       }
       // Validate company fields
+      if (!companyData.companyNo || companyData.companyNo.trim().length < 3) {
+        errors.companyNo = "Company number is required";
+        isValid = false;
+      }
       if (!companyData.name || companyData.name.length < 2) {
         errors.name = "Company name is required";
         isValid = false;
@@ -220,26 +225,27 @@ export default function Register() {
     setLocalError(null);
 
     // Build registration payload according to API spec
-  interface RegistrationPayload {
-    fullName: string;
-    email: string;
-    password: string;
-    phoneNumber: string;
-    role: UserRole;
-    hrProfile?: {
-      department: string;
-      hrManagerEmail?: string;
-      address: string;
-    };
-    company?: {
-      name: string;
-      logoUrl?: string;
-      websiteUrl?: string;
-      description?: string;
-      address: string;
-      size?: string;
-    };
-  }
+    interface RegistrationPayload {
+      fullName: string;
+      email: string;
+      password: string;
+      phoneNumber: string;
+      role: UserRole;
+      hrProfile?: {
+        department: string;
+        hrManagerEmail?: string;
+        address: string;
+      };
+      company?: {
+        companyNo: string;
+        name: string;
+        logoUrl?: string;
+        websiteUrl?: string;
+        description?: string;
+        address: string;
+        size?: string;
+      };
+    }
 
     const payload: RegistrationPayload = {
       fullName,
@@ -265,6 +271,7 @@ export default function Register() {
         address: hrAddress,
       };
       payload.company = {
+        companyNo: companyData.companyNo,
         name: companyData.name,
         logoUrl: companyData.logoUrl,
         websiteUrl: companyData.websiteUrl,
@@ -477,6 +484,7 @@ export default function Register() {
           email,
           phoneNumber,
         }}
+        companyNo={role === "HR_MANAGER" ? companyData.companyNo : undefined}
         companyName={role === "HR_MANAGER" ? companyData.name : undefined}
         // department can be added later
       />

@@ -153,6 +153,7 @@ export interface RegisterRequest {
     address: string;
   };
   company?: {
+    companyNo: string;
     name: string;
     logoUrl?: string;
     websiteUrl?: string;

@@ -4,10 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import {
-  logoutUser,
-  selectAuthUser
-} from "@/redux/features/auth/authSlice";
+import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
 import useHasHydrated from "@/util/useHasHydrated";
 import Avatar from "@/components/common/Avatar";
 import React from "react";
@@ -133,7 +130,10 @@ export default function Header() {
   const displayUser = hasHydrated ? user : null;
   const displayName = displayUser?.fullName || displayUser?.username || "Guest";
 
-  const displayRole = displayUser?.role || (displayUser?.roles && displayUser?.roles[0]) || "Guest";
+  const displayRole =
+    displayUser?.role ||
+    (displayUser?.roles && displayUser?.roles[0]) ||
+    "Guest";
   const roleMeta = useMemo(() => getRoleMeta(displayRole), [displayRole]);
 
   useEffect(() => {
@@ -208,18 +208,7 @@ export default function Header() {
               </span>
             ) : null}
           </div>
-          <div className="header-search">
-            <div className="box-search">
-              <form>
-                <input
-                  className="form-control input-search"
-                  type="text"
-                  name="keyword"
-                  placeholder="Search"
-                />
-              </form>
-            </div>
-          </div>
+          <div className="header-search"></div>
           <div className="header-right">
             <div className="block-signin">
               <Link
@@ -228,7 +217,7 @@ export default function Header() {
               >
                 Post Job
               </Link>
-              <Menu as="div" className="dropdown d-inline-block">
+              <Menu as="div" className="dropdown d-inline-block" style={{paddingLeft: "10px"}}>
                 <Menu.Button as="a" className="btn btn-notify" />
                 <Menu.Items
                   as="ul"
@@ -256,53 +245,63 @@ export default function Header() {
               <div className="member-login">
                 {displayUser ? (
                   <>
-                    <Avatar
-                      src={displayUser?.avatarUrl}
-                      alt={displayName}
-                      username={displayUser?.username}
-                      size={40}
-                    />
-                    <div className="info-member">
-                      <strong className="color-brand-1">{displayName}</strong>
-                      <Menu as="div" className="dropdown">
-                        <Menu.Button
-                          as="a"
-                          className="font-xs color-text-paragraph-2 icon-down"
-                        >
-                          {displayRole}
-                        </Menu.Button>
-                        <Menu.Items
-                          as="ul"
-                          className="dropdown-menu dropdown-menu-light dropdown-menu-end show"
-                          style={{ right: "0", left: "auto" }}
-                        >
-                          <li>
-                            <Link className="dropdown-item" href="/profile">
-                              Profiles
-                            </Link>
-                          </li>
-                          <li>
-                            <Link className="dropdown-item" href="/my-resume">
-                              CV Manager
-                            </Link>
-                          </li>
-                          <li>
-                            <button
-                              className="dropdown-item"
-                              onClick={handleLogout}
-                              style={{
-                                width: "100%",
-                                textAlign: "left",
-                                background: "none",
-                                border: "none",
-                                cursor: "pointer",
-                              }}
-                            >
-                              Logout
-                            </button>
-                          </li>
-                        </Menu.Items>
-                      </Menu>
+                    <div
+                      className="info-member"
+                      style={{
+                        display: "flex",
+                        alignItems: "center",
+                        gap: "12px",
+                        paddingLeft: "10px",
+                      }}
+                    >
+                      <Avatar
+                        src={displayUser?.avatarUrl}
+                        alt={displayName}
+                        username={displayUser?.username}
+                        size={40}
+                      />
+                      <div style={{ display: "flex", flexDirection: "column" }}>
+                        <strong className="color-brand-1">{displayName}</strong>
+                        <Menu as="div" className="dropdown">
+                          <Menu.Button
+                            as="a"
+                            className="font-xs color-text-paragraph-2 icon-down"
+                          >
+                            {displayRole}
+                          </Menu.Button>
+                          <Menu.Items
+                            as="ul"
+                            className="dropdown-menu dropdown-menu-light dropdown-menu-end show"
+                            style={{ right: "0", left: "auto" }}
+                          >
+                            <li>
+                              <Link className="dropdown-item" href="/profile">
+                                Profiles
+                              </Link>
+                            </li>
+                            <li>
+                              <Link className="dropdown-item" href="/my-resume">
+                                CV Manager
+                              </Link>
+                            </li>
+                            <li>
+                              <button
+                                className="dropdown-item"
+                                onClick={handleLogout}
+                                style={{
+                                  width: "100%",
+                                  textAlign: "left",
+                                  background: "none",
+                                  border: "none",
+                                  cursor: "pointer",
+                                }}
+                              >
+                                Logout
+                              </button>
+                            </li>
+                          </Menu.Items>
+                        </Menu>
+                      </div>
                     </div>
                   </>
                 ) : (

@@ -9,6 +9,7 @@ interface RegistrationSummaryProps {
     email: string;
     phoneNumber: string;
   };
+  companyNo?: string;
   companyName?: string;
   department?: string;
 }
@@ -16,15 +17,20 @@ interface RegistrationSummaryProps {
 export default function RegistrationSummary({
   role,
   personalInfo,
+  companyNo,
   companyName,
   department,
 }: RegistrationSummaryProps) {
   const getRoleLabel = (r: string) => {
     switch (r) {
-      case "CANDIDATE": return "Job Seeker";
-      case "HR": return "HR Staff";
-      case "HR_MANAGER": return "HR Manager";
-      default: return r;
+      case "CANDIDATE":
+        return "Job Seeker";
+      case "HR":
+        return "HR Staff";
+      case "HR_MANAGER":
+        return "HR Manager";
+      default:
+        return r;
     }
   };
 
@@ -51,6 +57,13 @@ export default function RegistrationSummary({
         <div className="col-4 text-muted font-sm">Phone:</div>
         <div className="col-8 font-sm">{personalInfo.phoneNumber}</div>
       </div>
+
+      {companyNo && (
+        <div className="row mb-10">
+          <div className="col-4 text-muted font-sm">Company Number:</div>
+          <div className="col-8 font-sm">{companyNo}</div>
+        </div>
+      )}
 
       {companyName && (
         <div className="row mb-10">
