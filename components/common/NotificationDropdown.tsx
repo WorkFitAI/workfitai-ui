@@ -4,7 +4,6 @@ import React, { useState, useEffect, useRef } from "react";
 import { useRouter } from "next/navigation";
 import type { Notification } from "@/types/notification";
 import {
-    getNotifications,
     markAsRead,
     markAllAsRead,
 } from "@/lib/notificationApi";
@@ -13,23 +12,26 @@ interface NotificationDropdownProps {
     isOpen: boolean;
     onClose: () => void;
     onNotificationRead: () => void;
+    notifications: Notification[];
+    updateNotification: (id: string, updates: Partial<Notification>) => void;
 }
 
 const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     isOpen,
     onClose,
     onNotificationRead,
+    notifications: initialNotifications,
+    updateNotification,
 }) => {
-    const [notifications, setNotifications] = useState<Notification[]>([]);
+    const [notifications, setNotifications] = useState<Notification[]>(initialNotifications);
     const [loading, setLoading] = useState(false);
     const dropdownRef = useRef<HTMLDivElement>(null);
     const router = useRouter();
 
+    // Update local state when parent notifications change
     useEffect(() => {
-        if (isOpen) {
-            fetchNotifications();
-        }
-    }, [isOpen]);
+        setNotifications(initialNotifications);
+    }, [initialNotifications]);
 
     // Close dropdown when clicking outside
     useEffect(() => {
@@ -51,30 +53,19 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         };
     }, [isOpen, onClose]);
 
-    const fetchNotifications = async () => {
-        setLoading(true);
-        try {
-            const response = await getNotifications(0, 10);
-            if (response.success && response.data) {
-                setNotifications(response.data.content);
-            }
-        } catch (error) {
-            console.error("Error fetching notifications:", error);
-        } finally {
-            setLoading(false);
-        }
-    };
-
     const handleNotificationClick = async (notification: Notification) => {
         // Mark as read if not already read
         if (!notification.read) {
             const response = await markAsRead(notification.id);
             if (response.success) {
+                // Update local state
                 setNotifications((prev) =>
                     prev.map((n) =>
                         n.id === notification.id ? { ...n, read: true } : n
                     )
                 );
+                // Update parent state
+                updateNotification(notification.id, { read: true });
                 onNotificationRead();
             }
         }
@@ -89,9 +80,16 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     const handleMarkAllAsRead = async () => {
         const response = await markAllAsRead();
         if (response.success) {
+            // Update local state
             setNotifications((prev) =>
                 prev.map((n) => ({ ...n, read: true }))
             );
+            // Update parent state for all notifications
+            notifications.forEach((n) => {
+                if (!n.read) {
+                    updateNotification(n.id, { read: true });
+                }
+            });
             onNotificationRead();
         }
     };

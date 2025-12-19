@@ -23,16 +23,16 @@ export default function OnlineUsers({ minutes = 15, refreshInterval = 30000 }: O
     const fetchOnlineUsers = async () => {
         try {
             const response = await monitoringApi.getOnlineUsers(timeWindow);
-            
+
             // Extract unique usernames
             const uniqueUsers = Array.from(
                 new Set(response.activities?.map(a => a.username).filter(Boolean))
             );
             setOnlineUsers(uniqueUsers);
-            
+
             // Get recent activities for display
             setRecentActivities(response.activities?.slice(0, 10) || []);
-            
+
             setLoading(false);
         } catch (error) {
             console.error("Failed to fetch online users:", error);
@@ -48,7 +48,7 @@ export default function OnlineUsers({ minutes = 15, refreshInterval = 30000 }: O
 
         if (minutes < 1) return "Just now";
         if (minutes < 60) return `${minutes}m ago`;
-        
+
         const hours = Math.floor(minutes / 60);
         return `${hours}h ago`;
     };

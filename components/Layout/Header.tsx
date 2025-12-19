@@ -301,7 +301,7 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                 <span className="burger-icon-bottom" />
               </div>
             </div>
-            <div className="header-right">
+            <div className="header-right" suppressHydrationWarning>
               {displayUser ? (
                 <>
                   <NotificationBell />

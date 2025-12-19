@@ -6,8 +6,114 @@ import { showToast } from "@/lib/toast";
 import { useAppSelector } from "@/redux/hooks";
 import { selectUserRole } from "@/redux/features/auth/authSlice";
 import { useRouter } from "next/navigation";
-import RecentErrors from "@/components/monitoring/RecentErrors";
-import ActivityInsights from "@/components/monitoring/ActivityInsights";
+import "./user-activity.scss";
+
+// Helper to get user role display name
+const getRoleDisplayName = (roles?: string) => {
+    if (!roles) return "User";
+    if (roles.includes("HR_MANAGER")) return "HR Manager";
+    if (roles.includes("HR")) return "HR";
+    if (roles.includes("CANDIDATE")) return "Candidate";
+    if (roles.includes("ADMIN")) return "Admin";
+    return "User";
+};
+
+// Helper to get role class
+const getRoleClass = (roles?: string) => {
+    if (!roles) return "candidate";
+    if (roles.includes("HR_MANAGER")) return "hr-manager";
+    if (roles.includes("HR")) return "hr";
+    if (roles.includes("ADMIN")) return "admin";
+    return "candidate";
+};
+
+// Helper to extract user-friendly action from log entry
+const getActionDescription = (activity: UserActivityEntry): string => {
+    const path = activity.path?.toLowerCase() || "";
+    const method = activity.method;
+    const message = activity.action;
+
+    // Authentication
+    if (path.includes("/login") || message.includes("login")) {
+        if (activity.level === "ERROR") return "Login failed";
+        return "Logged in";
+    }
+    if (path.includes("/logout") || message.includes("logout")) return "Logged out";
+    if (path.includes("/register")) {
+        if (activity.level === "ERROR") return "Registration failed";
+        return "Registered account";
+    }
+    if (path.includes("/verify")) return "Verified account";
+    if (path.includes("/forgot-password")) return "Requested password reset";
+    if (path.includes("/reset-password")) return "Reset password";
+
+    // Profile
+    if (path.includes("/profile")) {
+        if (method === "PUT" || method === "PATCH") return "Updated profile";
+        if (method === "GET") return "Viewed profile";
+        return "Profile action";
+    }
+
+    // Job-related
+    if (path.includes("/job")) {
+        if (method === "POST") return "Created job posting";
+        if (method === "PUT" || method === "PATCH") return "Updated job posting";
+        if (method === "DELETE") return "Deleted job posting";
+        if (path.includes("/approve")) return "Approved job posting";
+        if (method === "GET") return "Viewed jobs";
+        return "Job action";
+    }
+
+    // Application-related
+    if (path.includes("/application")) {
+        if (method === "POST") return "Submitted application";
+        if (method === "PUT" || method === "PATCH") return "Updated application";
+        if (method === "DELETE") return "Withdrew application";
+        if (path.includes("/approve")) return "Approved application";
+        if (path.includes("/reject")) return "Rejected application";
+        if (method === "GET") return "Viewed applications";
+        return "Application action";
+    }
+
+    // CV-related
+    if (path.includes("/cv") || path.includes("/resume")) {
+        if (method === "POST") return "Uploaded CV";
+        if (method === "PUT" || method === "PATCH") return "Updated CV";
+        if (method === "DELETE") return "Deleted CV";
+        if (method === "GET") return "Viewed CV";
+        return "CV action";
+    }
+
+    // User management
+    if (path.includes("/user")) {
+        if (path.includes("/block")) return "Blocked user";
+        if (path.includes("/unblock")) return "Unblocked user";
+        if (path.includes("/delete")) return "Deleted user";
+        if (path.includes("/approve")) return "Approved user";
+        if (method === "PUT" || method === "PATCH") return "Updated user";
+        if (method === "GET") return "Viewed user details";
+        return "User management action";
+    }
+
+    // HR-related
+    if (path.includes("/approval") || path.includes("/approve")) {
+        return "Approval action";
+    }
+
+    // Notification
+    if (path.includes("/notification")) {
+        if (method === "GET") return "Checked notifications";
+        if (method === "PUT" || method === "PATCH") return "Updated notification settings";
+        return "Notification action";
+    }
+
+    // Default - show cleaner action
+    const cleanPath = path.split("?")[0].split("/").filter(p => p).pop() || "page";
+    if (method) {
+        return `${method} /${cleanPath}`;
+    }
+    return message && message.length < 100 ? message : "User action";
+};
 
 export default function UserActivityPage() {
     const router = useRouter();
@@ -19,19 +125,32 @@ export default function UserActivityPage() {
     const [page, setPage] = useState(0);
     const [totalPages, setTotalPages] = useState(0);
     const [total, setTotal] = useState(0);
+    const [mounted, setMounted] = useState(false);
+
+    // User statistics
+    const [stats, setStats] = useState({
+        activeUsers: 0,
+        totalActions: 0,
+        errorActions: 0,
+        successRate: 100,
+    });
 
     // Filters
     const [usernameFilter, setUsernameFilter] = useState("");
-    const [serviceFilter, setServiceFilter] = useState("");
-    const [levelFilter, setLevelFilter] = useState("");
+    const [roleFilter, setRoleFilter] = useState("");
     const [timeRange, setTimeRange] = useState("24"); // hours
+
+    // Set mounted state
+    useEffect(() => {
+        setMounted(true);
+    }, []);
 
     // Redirect if not admin
     useEffect(() => {
-        if (userRole && userRole !== "ADMIN") {
+        if (mounted && userRole && userRole !== "ADMIN") {
             router.replace("/");
         }
-    }, [userRole, router]);
+    }, [mounted, userRole, router]);
 
     useEffect(() => {
         fetchActivities();
@@ -40,7 +159,7 @@ export default function UserActivityPage() {
             fetchActivities(true);
         }, 30000);
         return () => clearInterval(interval);
-    }, [page, usernameFilter, serviceFilter, levelFilter, timeRange]);
+    }, [page, usernameFilter, roleFilter, timeRange]);
 
     const fetchActivities = async (silent = false) => {
         if (!silent) setLoading(true);
@@ -49,17 +168,42 @@ export default function UserActivityPage() {
 
             const response = await monitoringApi.getUserActivity({
                 username: usernameFilter || undefined,
-                service: serviceFilter || undefined,
                 from: fromTime,
                 includeSummary: true,
                 page,
-                size: 50,
+                size: 20,
             });
 
-            setActivities(response.activities || []);
+            let filteredActivities = response.activities || [];
+
+            // Apply role filter on frontend
+            if (roleFilter) {
+                filteredActivities = filteredActivities.filter((activity) =>
+                    activity.roles?.includes(roleFilter)
+                );
+            }
+
+            setActivities(filteredActivities);
             setSummary(response.summary || null);
             setTotal(response.total);
             setTotalPages(response.totalPages);
+
+            // Calculate statistics
+            const activeUsersSet = new Set(filteredActivities.map((a) => a.username));
+            const errorCount = filteredActivities.filter(
+                (a) => a.isError || a.level === "ERROR"
+            ).length;
+            const successRate =
+                filteredActivities.length > 0
+                    ? ((filteredActivities.length - errorCount) / filteredActivities.length) * 100
+                    : 100;
+
+            setStats({
+                activeUsers: activeUsersSet.size,
+                totalActions: filteredActivities.length,
+                errorActions: errorCount,
+                successRate: Math.round(successRate),
+            });
         } catch (error: any) {
             if (!silent) {
                 showToast.error("Failed to load user activities");
@@ -70,25 +214,11 @@ export default function UserActivityPage() {
         }
     };
 
-    const handleFilterChange = () => {
+    const clearFilters = () => {
+        setUsernameFilter("");
+        setRoleFilter("");
+        setTimeRange("24");
         setPage(0);
-    };
-
-    const getActivityBadgeClass = (level?: string, isError?: boolean) => {
-        if (isError || level === "ERROR") return "badge bg-danger";
-        if (level === "WARN") return "badge bg-warning";
-        return "badge bg-success";
-    };
-
-    const getServiceBadgeClass = (service: string) => {
-        const colors: Record<string, string> = {
-            "auth-service": "bg-primary",
-            "user-service": "bg-info",
-            "job-service": "bg-success",
-            "application-service": "bg-warning",
-            "cv-service": "bg-secondary",
-        };
-        return `badge ${colors[service] || "bg-dark"}`;
     };
 
     const formatTimestamp = (timestamp: string) => {
@@ -97,315 +227,354 @@ export default function UserActivityPage() {
         const diff = now.getTime() - date.getTime();
         const minutes = Math.floor(diff / 60000);
         const hours = Math.floor(diff / 3600000);
+        const days = Math.floor(diff / 86400000);
 
         if (minutes < 1) return "Just now";
         if (minutes < 60) return `${minutes}m ago`;
         if (hours < 24) return `${hours}h ago`;
+        if (days < 7) return `${days}d ago`;
 
-        return date.toLocaleString();
+        return date.toLocaleDateString();
     };
+
+    // Get role distribution from activities
+    const getRoleDistribution = () => {
+        const distribution: Record<string, number> = {};
+        activities.forEach((activity) => {
+            const role = getRoleDisplayName(activity.roles);
+            distribution[role] = (distribution[role] || 0) + 1;
+        });
+        return distribution;
+    };
+
+    // Get action type distribution
+    const getActionDistribution = () => {
+        const distribution: Record<string, number> = {};
+        activities.forEach((activity) => {
+            const action = getActionDescription(activity);
+            const category = action.split(" ")[0]; // Get first word as category
+            distribution[category] = (distribution[category] || 0) + 1;
+        });
+        return Object.entries(distribution)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 5);
+    };
+
+    // Prevent hydration mismatch
+    if (!mounted) {
+        return (
+            <div className="user-activity-page">
+                <div className="loading-state">
+                    <div className="spinner"></div>
+                    <p>Loading...</p>
+                </div>
+            </div>
+        );
+    }
 
     if (userRole !== "ADMIN") {
         return null;
     }
 
+    const roleDistribution = getRoleDistribution();
+    const actionDistribution = getActionDistribution();
+
     return (
-        <div className="box-content">
-            <div className="box-heading">
-                <div className="box-title">
-                    <h3 className="mb-35">User Activity Monitor</h3>
-                </div>
-            </div>
-
-            {/* Alerts & Warnings Section */}
-            <div className="row mb-4">
-                <div className="col-12">
-                    <div className="card card-style-1">
-                        <div className="card-header bg-danger text-white">
-                            <h5 className="mb-0">
-                                <i className="fi-rr-exclamation-triangle me-2"></i>
-                                Recent Errors & Alerts
-                            </h5>
-                        </div>
-                        <div className="card-body p-0">
-                            <RecentErrors minutes={15} />
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            {/* Statistics Summary */}
-            {summary && (
-                <div className="row mb-4">
+        <div className="user-activity-page">
+            {/* Statistics Cards */}
+            <div className="stats-section">
+                <div className="row">
                     <div className="col-lg-3 col-md-6 mb-3">
-                        <div className="card card-style-1">
-                            <div className="card-body">
-                                <div className="d-flex align-items-center">
-                                    <div className="flex-grow-1">
-                                        <p className="text-muted mb-1">Active Users</p>
-                                        <h4 className="mb-0">{summary.activeUsers}</h4>
-                                    </div>
-                                    <div className="avatar-sm">
-                                        <span className="avatar-title bg-soft-primary rounded">
-                                            <i className="fi-rr-users text-primary"></i>
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="stat-card">
+                            <div className="stat-icon primary">
+                                <i className="fi-rr-users"></i>
                             </div>
+                            <div className="stat-label">Active Users</div>
+                            <h2 className="stat-value">{stats.activeUsers}</h2>
                         </div>
                     </div>
 
                     <div className="col-lg-3 col-md-6 mb-3">
-                        <div className="card card-style-1">
-                            <div className="card-body">
-                                <div className="d-flex align-items-center">
-                                    <div className="flex-grow-1">
-                                        <p className="text-muted mb-1">Total Actions</p>
-                                        <h4 className="mb-0">{summary.totalActions}</h4>
-                                    </div>
-                                    <div className="avatar-sm">
-                                        <span className="avatar-title bg-soft-success rounded">
-                                            <i className="fi-rr-stats text-success"></i>
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="stat-card">
+                            <div className="stat-icon success">
+                                <i className="fi-rr-chart-histogram"></i>
                             </div>
+                            <div className="stat-label">Total Actions</div>
+                            <h2 className="stat-value">{stats.totalActions}</h2>
                         </div>
                     </div>
 
                     <div className="col-lg-3 col-md-6 mb-3">
-                        <div className="card card-style-1">
-                            <div className="card-body">
-                                <div className="d-flex align-items-center">
-                                    <div className="flex-grow-1">
-                                        <p className="text-muted mb-1">Errors</p>
-                                        <h4 className="mb-0 text-danger">{summary.errorCount}</h4>
-                                    </div>
-                                    <div className="avatar-sm">
-                                        <span className="avatar-title bg-soft-danger rounded">
-                                            <i className="fi-rr-exclamation text-danger"></i>
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="stat-card">
+                            <div className="stat-icon danger">
+                                <i className="fi-rr-exclamation"></i>
                             </div>
+                            <div className="stat-label">Error Actions</div>
+                            <h2 className="stat-value">{stats.errorActions}</h2>
                         </div>
                     </div>
 
                     <div className="col-lg-3 col-md-6 mb-3">
-                        <div className="card card-style-1">
-                            <div className="card-body">
-                                <div className="d-flex align-items-center">
-                                    <div className="flex-grow-1">
-                                        <p className="text-muted mb-1">Services</p>
-                                        <h4 className="mb-0">
-                                            {summary.actionsByService ? Object.keys(summary.actionsByService).length : 0}
-                                        </h4>
-                                    </div>
-                                    <div className="avatar-sm">
-                                        <span className="avatar-title bg-soft-info rounded">
-                                            <i className="fi-rr-apps text-info"></i>
-                                        </span>
-                                    </div>
-                                </div>
+                        <div className="stat-card">
+                            <div className="stat-icon warning">
+                                <i className="fi-rr-chart-pie"></i>
                             </div>
+                            <div className="stat-label">Success Rate</div>
+                            <h2 className="stat-value">{stats.successRate}%</h2>
                         </div>
                     </div>
                 </div>
-            )}
+            </div>
 
             {/* Activity Insights */}
-            {summary && <ActivityInsights summary={summary} />}
+            <div className="insights-section">
+                <h4 className="section-title">
+                    <i className="fi-rr-stats"></i>
+                    Activity Insights
+                </h4>
+                <div className="insight-grid">
+                    {/* Role Distribution */}
+                    <div className="insight-card">
+                        <div className="insight-title">Activity by Role</div>
+                        {Object.entries(roleDistribution).map(([role, count]) => {
+                            const percentage =
+                                stats.totalActions > 0 ? (count / stats.totalActions) * 100 : 0;
+                            return (
+                                <div key={role} className="insight-item">
+                                    <div className="item-label">
+                                        <span className={`role-badge ${getRoleClass(role)}`}>
+                                            {role}
+                                        </span>
+                                    </div>
+                                    <div className="item-bar">
+                                        <div
+                                            className="bar-fill"
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="item-value">{count}</div>
+                                </div>
+                            );
+                        })}
+                    </div>
 
-            {/* Filters */}
-            <div className="card card-style-1 mb-4">
-                <div className="card-body">
-                    <div className="row g-3">
-                        <div className="col-md-3">
-                            <label className="form-label">Username</label>
-                            <input
-                                type="text"
-                                className="form-control"
-                                placeholder="Filter by username"
-                                value={usernameFilter}
-                                onChange={(e) => {
-                                    setUsernameFilter(e.target.value);
-                                    handleFilterChange();
-                                }}
-                            />
-                        </div>
-
-                        <div className="col-md-3">
-                            <label className="form-label">Service</label>
-                            <select
-                                className="form-select"
-                                value={serviceFilter}
-                                onChange={(e) => {
-                                    setServiceFilter(e.target.value);
-                                    handleFilterChange();
-                                }}
-                            >
-                                <option value="">All Services</option>
-                                <option value="auth-service">Auth Service</option>
-                                <option value="user-service">User Service</option>
-                                <option value="job-service">Job Service</option>
-                                <option value="application-service">Application Service</option>
-                                <option value="cv-service">CV Service</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-3">
-                            <label className="form-label">Level</label>
-                            <select
-                                className="form-select"
-                                value={levelFilter}
-                                onChange={(e) => {
-                                    setLevelFilter(e.target.value);
-                                    handleFilterChange();
-                                }}
-                            >
-                                <option value="">All Levels</option>
-                                <option value="INFO">Info</option>
-                                <option value="WARN">Warning</option>
-                                <option value="ERROR">Error</option>
-                            </select>
-                        </div>
-
-                        <div className="col-md-3">
-                            <label className="form-label">Time Range</label>
-                            <select
-                                className="form-select"
-                                value={timeRange}
-                                onChange={(e) => {
-                                    setTimeRange(e.target.value);
-                                    handleFilterChange();
-                                }}
-                            >
-                                <option value="1">Last Hour</option>
-                                <option value="6">Last 6 Hours</option>
-                                <option value="24">Last 24 Hours</option>
-                                <option value="72">Last 3 Days</option>
-                                <option value="168">Last Week</option>
-                            </select>
-                        </div>
+                    {/* Top Actions */}
+                    <div className="insight-card">
+                        <div className="insight-title">Top Actions</div>
+                        {actionDistribution.map(([action, count]) => {
+                            const percentage =
+                                stats.totalActions > 0 ? (count / stats.totalActions) * 100 : 0;
+                            return (
+                                <div key={action} className="insight-item">
+                                    <div className="item-label">{action}</div>
+                                    <div className="item-bar">
+                                        <div
+                                            className="bar-fill"
+                                            style={{ width: `${percentage}%` }}
+                                        ></div>
+                                    </div>
+                                    <div className="item-value">{count}</div>
+                                </div>
+                            );
+                        })}
                     </div>
                 </div>
             </div>
 
-            {/* Activity List */}
-            <div className="card card-style-1">
-                <div className="card-header d-flex justify-content-between align-items-center">
-                    <h5 className="mb-0">Recent Activities ({total})</h5>
+            {/* Filters */}
+            <div className="filters-section">
+                <div className="filter-header">
+                    <h5>
+                        <i className="fi-rr-filter"></i>
+                        Filters
+                    </h5>
+                    <span className="clear-filters" onClick={clearFilters}>
+                        Clear all filters
+                    </span>
+                </div>
+                <div className="filter-grid">
+                    <div className="filter-item">
+                        <label>Username / Email</label>
+                        <input
+                            type="text"
+                            className="form-control"
+                            placeholder="Search by username..."
+                            value={usernameFilter}
+                            onChange={(e) => {
+                                setUsernameFilter(e.target.value);
+                                setPage(0);
+                            }}
+                        />
+                    </div>
+
+                    <div className="filter-item">
+                        <label>User Role</label>
+                        <select
+                            className="form-select"
+                            value={roleFilter}
+                            onChange={(e) => {
+                                setRoleFilter(e.target.value);
+                                setPage(0);
+                            }}
+                        >
+                            <option value="">All Roles</option>
+                            <option value="CANDIDATE">Candidate</option>
+                            <option value="HR">HR</option>
+                            <option value="HR_MANAGER">HR Manager</option>
+                        </select>
+                    </div>
+
+                    <div className="filter-item">
+                        <label>Time Range</label>
+                        <select
+                            className="form-select"
+                            value={timeRange}
+                            onChange={(e) => {
+                                setTimeRange(e.target.value);
+                                setPage(0);
+                            }}
+                        >
+                            <option value="1">Last Hour</option>
+                            <option value="6">Last 6 Hours</option>
+                            <option value="24">Last 24 Hours</option>
+                            <option value="72">Last 3 Days</option>
+                            <option value="168">Last Week</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+
+            {/* Activity Table */}
+            <div className="activity-table-section">
+                <div className="table-header">
+                    <h5>
+                        Recent Activities <span className="count">({total})</span>
+                    </h5>
                     <button
-                        className="btn btn-sm btn-outline-primary"
+                        className="refresh-btn"
                         onClick={() => fetchActivities()}
                         disabled={loading}
                     >
-                        <i className="fi-rr-refresh me-1"></i>
+                        <i className="fi-rr-refresh"></i>
                         Refresh
                     </button>
                 </div>
-                <div className="card-body p-0">
-                    {loading ? (
-                        <div className="text-center p-5">
-                            <div className="spinner-border text-primary" role="status">
-                                <span className="visually-hidden">Loading...</span>
-                            </div>
-                        </div>
-                    ) : activities.length === 0 ? (
-                        <div className="text-center p-5">
-                            <p className="text-muted">No activities found</p>
-                        </div>
-                    ) : (
+
+                {loading ? (
+                    <div className="loading-state">
+                        <div className="spinner"></div>
+                        <p>Loading activities...</p>
+                    </div>
+                ) : activities.length === 0 ? (
+                    <div className="empty-state">
+                        <i className="fi-rr-document"></i>
+                        <h5>No Activities Found</h5>
+                        <p>Try adjusting your filters or check back later</p>
+                    </div>
+                ) : (
+                    <>
                         <div className="table-responsive">
-                            <table className="table table-hover mb-0">
+                            <table>
                                 <thead>
                                     <tr>
                                         <th>Time</th>
                                         <th>User</th>
-                                        <th>Service</th>
+                                        <th>Role</th>
                                         <th>Action</th>
-                                        <th>Method</th>
-                                        <th>Path</th>
-                                        <th>Status</th>
+                                        <th>Result</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {activities.map((activity) => (
-                                        <tr
-                                            key={activity.id}
-                                            className={activity.isError ? "table-danger" : ""}
-                                        >
-                                            <td className="text-muted small">
-                                                {formatTimestamp(activity.timestamp)}
-                                            </td>
-                                            <td>
-                                                <div>
-                                                    <strong>{activity.username}</strong>
-                                                    {activity.roles && (
-                                                        <div className="small text-muted">
-                                                            {activity.roles}
-                                                        </div>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                <span className={getServiceBadgeClass(activity.service)}>
-                                                    {activity.service}
-                                                </span>
-                                            </td>
-                                            <td>
-                                                <div className="text-truncate" style={{ maxWidth: "300px" }}>
-                                                    {activity.action}
-                                                </div>
-                                            </td>
-                                            <td>
-                                                {activity.method && (
-                                                    <span className="badge bg-secondary">
-                                                        {activity.method}
+                                    {activities.map((activity) => {
+                                        const isError = activity.isError || activity.level === "ERROR";
+                                        const isWarning = activity.level === "WARN";
+
+                                        return (
+                                            <tr
+                                                key={activity.id}
+                                                className={
+                                                    isError
+                                                        ? "error-row"
+                                                        : isWarning
+                                                            ? "warning-row"
+                                                            : ""
+                                                }
+                                            >
+                                                <td className="time-cell">
+                                                    <span className="relative-time">
+                                                        {formatTimestamp(activity.timestamp)}
                                                     </span>
-                                                )}
-                                            </td>
-                                            <td className="small text-muted">
-                                                {activity.path || "-"}
-                                            </td>
-                                            <td>
-                                                <span className={getActivityBadgeClass(activity.level, activity.isError)}>
-                                                    {activity.level}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    ))}
+                                                    <span className="absolute-time">
+                                                        {new Date(activity.timestamp).toLocaleTimeString()}
+                                                    </span>
+                                                </td>
+                                                <td className="user-cell">
+                                                    <span className="user-name">{activity.username}</span>
+                                                </td>
+                                                <td>
+                                                    <span className={`user-role ${getRoleClass(activity.roles)}`}>
+                                                        {getRoleDisplayName(activity.roles)}
+                                                    </span>
+                                                </td>
+                                                <td className="action-cell">
+                                                    <div className="action-text">
+                                                        {isError && (
+                                                            <i className="fi-rr-cross-circle error-icon"></i>
+                                                        )}
+                                                        {isWarning && (
+                                                            <i className="fi-rr-exclamation warning-icon"></i>
+                                                        )}
+                                                        {!isError && !isWarning && (
+                                                            <i className="fi-rr-check-circle success-icon"></i>
+                                                        )}
+                                                        <span>{getActionDescription(activity)}</span>
+                                                    </div>
+                                                </td>
+                                                <td>
+                                                    <span
+                                                        className={`status-badge ${isError
+                                                            ? "error"
+                                                            : isWarning
+                                                                ? "warning"
+                                                                : "success"
+                                                            }`}
+                                                    >
+                                                        {isError ? "Failed" : isWarning ? "Warning" : "Success"}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </div>
-                    )}
-                </div>
 
-                {/* Pagination */}
-                {totalPages > 1 && (
-                    <div className="card-footer">
-                        <div className="d-flex justify-content-between align-items-center">
-                            <div className="text-muted small">
-                                Showing page {page + 1} of {totalPages}
+                        {totalPages > 1 && (
+                            <div className="table-footer">
+                                <div className="pagination-wrapper">
+                                    <div className="page-info">
+                                        Page {page + 1} of {totalPages}
+                                    </div>
+                                    <div className="pagination-controls">
+                                        <button
+                                            onClick={() => setPage(Math.max(0, page - 1))}
+                                            disabled={page === 0 || loading}
+                                        >
+                                            <i className="fi-rr-angle-left"></i>
+                                            Previous
+                                        </button>
+                                        <button
+                                            onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
+                                            disabled={page >= totalPages - 1 || loading}
+                                        >
+                                            Next
+                                            <i className="fi-rr-angle-right"></i>
+                                        </button>
+                                    </div>
+                                </div>
                             </div>
-                            <div className="btn-group">
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => setPage(Math.max(0, page - 1))}
-                                    disabled={page === 0 || loading}
-                                >
-                                    <i className="fi-rr-angle-left"></i> Previous
-                                </button>
-                                <button
-                                    className="btn btn-sm btn-outline-secondary"
-                                    onClick={() => setPage(Math.min(totalPages - 1, page + 1))}
-                                    disabled={page >= totalPages - 1 || loading}
-                                >
-                                    Next <i className="fi-rr-angle-right"></i>
-                                </button>
-                            </div>
-                        </div>
-                    </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>

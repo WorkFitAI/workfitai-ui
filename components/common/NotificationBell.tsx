@@ -2,48 +2,33 @@
 
 import React, { useState, useEffect } from "react";
 import NotificationDropdown from "./NotificationDropdown";
-import { getUnreadCount } from "@/lib/notificationApi";
+import { useNotifications } from "@/hooks/useNotifications";
 
 const NotificationBell: React.FC = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
-    const [unreadCount, setUnreadCount] = useState(0);
     const [mounted, setMounted] = useState(false);
+
+    // Use WebSocket-enabled notifications hook
+    const {
+        unreadCount,
+        notifications,
+        isWebSocketConnected,
+        refreshUnreadCount,
+        updateNotification,
+    } = useNotifications();
 
     useEffect(() => {
         setMounted(true);
-        fetchUnreadCount();
-
-        // Poll for unread count every 30 seconds
-        const interval = setInterval(() => {
-            fetchUnreadCount();
-        }, 30000);
-
-        return () => clearInterval(interval);
     }, []);
-
-    const fetchUnreadCount = async () => {
-        try {
-            const response = await getUnreadCount();
-            if (response.success && response.data) {
-                setUnreadCount(response.data.count);
-            }
-        } catch (error) {
-            console.error("Error fetching unread count:", error);
-        }
-    };
 
     const handleNotificationRead = () => {
         // Refresh unread count when a notification is read
-        fetchUnreadCount();
+        refreshUnreadCount();
     };
 
     const toggleDropdown = () => {
         setIsDropdownOpen(!isDropdownOpen);
     };
-
-    if (!mounted) {
-        return null;
-    }
 
     return (
         <div style={{ position: "relative" }}>
@@ -60,6 +45,7 @@ const NotificationBell: React.FC = () => {
                     justifyContent: "center",
                 }}
                 aria-label="Notifications"
+                title={isWebSocketConnected ? "Real-time notifications enabled" : "Using polling mode"}
             >
                 <i
                     className="fi-rr-bell"
@@ -68,7 +54,7 @@ const NotificationBell: React.FC = () => {
                         color: "#374151",
                     }}
                 ></i>
-                {unreadCount > 0 && (
+                {mounted && unreadCount > 0 && (
                     <span
                         style={{
                             position: "absolute",
@@ -91,13 +77,33 @@ const NotificationBell: React.FC = () => {
                         {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                 )}
+                {/* WebSocket connection indicator */}
+                {mounted && isWebSocketConnected && (
+                    <span
+                        style={{
+                            position: "absolute",
+                            bottom: "0.25rem",
+                            right: "0.25rem",
+                            width: "0.5rem",
+                            height: "0.5rem",
+                            backgroundColor: "#10b981",
+                            borderRadius: "9999px",
+                            border: "2px solid white",
+                        }}
+                        title="Real-time connected"
+                    />
+                )}
             </button>
 
-            <NotificationDropdown
-                isOpen={isDropdownOpen}
-                onClose={() => setIsDropdownOpen(false)}
-                onNotificationRead={handleNotificationRead}
-            />
+            {mounted && (
+                <NotificationDropdown
+                    isOpen={isDropdownOpen}
+                    onClose={() => setIsDropdownOpen(false)}
+                    onNotificationRead={handleNotificationRead}
+                    notifications={notifications}
+                    updateNotification={updateNotification}
+                />
+            )}
         </div>
     );
 };

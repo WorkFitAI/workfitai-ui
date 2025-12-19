@@ -20,9 +20,11 @@ export default function RecentErrors({ minutes = 15 }: RecentErrorsProps) {
     const fetchErrors = async () => {
         try {
             const data = await monitoringApi.getRecentErrors(minutes);
-            setErrors(data);
+            // Ensure data is always an array
+            setErrors(Array.isArray(data) ? data : []);
         } catch (error) {
             console.error("Failed to fetch recent errors:", error);
+            setErrors([]); // Set empty array on error
         } finally {
             setLoading(false);
         }
@@ -60,7 +62,7 @@ export default function RecentErrors({ minutes = 15 }: RecentErrorsProps) {
         );
     }
 
-    if (errors.length === 0) {
+    if (!Array.isArray(errors) || errors.length === 0) {
         return (
             <div className="alert alert-success mb-0">
                 <i className="fi-rr-check-circle me-2"></i>
