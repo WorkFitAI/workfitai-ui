@@ -168,18 +168,22 @@ export function useNotifications(): UseNotificationsReturn {
             return; // Already polling
         }
 
-        console.log("[useNotifications] Starting polling fallback (30s interval)");
+        console.log("[useNotifications] Starting polling fallback (60s interval)");
 
         // Immediate fetch
         refreshUnreadCount();
 
-        // Poll every 30 seconds
+        // Poll every 60 seconds (optimized from 30s)
         pollingIntervalRef.current = setInterval(() => {
-            if (!isConnected && !hasWebSocketReceivedDataRef.current) {
+            // Only poll if WebSocket not connected AND page is visible
+            if (!isConnected &&
+                !hasWebSocketReceivedDataRef.current &&
+                typeof document !== 'undefined' &&
+                document.visibilityState === 'visible') {
                 console.log("[useNotifications] Polling for unread count...");
                 refreshUnreadCount();
             }
-        }, 30000);
+        }, 60000); // Increased from 30000 to reduce API calls
     }, [isConnected, refreshUnreadCount]);
 
     /**

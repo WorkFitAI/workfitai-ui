@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from "react";
 import NotificationDropdown from "./NotificationDropdown";
 import { useNotifications } from "@/hooks/useNotifications";
+import styles from "@/styles/NotificationBell.module.css";
 
 const NotificationBell: React.FC = () => {
     const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -22,8 +23,8 @@ const NotificationBell: React.FC = () => {
     }, []);
 
     const handleNotificationRead = () => {
-        // Refresh unread count when a notification is read
-        refreshUnreadCount();
+        // No need to refresh - WebSocket will push unread count update automatically
+        // Backend NotificationPersistenceService.markAsRead() already pushes update via WebSocket
     };
 
     const toggleDropdown = () => {
@@ -31,66 +32,24 @@ const NotificationBell: React.FC = () => {
     };
 
     return (
-        <div style={{ position: "relative" }}>
+        <div className={styles.bellContainer}>
             <button
                 onClick={toggleDropdown}
-                style={{
-                    background: "none",
-                    border: "none",
-                    cursor: "pointer",
-                    position: "relative",
-                    padding: "0.5rem",
-                    display: "flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                }}
+                className={styles.bellButton}
                 aria-label="Notifications"
                 title={isWebSocketConnected ? "Real-time notifications enabled" : "Using polling mode"}
             >
-                <i
-                    className="fi-rr-bell"
-                    style={{
-                        fontSize: "1.25rem",
-                        color: "#374151",
-                    }}
-                ></i>
+                <i className={`fi-rr-bell ${styles.bellIcon}`}></i>
                 {mounted && unreadCount > 0 && (
-                    <span
-                        style={{
-                            position: "absolute",
-                            top: "0.25rem",
-                            right: "0.25rem",
-                            backgroundColor: "#ef4444",
-                            color: "white",
-                            borderRadius: "9999px",
-                            padding: "0.125rem 0.375rem",
-                            fontSize: "0.625rem",
-                            fontWeight: 600,
-                            minWidth: "1.25rem",
-                            height: "1.25rem",
-                            display: "flex",
-                            alignItems: "center",
-                            justifyContent: "center",
-                            lineHeight: 1,
-                        }}
-                    >
+                    <span className={styles.badge}>
                         {unreadCount > 99 ? "99+" : unreadCount}
                     </span>
                 )}
                 {/* WebSocket connection indicator */}
-                {mounted && isWebSocketConnected && (
-                    <span
-                        style={{
-                            position: "absolute",
-                            bottom: "0.25rem",
-                            right: "0.25rem",
-                            width: "0.5rem",
-                            height: "0.5rem",
-                            backgroundColor: "#10b981",
-                            borderRadius: "9999px",
-                            border: "2px solid white",
-                        }}
-                        title="Real-time connected"
+                {mounted && (
+                    <span 
+                        className={`${styles.connectionIndicator} ${!isWebSocketConnected ? styles.disconnected : ''}`}
+                        title={isWebSocketConnected ? "Real-time connected" : "Polling mode"}
                     />
                 )}
             </button>

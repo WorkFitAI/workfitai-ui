@@ -225,12 +225,22 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     // Reconnect when token changes (e.g., token refresh)
     useEffect(() => {
         const handleStorageChange = (e: StorageEvent) => {
-            if (e.key === "accessToken" && e.newValue) {
+            if (e.key === "accessToken" && e.newValue && mountedRef.current) {
                 console.log("[WebSocket] Token refreshed, reconnecting...");
-                disconnect();
+
+                // Disconnect if currently connected
+                if (clientRef.current?.connected) {
+                    clientRef.current.deactivate();
+                }
+
+                // Reconnect after delay
                 setTimeout(() => {
-                    if (mountedRef.current) {
-                        connect();
+                    if (mountedRef.current && !clientRef.current?.connected) {
+                        const token = getAuthToken();
+                        if (token && clientRef.current) {
+                            clientRef.current.connectHeaders = { Authorization: `Bearer ${token}` };
+                            clientRef.current.activate();
+                        }
                     }
                 }, 1000);
             }
@@ -238,7 +248,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
         window.addEventListener("storage", handleStorageChange);
         return () => window.removeEventListener("storage", handleStorageChange);
-    }, [connect, disconnect]);
+        // Empty deps - listener only attached once to prevent re-runs
+    }, [getAuthToken]);
 
     return {
         client: clientRef.current,

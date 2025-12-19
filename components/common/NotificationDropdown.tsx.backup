@@ -34,7 +34,10 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     // Close dropdown when clicking outside
     useEffect(() => {
         const handleClickOutside = (event: MouseEvent) => {
-            if (dropdownRef.current && !dropdownRef.current.contains(event.target as Node)) {
+            if (
+                dropdownRef.current &&
+                !dropdownRef.current.contains(event.target as Node)
+            ) {
                 onClose();
             }
         };
@@ -55,7 +58,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             if (response.success) {
                 // Update local state
                 setNotifications((prev) =>
-                    prev.map((n) => (n.id === notification.id ? { ...n, read: true } : n))
+                    prev.map((n) =>
+                        n.id === notification.id ? { ...n, read: true } : n
+                    )
                 );
                 // Update parent state
                 updateNotification(notification.id, { read: true });
@@ -74,7 +79,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         const response = await markAllAsRead();
         if (response.success) {
             // Update local state
-            setNotifications((prev) => prev.map((n) => ({ ...n, read: true })));
+            setNotifications((prev) =>
+                prev.map((n) => ({ ...n, read: true }))
+            );
             // Update parent state for all notifications
             notifications.forEach((n) => {
                 if (!n.read) {
@@ -95,7 +102,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             case "application_rejected":
                 return "fi-rr-cross-circle";
             case "account_approved":
-            case "ACCOUNT_ACTIVATED":
+            case "account_activated":
                 return "fi-rr-user-check";
             case "job_posted":
             case "job_matching":
@@ -147,7 +154,9 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
             {/* Notification List */}
             <div className={styles.notificationList}>
                 {loading ? (
-                    <div className={styles.loading}>Loading...</div>
+                    <div className={styles.loading}>
+                        Loading...
+                    </div>
                 ) : notifications.length === 0 ? (
                     <div className={styles.emptyState}>
                         <i className="fi-rr-bell-slash"></i>
@@ -161,29 +170,92 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                         <div
                             key={notification.id}
                             onClick={() => handleNotificationClick(notification)}
-                            className={`${styles.notificationItem} ${!notification.read ? styles.unread : ""}`}
+                            className={`${styles.notificationItem} ${!notification.read ? styles.unread : ''}`}
                         >
                             <div className={styles.notificationContent}>
                                 <div
-                                    className={`${styles.iconWrapper} ${
-                                        notification.read ? styles.read : styles.unread
-                                    }`}
+                                    style={{
+                                        width: "40px",
+                                        height: "40px",
+                                        borderRadius: "50%",
+                                        backgroundColor: notification.read
+                                            ? "#f3f4f6"
+                                            : "#dbeafe",
+                                        display: "flex",
+                                        alignItems: "center",
+                                        justifyContent: "center",
+                                        flexShrink: 0,
+                                    }}
                                 >
-                                    <i className={getNotificationIcon(notification.type)}></i>
+                                    <i
+                                        className={getNotificationIcon(
+                                            notification.type
+                                        )}
+                                        style={{
+                                            fontSize: "1.25rem",
+                                            color: notification.read
+                                                ? "#6b7280"
+                                                : "#3b82f6",
+                                        }}
+                                    ></i>
                                 </div>
-                                <div className={styles.textContent}>
-                                    <div className={styles.titleRow}>
+                                <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div
+                                        style={{
+                                            display: "flex",
+                                            justifyContent: "space-between",
+                                            alignItems: "start",
+                                            marginBottom: "0.25rem",
+                                        }}
+                                    >
                                         <h6
-                                            className={`${styles.title} ${
-                                                notification.read ? styles.read : styles.unread
-                                            }`}
+                                            style={{
+                                                margin: 0,
+                                                fontSize: "0.875rem",
+                                                fontWeight: notification.read
+                                                    ? 500
+                                                    : 600,
+                                                color: "#111827",
+                                            }}
                                         >
                                             {notification.title}
                                         </h6>
-                                        {!notification.read && <div className={styles.unreadDot}></div>}
+                                        {!notification.read && (
+                                            <div
+                                                style={{
+                                                    width: "8px",
+                                                    height: "8px",
+                                                    borderRadius: "50%",
+                                                    backgroundColor: "#3b82f6",
+                                                    flexShrink: 0,
+                                                    marginLeft: "0.5rem",
+                                                }}
+                                            ></div>
+                                        )}
                                     </div>
-                                    <p className={styles.message}>{notification.message}</p>
-                                    <p className={styles.timestamp}>{formatTimeAgo(notification.createdAt)}</p>
+                                    <p
+                                        style={{
+                                            margin: 0,
+                                            fontSize: "0.8125rem",
+                                            color: "#6b7280",
+                                            overflow: "hidden",
+                                            textOverflow: "ellipsis",
+                                            display: "-webkit-box",
+                                            WebkitLineClamp: 2,
+                                            WebkitBoxOrient: "vertical",
+                                        }}
+                                    >
+                                        {notification.message}
+                                    </p>
+                                    <p
+                                        style={{
+                                            margin: "0.25rem 0 0 0",
+                                            fontSize: "0.75rem",
+                                            color: "#9ca3af",
+                                        }}
+                                    >
+                                        {formatTimeAgo(notification.createdAt)}
+                                    </p>
                                 </div>
                             </div>
                         </div>
