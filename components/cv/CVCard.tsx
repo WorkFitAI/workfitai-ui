@@ -22,10 +22,12 @@ const CVCard = ({
     // Remove the duplicate PM/AM and parse
     const cleanedDate = dateString.replace(/\s+(AM|PM)$/, "");
     const date = new Date(cleanedDate);
-    
+
     // If still invalid, try manual parsing
     if (isNaN(date.getTime())) {
-      const match = dateString.match(/^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/);
+      const match = dateString.match(
+        /^(\d{4})-(\d{2})-(\d{2})\s+(\d{2}):(\d{2}):(\d{2})/
+      );
       if (match) {
         const [, year, month, day, hour, minute, second] = match;
         const parsedDate = new Date(
@@ -46,7 +48,7 @@ const CVCard = ({
       }
       return dateString; // Fallback to original string
     }
-    
+
     return date.toLocaleDateString("en-US", {
       year: "numeric",
       month: "short",
@@ -155,7 +157,6 @@ const CVCard = ({
 
           <div className="col-lg-3 text-lg-end">
             <div className="d-flex flex-lg-column gap-3">
-            
               {/* Download Button */}
               <button
                 onClick={handleDownload}
