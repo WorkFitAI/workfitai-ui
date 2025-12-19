@@ -5,6 +5,11 @@ export function middleware(request: NextRequest) {
   // Check for access token in cookies (this is where we'd check in production)
   // For now, we'll rely on client-side checks in the pages themselves
 
+  console.log("Middleware running for request:", request.url);
+  console.log("Cookies:", request.cookies);
+
+  console.log("Full Header Value:", request.headers.get("referer"));
+
   const { pathname } = request.nextUrl;
 
   // Allow auth pages

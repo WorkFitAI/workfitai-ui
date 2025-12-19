@@ -13,22 +13,17 @@ interface TableRowProps {
   onSelect: (checked: boolean) => void;
   onRowAction?: (action: string, applicationId: string) => void;
   onStatusUpdated?: () => void;
+  hrList?: string[];
 }
 
 const TableRow = ({
   application,
   columns,
   selected,
-  onSelect,
   onRowAction,
   onStatusUpdated,
+  hrList = [],
 }: TableRowProps): React.ReactElement => {
-  const handleCheckboxChange = (
-    e: React.ChangeEvent<HTMLInputElement>
-  ): void => {
-    onSelect(e.target.checked);
-  };
-
   const formatDate = (dateString: string): string => {
     return new Date(dateString).toLocaleDateString("en-US", {
       month: "short",
@@ -99,6 +94,7 @@ const TableRow = ({
             application={application}
             onAction={onRowAction}
             onStatusUpdated={onStatusUpdated}
+            hrList={hrList}
           />
         );
 
@@ -109,25 +105,6 @@ const TableRow = ({
 
   return (
     <tr className={selected ? "selected" : ""}>
-      <td className="checkbox-cell">
-        <label className="checkbox-wrapper">
-          <input
-            type="checkbox"
-            checked={selected}
-            onChange={handleCheckboxChange}
-            aria-label={`Select ${application.username}`}
-          />
-          <span className="checkbox-custom">
-            <svg viewBox="0 0 20 20" fill="currentColor">
-              <path
-                fillRule="evenodd"
-                d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"
-                clipRule="evenodd"
-              />
-            </svg>
-          </span>
-        </label>
-      </td>
       {columns.map((column) => (
         <td key={column.id} className={column.align ? column.align : ""}>
           {renderCellContent(column)}

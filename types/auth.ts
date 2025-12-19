@@ -53,4 +53,5 @@ export interface LoginResponse {
   expiryInMinutes: number;
   username: string;
   roles: string[];
+  companyId?: string;
 }

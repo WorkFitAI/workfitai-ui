@@ -1,22 +1,22 @@
 "use client";
 
-import React, { useEffect } from 'react';
-import { useAppDispatch, useAppSelector } from '@/redux/hooks';
+import React, { useEffect } from "react";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import {
   fetchMyApplications,
   selectApplications,
   selectApplicationMeta,
-  selectApplicationLoading
-} from '@/redux/features/application/applicationSlice';
+  selectApplicationLoading,
+} from "@/redux/features/application/applicationSlice";
 import {
   selectApplicationStatus,
   selectApplicationPage,
   selectApplicationSize,
-  setPage
-} from '@/redux/features/application/applicationFilterSlice';
-import ApplicationCard from '@/components/application/ApplicationCard';
-import ApplicationFilterSidebar from '@/components/application/filter/ApplicationFilterSidebar';
-import Pagination from '@/components/job/Pagination/Pagination';
+  setPage,
+} from "@/redux/features/application/applicationFilterSlice";
+import ApplicationCard from "@/components/application/ApplicationCard";
+import ApplicationFilterSidebar from "@/components/application/filter/ApplicationFilterSidebar";
+import Pagination from "@/components/job/Pagination/Pagination";
 
 export default function MyApplicationsPage(): React.ReactElement {
   const dispatch = useAppDispatch();
@@ -49,7 +49,8 @@ export default function MyApplicationsPage(): React.ReactElement {
             <div className="d-flex justify-content-between align-items-center mb-4">
               <h3>My Applications</h3>
               <span className="text-muted">
-                {meta.totalItems} application{meta.totalItems !== 1 ? "s" : ""}
+                {meta.totalElements} application
+                {meta.totalElements !== 1 ? "s" : ""}
               </span>
             </div>
 
