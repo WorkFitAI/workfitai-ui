@@ -1,6 +1,7 @@
 import { getJobs, putJob, deleteJob } from "@/lib/jobApi";
-import { ReportedJobResponse } from "@/types/job/report";
+import { ReportedJobResponse, ReqCreateReport } from "@/types/job/report";
 import { ReportStatus } from "@/types/job/report";
+import { jobRequestFormData } from "@/lib/jobApi";
 
 export const getReportedJobs = async (params: {
     page?: number;        // FE: 1-based
@@ -34,4 +35,20 @@ export const updateReportedJobStatus = async (
 
 export const deleteReportedJob = async (jobId: string) => {
     return deleteJob<void>(`/admin/jobs/${jobId}`);
+};
+
+export const createReport = async (data: ReqCreateReport, files?: File[]) => {
+    const formData = new FormData();
+
+    // Gói JSON data thành Blob để gửi dưới dạng multipart/form-data
+    formData.append(
+        "data",
+        new Blob([JSON.stringify(data)], { type: "application/json" })
+    );
+
+    // Thêm file nếu có
+    files?.forEach((file) => formData.append("files", file));
+
+    // Gọi API qua jobRequestFormData để tự xử lý token
+    return jobRequestFormData<void>("/candidate/reports", formData);
 };

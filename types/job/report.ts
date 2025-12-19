@@ -31,3 +31,8 @@ export interface ReportedJobResponse {
   };
   result: ReportedJob[];
 }
+
+export interface ReqCreateReport {
+  reportContent: string;
+  jobId: string;
+}

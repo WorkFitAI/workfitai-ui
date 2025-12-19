@@ -345,63 +345,62 @@
     display: inline-flex;
     align-items: center;
     gap: 8px;
-    padding: 8px 16px;
-    border-radius: 50px;
+    padding: 2px 16px;
+    border-radius: 10px;
     font-size: 12px;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.5px;
     white-space: nowrap;
-    border: 2px solid transparent;
     transition: all 0.2s ease;
 }
 
 .status-badge--draft {
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-    color: #6b7280;
-    border-color: #e5e7eb;
+    background-color: rgb(246.0307692308, 247.3846153846, 247.4692307692);
+    color: rgb(108.8538461538, 128.4230769231, 129.6461538462);
+    /* border: 1px solid #95A5A6; */
 }
 
 .status-badge--applied {
-    background: linear-gradient(135deg, #dbeafe 0%, #bfdbfe 100%);
-    color: #1e40af;
-    border-color: #93c5fd;
+    background-color: rgb(246.9309623431, 250.9058577406, 253.5690376569);
+    color: rgb(33.1380753138, 125.1882845188, 186.8619246862);
+    /* border: 1px solid #3498DB; */
 }
 
 .status-badge--reviewing {
-    background: linear-gradient(135deg, #fef3c7 0%, #fde68a 100%);
-    color: #d97706;
-    border-color: #fbbf24;
+    background-color: rgb(252.8313253012, 237.1084337349, 212.1686746988);
+    color: rgb(175.6084337349, 111.1445783133, 8.8915662651);
+    /* border: 1px solid #F39C12; */
 }
 
 .status-badge--interview {
-    background: linear-gradient(135deg, #e0e7ff 0%, #c7d2fe 100%);
-    color: #4f46e5;
-    border-color: #a5b4fc;
+    background-color: rgb(240.3556485356, 230.690376569, 244.309623431);
+    color: rgb(127.949790795, 67.1966527197, 152.8033472803);
+    /* border: 1px solid #9B59B6; */
 }
 
 .status-badge--offer {
-    background: linear-gradient(135deg, #f3e8ff 0%, #e9d5ff 100%);
-    color: #7c3aed;
-    border-color: #d8b4fe;
+    background-color: rgb(230.112, 249.388, 238.286);
+    color: rgb(31.924, 141.576, 78.422);
+    /* border: 1px solid #2ECC71; */
 }
 
 .status-badge--hired {
-    background: linear-gradient(135deg, #d1fae5 0%, #a7f3d0 100%);
-    color: #047857;
-    border-color: #6ee7b7;
+    background-color: rgb(220.6901408451, 247.3098591549, 231.9295774648);
+    color: rgb(29.661971831, 132.338028169, 73.014084507);
+    /* border: 1px solid #27AE60; */
 }
 
 .status-badge--rejected {
-    background: linear-gradient(135deg, #fee2e2 0%, #fecaca 100%);
-    color: #dc2626;
-    border-color: #fca5a5;
+    background-color: rgb(253.3561643836, 242.7397260274, 241.6438356164);
+    color: rgb(213.698630137, 43.8356164384, 26.301369863);
+    /* border: 1px solid #E74C3C; */
 }
 
 .status-badge--withdrawn {
-    background: linear-gradient(135deg, #f3f4f6 0%, #e5e7eb 100%);
-    color: #6b7280;
-    border-color: #d1d5db;
+    background-color: rgb(234.9008264463, 236.9421487603, 237.0991735537);
+    color: rgb(90.2107438017, 100.4979338843, 101.2892561983);
+    /* border: 1px solid #7F8C8D; */
 }
 
 .status-dot {

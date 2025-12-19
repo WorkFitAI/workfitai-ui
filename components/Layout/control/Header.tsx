@@ -4,7 +4,10 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
-import { logoutUser, selectAuthUser } from "@/redux/features/auth/authSlice";
+import {
+  logoutUser,
+  selectAuthUser
+} from "@/redux/features/auth/authSlice";
 import useHasHydrated from "@/util/useHasHydrated";
 import Avatar from "@/components/common/Avatar";
 import React from "react";
@@ -99,9 +102,9 @@ const getRoleMeta = (role?: string): RoleMeta => {
     };
   }
 
-  if (normalized.includes("RECRUITER")) {
+  if (normalized.includes("HR")) {
     return {
-      label: "Recruiter",
+      label: "HR",
       accent: "#0F973D",
       shadow: "rgba(15, 151, 61, 0.22)",
       background: "rgba(15, 151, 61, 0.1)",
@@ -120,6 +123,8 @@ const getRoleMeta = (role?: string): RoleMeta => {
 
 export default function Header() {
   const [isSticky, setIsSticky] = useState<boolean>(false);
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+  const [isLoggingOut, setIsLoggingOut] = useState(false);
   const hasHydrated = useHasHydrated();
   const user = useAppSelector(selectAuthUser);
   const dispatch = useAppDispatch();
@@ -142,8 +147,16 @@ export default function Header() {
   }, []);
 
   const handleLogout = async () => {
-    await dispatch(logoutUser());
-    router.push("/signin");
+    setIsLoggingOut(true);
+    try {
+      const result = await dispatch(logoutUser());
+      if (logoutUser.fulfilled.match(result)) {
+        setIsMenuOpen(false);
+        router.push("/signin");
+      }
+    } finally {
+      setIsLoggingOut(false);
+    }
   };
 
   return (

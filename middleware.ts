@@ -13,6 +13,9 @@ import type { NextRequest } from "next/server";
  * Middleware currently only handles basic routing, not role-based protection.
  */
 export function middleware(request: NextRequest) {
+  // Check for access token in cookies (this is where we'd check in production)
+  // For now, we'll rely on client-side checks in the pages themselves
+
   const { pathname } = request.nextUrl;
 
   // Allow auth pages and public routes

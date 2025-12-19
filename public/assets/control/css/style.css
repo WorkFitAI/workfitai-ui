@@ -802,7 +802,7 @@ iframe {
 
 .container {
   max-width: 100%;
-  padding: 0px;
+  padding: 0px 30px 0px 0px;
 }
 
 .border-bottom {
@@ -2594,7 +2594,7 @@ select {
 .select-box {
   display: flex;
 }
-
+/*
 .status-badge {
   display: inline-flex;
   align-items: center;
@@ -2622,8 +2622,12 @@ select {
   padding: 8px 16px;
   font-size: 14px;
 }
+<<<<<<< HEAD
 
 .status-badge--draft {
+=======
+ .status-badge--draft {
+>>>>>>> origin/dev
   background-color: rgb(246.0307692308, 247.3846153846, 247.4692307692);
   color: rgb(108.8538461538, 128.4230769231, 129.6461538462);
   border: 1px solid #95A5A6;
@@ -2669,7 +2673,7 @@ select {
   background-color: rgb(234.9008264463, 236.9421487603, 237.0991735537);
   color: rgb(90.2107438017, 100.4979338843, 101.2892561983);
   border: 1px solid #7F8C8D;
-}
+} */
 
 .filter-chips {
   display: flex;

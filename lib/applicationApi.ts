@@ -14,6 +14,8 @@ import type {
   SystemStats,
   AuditLog,
   StatusChange,
+  HRUser,
+  HRActivitiesResponse,
 } from "@/types/application/application";
 import {
   handle401WithTokenRefresh,
@@ -347,6 +349,12 @@ export const getUnassignedApplications = async (params: {
   );
 };
 
+export const getCompanyHRUsers = async (
+  companyId: string
+): Promise<HRUser[]> => {
+  return applicationRequest<HRUser[]>(`/company/${companyId}/hr-users`);
+};
+
 // Admin endpoints
 export const getAllApplications = async (params: {
   page: number;
@@ -459,6 +467,7 @@ export const getHRDashboardStats = async (): Promise<DashboardStats> => {
 export const getManagerStats = async (
   companyId: string
 ): Promise<ManagerStats> => {
+  // applicationRequest already unwraps data.data
   return applicationRequest<ManagerStats>(
     `/manager/stats?companyId=${companyId}`
   );
@@ -545,4 +554,23 @@ export const exportApplications = async (request: {
   }
 
   return response.blob();
+};
+
+/**
+ * Get Company HR Activities (Audit Log)
+ * GET /application/company/{companyId}/hr-activities
+ */
+export const getHRActivities = async (
+  companyId: string,
+  page: number = 0,
+  size: number = 20
+): Promise<HRActivitiesResponse> => {
+  const query = new URLSearchParams();
+  query.append("page", page.toString());
+  query.append("size", size.toString());
+
+  // applicationRequest already unwraps data.data, so we get { items: [...], meta: {...} } directly
+  return applicationRequest<HRActivitiesResponse>(
+    `/company/${companyId}/hr-activities?${query}`
+  );
 };

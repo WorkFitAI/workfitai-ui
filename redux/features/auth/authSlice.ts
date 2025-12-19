@@ -108,6 +108,7 @@ interface AuthResponseData {
   expiryInMinutes: number;
   username: string;
   roles: string[];
+  companyId?: string;
 }
 
 export interface StoredSession {
@@ -115,6 +116,7 @@ export interface StoredSession {
   expiryTime: number | null; // Absolute timestamp (ms)
   username: string;
   roles: string[];
+  companyId?: string;
 }
 
 interface AuthSuccess {
@@ -196,6 +198,7 @@ const toStoredSession = (auth: AuthSuccess): StoredSession => ({
   expiryTime: auth.expiryTime,
   username: auth.user?.username ?? "",
   roles: auth.user?.roles ?? [],
+  companyId: auth.user?.companyId,
 });
 
 export const getUserFromStoredSession = (
@@ -212,6 +215,7 @@ export const getUserFromStoredSession = (
     username: session.username,
     roles,
     role,
+    companyId: session.companyId,
   };
 };
 
@@ -237,8 +241,8 @@ const calculateExpiryTime = (expiryInMinutes: number | undefined): number | null
   ) {
     return null; // No expiry or invalid
   }
-  // Convert minutes to absolute timestamp
-  return Date.now() + (expiryInMinutes * 60 * 1000);
+  // Convert milisecond to absolute timestamp
+  return Date.now() + expiryInMinutes;
 };
 
 const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
@@ -246,6 +250,7 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
 
   const username = data.username;
   const roles = data.roles;
+  const companyId = data.companyId;
 
   // Derive role from roles array
   let role: string | undefined = undefined;
@@ -254,7 +259,7 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
   else if (roles.includes("ROLE_HR_MANAGER")) role = "HR_MANAGER";
   else if (roles.includes("ROLE_ADMIN")) role = "ADMIN";
 
-  return { username, role, roles };
+  return { username, role, roles, companyId };
 };
 
 const parseAuthResponse = (

@@ -42,7 +42,8 @@ export default function FormField<T extends object>({
       {options ? (
         <select
           name={name as string}
-          className="form-select form-select-lg"
+          className="form-select form-select-lg ml-0"
+          style={{ fontSize: "14px", borderRadius: "8px" }}
           value={value as string}
           onChange={onChange}
           required={required}
@@ -57,7 +58,8 @@ export default function FormField<T extends object>({
       ) : rows ? (
         <textarea
           name={name as string}
-          className="form-control"
+          className="form-control ml-0"
+          style={{ fontSize: "14px", borderRadius: "8px" }}
           rows={rows}
           value={value as string}
           onChange={onChange}
@@ -68,7 +70,8 @@ export default function FormField<T extends object>({
         <input
           name={name as string}
           type={type}
-          className="form-control"
+          className="form-control ml-0"
+          style={{ fontSize: "14px", borderRadius: "8px" }}
           value={value as string | number}
           onChange={onChange}
           placeholder={placeholder}
