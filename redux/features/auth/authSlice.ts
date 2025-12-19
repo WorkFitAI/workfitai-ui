@@ -688,6 +688,7 @@ const authSlice = createSlice({
         state.errorType = null;
       })
       .addCase(logoutUser.fulfilled, (state) => {
+        // Reset ALL state to initialAuthState to ensure complete cleanup
         state.status = "idle";
         state.accessToken = null;
         state.expiryTime = null;
@@ -695,6 +696,11 @@ const authSlice = createSlice({
         state.error = null;
         state.errorType = null;
         state.message = "Logged out";
+        // Clear role-specific state that was previously leaked
+        state.pendingApproval = false;
+        state.approvalType = null;
+        state.registrationRole = null;
+        state.userId = null;
       });
   },
 });

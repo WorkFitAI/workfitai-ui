@@ -365,8 +365,7 @@ const Sidebar = ({ openClass }: SidebarProps) => {
                 </ul>
               </div>
               <div className="site-copyright">
-                Copyright 2022 © workfitAI. <br />
-                Designed by AliThemes.
+                Copyright 2025 © workfitAI.
               </div>
             </div>
           </div>
