@@ -3864,6 +3864,7 @@ select {
 .header .main-header {
   display: flex;
   align-items: center;
+  margin-left: 20px;
 }
 
 .header .main-header .header-right {

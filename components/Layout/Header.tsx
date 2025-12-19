@@ -806,8 +806,7 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                 </ul>
               </div>
               <div className="site-copyright">
-                WorkfitAI. <br />
-                Designed by AliThemes.
+                WorkfitAI.
               </div>
             </div>
           </div>

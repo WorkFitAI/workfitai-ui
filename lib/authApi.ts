@@ -71,8 +71,8 @@ export const authRequest = async <T>(
     headers["Authorization"] = `Bearer ${accessToken}`;
   }
 
-  // Determine method: POST for refresh endpoint or when body exists, otherwise GET
-  const method = endpoint === "/refresh" || body ? "POST" : "GET";
+  // Determine method: POST for refresh/logout endpoints or when body exists, otherwise GET
+  const method = endpoint === "/refresh" || endpoint === "/logout" || body ? "POST" : "GET";
 
   const config: RequestInit = {
     method,

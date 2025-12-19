@@ -152,7 +152,7 @@ export default function Header() {
       const result = await dispatch(logoutUser());
       if (logoutUser.fulfilled.match(result)) {
         setIsMenuOpen(false);
-        router.push("/signin");
+        window.location.href = "/signin";
       }
     } finally {
       setIsLoggingOut(false);
