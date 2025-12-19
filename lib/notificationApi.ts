@@ -1,4 +1,3 @@
-import { env } from "process";
 import {
     getCurrentAccessToken,
     handle401WithTokenRefresh,
@@ -9,7 +8,7 @@ import type {
     UnreadCountResponse,
 } from "@/types/notification";
 
-const NOTIFICATION_SERVICE_URL = env.NEXT_PUBLIC_NOTIFICATION_BASE_URL || "http://localhost:9085/notification";
+const NOTIFICATION_SERVICE_URL = process.env.NEXT_PUBLIC_NOTIFICATION_BASE_URL || "http://localhost:9085/notification";
 
 interface ApiResponse<T> {
     success: boolean;

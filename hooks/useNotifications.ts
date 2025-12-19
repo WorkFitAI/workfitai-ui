@@ -40,7 +40,7 @@ export function useNotifications(): UseNotificationsReturn {
     const { subscribe, unsubscribe, isConnected } = useWebSocket({
         autoConnect: isMounted, // Only auto-connect after component mounts
         onConnect: () => {
-            console.log("[useNotifications] WebSocket connected, stopping polling");
+            console.log("[useNotifications] ✅ WebSocket connected, stopping polling");
             stopPolling();
 
             // Subscribe to notification streams
@@ -48,6 +48,7 @@ export function useNotifications(): UseNotificationsReturn {
             subscribe("/user/queue/unread-count", handleUnreadCountUpdate);
 
             // Fetch initial data
+            console.log("[useNotifications] 📥 Fetching initial data...");
             loadNotifications();
             refreshUnreadCount();
         },
@@ -106,12 +107,17 @@ export function useNotifications(): UseNotificationsReturn {
     const loadNotifications = useCallback(async (page: number = 0, size: number = 20) => {
         setIsLoading(true);
         try {
+            console.log("[useNotifications] 📋 Loading notifications page", page, "size", size);
             const response = await fetchNotifications(page, size);
+            console.log("[useNotifications] 📋 Notifications response:", response);
             if (response.success && response.data) {
+                console.log("[useNotifications] ✅ Loaded", response.data.content.length, "notifications");
                 setNotifications(response.data.content);
+            } else {
+                console.error("[useNotifications] ❌ Failed to load notifications:", response.message);
             }
         } catch (error) {
-            console.error("[useNotifications] Error loading notifications:", error);
+            console.error("[useNotifications] ❌ Error loading notifications:", error);
         } finally {
             setIsLoading(false);
         }
@@ -122,12 +128,16 @@ export function useNotifications(): UseNotificationsReturn {
      */
     const refreshUnreadCount = useCallback(async () => {
         try {
+            console.log("[useNotifications] 🔄 Refreshing unread count...");
             const response = await fetchUnreadCount();
+            console.log("[useNotifications] 📊 Unread count response:", response);
             if (response.success && response.data) {
                 setUnreadCount(response.data.count);
+            } else {
+                console.error("[useNotifications] ❌ Failed to get unread count:", response.message);
             }
         } catch (error) {
-            console.error("[useNotifications] Error fetching unread count:", error);
+            console.error("[useNotifications] ❌ Error refreshing unread count:", error);
         }
     }, []);
 

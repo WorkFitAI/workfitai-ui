@@ -165,18 +165,16 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                         >
                             <div className={styles.notificationContent}>
                                 <div
-                                    className={`${styles.iconWrapper} ${
-                                        notification.read ? styles.read : styles.unread
-                                    }`}
+                                    className={`${styles.iconWrapper} ${notification.read ? styles.read : styles.unread
+                                        }`}
                                 >
                                     <i className={getNotificationIcon(notification.type)}></i>
                                 </div>
                                 <div className={styles.textContent}>
                                     <div className={styles.titleRow}>
                                         <h6
-                                            className={`${styles.title} ${
-                                                notification.read ? styles.read : styles.unread
-                                            }`}
+                                            className={`${styles.title} ${notification.read ? styles.read : styles.unread
+                                                }`}
                                         >
                                             {notification.title}
                                         </h6>

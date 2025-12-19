@@ -47,7 +47,7 @@ const NotificationBell: React.FC = () => {
                 )}
                 {/* WebSocket connection indicator */}
                 {mounted && (
-                    <span 
+                    <span
                         className={`${styles.connectionIndicator} ${!isWebSocketConnected ? styles.disconnected : ''}`}
                         title={isWebSocketConnected ? "Real-time connected" : "Polling mode"}
                     />
