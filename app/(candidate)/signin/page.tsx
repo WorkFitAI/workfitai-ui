@@ -59,11 +59,11 @@ function SigninContent() {
   useEffect(() => {
     if (accessToken && roles.length > 0) {
       if (roles.includes("ADMIN")) {
-        router.replace("/admin");
+        document.location.href = "/admin";
       } else if (roles.includes("HR_MANAGER")) {
-        router.replace("/hr-manager");
+        document.location.href = "/hr-manager";
       } else if (roles.includes("HR")) {
-        router.replace("/hr/applications");
+        document.location.href = "/hr/applications";
       } else {
         router.replace("/");
       }

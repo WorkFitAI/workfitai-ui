@@ -108,189 +108,32 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
             <div className="header-nav">
               <nav className="nav-main-menu">
                 <ul className="main-menu">
-                  <li className="has-children">
+                  <li>
                     <Link href="/">
                       <span className="active">Home</span>
                     </Link>
-
-                    <ul className="sub-menu">
-                      <li>
-                        <Link href="/">
-                          <span>Home 1</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/index-2">
-                          <span>Home 2</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/index-3">
-                          <span>Home 3</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/index-4">
-                          <span>Home 4</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/index-5">
-                          <span>Home 5</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/index-6">
-                          <span>Home 6</span>
-                        </Link>
-                      </li>
-                    </ul>
-                  </li>
-                  <li className="has-children">
-                    <Link href="/jobs-grid">
-                      <span>Find a Job</span>
-                    </Link>
-
-                    <ul className="sub-menu">
-                      <li>
-                        <Link href="/jobs-grid">
-                          <span>Jobs Grid</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/jobs-list">
-                          <span>Jobs List</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/job-details">
-                          <span>Jobs Details</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/job-details-2">
-                          <span>Jobs Details 2 </span>
-                        </Link>
-                      </li>
-                    </ul>
-                  </li>
-                  <li className="has-children">
-                    <Link href="/companies-grid">
-                      <span>Recruiters</span>
-                    </Link>
-
-                    <ul className="sub-menu">
-                      <li>
-                        <Link href="/companies-grid">
-                          <span>Recruiters</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/company-details">
-                          <span>Company Details</span>
-                        </Link>
-                      </li>
-                    </ul>
-                  </li>
-                  <li className="has-children">
-                    <Link href="/candidates-grid">
-                      <span>Candidates</span>
-                    </Link>
-
-                    <ul className="sub-menu">
-                      <li>
-                        <Link href="/candidates-grid">
-                          <span>Candidates Grid</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/candidate-details">
-                          <span>Candidate Details</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/candidate-profile">
-                          <span>Candidate Profile</span>
-                        </Link>
-                      </li>
-                    </ul>
-                  </li>
-                  <li className="has-children">
-                    <Link href="/blog-grid">
-                      <span>Pages</span>
-                    </Link>
-
-                    <ul className="sub-menu">
-                      <li>
-                        <Link href="/page-about">
-                          <span>About Us</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/page-pricing">
-                          <span>Pricing Plan</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/page-contact">
-                          <span>Contact Us</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/register">
-                          <span>Register</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/signin">
-                          <span>Signin</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/reset-password">
-                          <span>Reset Password</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/page-content-protected">
-                          <span>Content Protected</span>
-                        </Link>
-                      </li>
-                    </ul>
-                  </li>
-                  <li className="has-children">
-                    <Link href="/blog-grid">
-                      <span>Blog</span>
-                    </Link>
-
-                    <ul className="sub-menu">
-                      <li>
-                        <Link href="/blog-grid">
-                          <span>Blog Grid</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/blog-grid-2">
-                          <span>Blog Grid 2</span>
-                        </Link>
-                      </li>
-                      <li>
-                        <Link href="/blog-details">
-                          <span>Blog Single</span>
-                        </Link>
-                      </li>
-                    </ul>
                   </li>
                   <li>
-                    <Link href="/page-contact">
-                      <span>Contact</span>
+                    <Link href="/jobs-list">
+                      <span>Jobs List</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/my-applications">
+                      <span>My Applications</span>
+                    </Link>
+                  </li>
+                  <li>
+                    <Link href="/my-cvs">
+                      <span>My CVs</span>
                     </Link>
                   </li>
                 </ul>
               </nav>
               <div
-                className={`burger-icon burger-icon-white ${openClass && "burger-close"
-                  }`}
+                className={`burger-icon burger-icon-white ${
+                  openClass && "burger-close"
+                }`}
                 onClick={() => {
                   handleOpen();
                   handleRemove();
@@ -303,12 +146,58 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
             </div>
             <div className="header-right" suppressHydrationWarning>
               {displayUser ? (
+<<<<<<< Updated upstream
+                <div className="header-user" ref={menuRef}>
+                  <button
+                    type="button"
+                    className={`header-user__button ${isMenuOpen ? "is-open" : ""}`}
+                    onClick={() => setIsMenuOpen((open) => !open)}
+                    aria-haspopup="menu"
+                    aria-expanded={isMenuOpen}
+                  >
+                    <span className="header-user__avatar">
+                      <Avatar
+                        src={displayUser?.avatarUrl}
+                        alt={displayName}
+                        username={displayUser?.username}
+                        size={40}
+                      />
+                    </span>
+                    <span className="header-user__meta">
+                      <span className="header-user__name">{displayName}</span>
+                      {role ? <span className="header-user__role">{role}</span> : null}
+                    </span>
+                    <span className={`fi-rr-angle-small-${isMenuOpen ? "up" : "down"}`} aria-hidden="true" />
+                  </button>
+                  {isMenuOpen ? (
+                    <div className="header-user__dropdown" role="menu">
+                      <Link href="/profile" className="header-user__item" onClick={closeMenu}>
+                        <span>Hồ sơ</span>
+                      </Link>
+                      <button
+                        type="button"
+                        className="header-user__item header-user__item--action"
+                        onClick={handleLogout}
+                        disabled={isLoggingOut}
+                      >
+                        {isLoggingOut ? "Đang đăng xuất..." : "Đăng xuất"}
+                      </button>
+                    </div>
+                  ) : null}
+                </div>
+=======
                 <>
                   <NotificationBell />
-                  <div className="header-user" ref={menuRef} style={{ marginLeft: '1rem' }}>
+                  <div
+                    className="header-user"
+                    ref={menuRef}
+                    style={{ marginLeft: "1rem" }}
+                  >
                     <button
                       type="button"
-                      className={`header-user__button ${isMenuOpen ? "is-open" : ""}`}
+                      className={`header-user__button ${
+                        isMenuOpen ? "is-open" : ""
+                      }`}
                       onClick={() => setIsMenuOpen((open) => !open)}
                       aria-haspopup="menu"
                       aria-expanded={isMenuOpen}
@@ -323,13 +212,24 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                       </span>
                       <span className="header-user__meta">
                         <span className="header-user__name">{displayName}</span>
-                        {role ? <span className="header-user__role">{role}</span> : null}
+                        {role ? (
+                          <span className="header-user__role">{role}</span>
+                        ) : null}
                       </span>
-                      <span className={`fi-rr-angle-small-${isMenuOpen ? "up" : "down"}`} aria-hidden="true" />
+                      <span
+                        className={`fi-rr-angle-small-${
+                          isMenuOpen ? "up" : "down"
+                        }`}
+                        aria-hidden="true"
+                      />
                     </button>
                     {isMenuOpen ? (
                       <div className="header-user__dropdown" role="menu">
-                        <Link href="/profile" className="header-user__item" onClick={closeMenu}>
+                        <Link
+                          href="/profile"
+                          className="header-user__item"
+                          onClick={closeMenu}
+                        >
                           <span>Hồ sơ</span>
                         </Link>
                         <button
@@ -344,6 +244,7 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                     ) : null}
                   </div>
                 </>
+>>>>>>> Stashed changes
               ) : (
                 <div className="block-signin">
                   <Link href="register">
@@ -805,9 +706,13 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                   </li>
                 </ul>
               </div>
+<<<<<<< Updated upstream
               <div className="site-copyright">
                 WorkfitAI.
               </div>
+=======
+              <div className="site-copyright">WorkfitAI.</div>
+>>>>>>> Stashed changes
             </div>
           </div>
         </div>
