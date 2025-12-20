@@ -19,6 +19,8 @@ interface FormFieldProps<T extends object> {
   type?: string;
   placeholder?: string;
   options?: Option[];
+  disabled?: boolean;
+  readOnly?: boolean;
 }
 
 export default function FormField<T extends object>({
@@ -31,6 +33,8 @@ export default function FormField<T extends object>({
   type = "text",
   placeholder,
   options,
+  disabled,
+  readOnly,
 }: FormFieldProps<T>) {
   return (
     <div className="mb-3">
@@ -47,6 +51,7 @@ export default function FormField<T extends object>({
           value={value as string}
           onChange={onChange}
           required={required}
+          disabled={disabled}
         >
           <option value="">Select</option>
           {options.map((opt) => (
@@ -65,6 +70,8 @@ export default function FormField<T extends object>({
           onChange={onChange}
           placeholder={placeholder}
           required={required}
+          readOnly={readOnly}
+          disabled={disabled}
         />
       ) : (
         <input
@@ -76,6 +83,8 @@ export default function FormField<T extends object>({
           onChange={onChange}
           placeholder={placeholder}
           required={required}
+          readOnly={readOnly}
+          disabled={disabled}
         />
       )}
     </div>

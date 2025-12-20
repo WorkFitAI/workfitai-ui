@@ -10,6 +10,7 @@ export default function CreateJobPage() {
 
   const handleCreateJob = async (data: PostJobData) => {
     try {
+      console.log("Submitting job data:", data);
       await postJob("/hr/jobs", { body: data });
       showToast({
         type: "success",

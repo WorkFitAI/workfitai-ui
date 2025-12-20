@@ -35,6 +35,7 @@ export interface JobCoreFields {
     location: string;
     quantity: number;
     expiresAt: string;
+    status?: JobStatus;
 }
 
 /* =======================

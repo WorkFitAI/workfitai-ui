@@ -717,6 +717,7 @@ export const selectPendingApproval = (state: RootState) =>
   state.auth.pendingApproval;
 export const selectApprovalType = (state: RootState) => state.auth.approvalType;
 export const selectUserRole = (state: RootState) => state.auth.user?.role;
+export const selectUserCompanyId = (state: RootState) => state.auth.user?.companyId;
 
 // Memoized selector to prevent unnecessary rerenders when roles array doesn't change
 const EMPTY_ROLES: string[] = [];

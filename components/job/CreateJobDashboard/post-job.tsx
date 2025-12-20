@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import FormField from "@/components/common/FormField";
 import SkillsSelectInner from "@/components/job/SkillsSelectInner/SkillsSelectInner";
 import { PostJobData, PostJobForm } from "@/types/job/job";
@@ -29,8 +29,30 @@ export default function PostJob({ onSubmit }: PostJobProps) {
     expiresAt: "",
     educationLevel: "",
     companyNo: "",
+    status: undefined,
     skillIds: [],
   });
+
+  useEffect(() => {
+    const sessionRaw = localStorage.getItem("auth_session");
+    if (!sessionRaw) return;
+
+    try {
+      const session = JSON.parse(sessionRaw);
+
+      const isHR = session?.roles?.includes("HR");
+      const companyId = session?.companyId;
+
+      if (isHR && companyId) {
+        setForm((prev) => ({
+          ...prev,
+          companyNo: companyId,
+        }));
+      }
+    } catch (err) {
+      console.error("Invalid auth_session:", err);
+    }
+  }, []);
 
   const handleChange = (
     e: React.ChangeEvent<
@@ -44,15 +66,20 @@ export default function PostJob({ onSubmit }: PostJobProps) {
     }));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     onSubmit({
       ...form,
+      status: submitAction === "PUBLISH" ? "PUBLISHED" : "DRAFT",
       salaryMin: Number(form.salaryMin),
       salaryMax: Number(form.salaryMax),
       expiresAt: new Date(form.expiresAt).toISOString(),
     });
   };
+
+  const [submitAction, setSubmitAction] = useState<"DRAFT" | "PUBLISH">(
+    "DRAFT"
+  );
 
   return (
     <div className="min-vh-100 py-4" style={{ backgroundColor: "#F9FAFB" }}>
@@ -69,7 +96,9 @@ export default function PostJob({ onSubmit }: PostJobProps) {
           </div>
           <div className="d-flex gap-2">
             <button
-              type="button"
+              form="job-form"
+              type="submit"
+              onClick={() => setSubmitAction("DRAFT")}
               className="btn btn-light border fw-medium text-secondary px-4"
             >
               Save Draft
@@ -77,6 +106,7 @@ export default function PostJob({ onSubmit }: PostJobProps) {
             <button
               form="job-form"
               type="submit"
+              onClick={() => setSubmitAction("PUBLISH")}
               className="btn btn-primary fw-bold px-4"
               style={{ backgroundColor: "#3C65F5", border: "none" }}
             >
@@ -319,6 +349,7 @@ export default function PostJob({ onSubmit }: PostJobProps) {
                         value={form.companyNo}
                         onChange={handleChange}
                         required={true}
+                        readOnly
                       />
                     </div>
                   </div>
