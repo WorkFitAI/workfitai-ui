@@ -174,11 +174,27 @@ export const userApi = {
         );
     },
 
+    blockUserByHr: async (
+        username: string,
+        blocked: boolean
+    ): Promise<ResponseData<void>> => {
+        return apiRequest<ResponseData<void>>(
+            `/hr/users/username/${username}/block?blocked=${blocked}`,
+            { method: "PUT" }
+        );
+    },
+
     /**
      * Delete user by username (soft delete)
      */
     deleteUser: async (username: string): Promise<ResponseData<void>> => {
         return apiRequest<ResponseData<void>>(`/admins/users/username/${username}`, {
+            method: "DELETE",
+        });
+    },
+
+    deleteUserByHr: async (id: string): Promise<ResponseData<void>> => {
+        return apiRequest<ResponseData<void>>(`/hr/${id}`, {
             method: "DELETE",
         });
     },
@@ -192,6 +208,30 @@ export const userApi = {
     ): Promise<ResponseData<UserSearchResponse>> => {
         const response = await apiRequest<ResponseData<any>>(
             "/admins/users/search",
+            {
+                method: "POST",
+                body: JSON.stringify(request),
+            }
+        );
+
+        // Transform each user hit in the search results
+        if (response.data?.hits) {
+            response.data.hits = response.data.hits.map((hit: any) => ({
+                ...transformUserResponse(hit),
+                score: hit.score,
+                highlights: hit.highlights || {},
+            }));
+        }
+
+        return response as ResponseData<UserSearchResponse>;
+    },
+
+    searchUsersByHr: async (
+        request: UserSearchRequest
+    ): Promise<ResponseData<UserSearchResponse>> => {
+        console.log("HR Search Request:", request);
+        const response = await apiRequest<ResponseData<any>>(
+            "/hr/users/search",
             {
                 method: "POST",
                 body: JSON.stringify(request),
