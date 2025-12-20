@@ -180,7 +180,7 @@ export const approvalApi = {
         };
 
         return apiRequest<ResponseData<SearchResponse<HRApprovalUser>>>(
-            `/admins/users/search`,
+            `/hr/users/search`,
             {
                 method: "POST",
                 body: JSON.stringify(searchRequest),
