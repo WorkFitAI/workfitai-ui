@@ -29,143 +29,120 @@ export default function Sidebar() {
       />
       <nav className="nav-main-menu">
         <ul className="main-menu">
-          <li>
-            <Link
-              className={isActive("/admin") ? "dashboard2 active" : "dashboard2"}
-              href="/admin"
-            >
-              <img src="/assets/control/imgs/page/dashboard/dashboard.svg" alt="jobBox" />
-              <span className="name">Dashboard</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={isActive("/candidates") ? "dashboard2 active" : "dashboard2"}
-              href="/candidates"
-            >
-              <img src="/assets/control/imgs/page/dashboard/candidates.svg" alt="jobBox" />
-              <span className="name">Candidates</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={isActive("/recruiters") ? "dashboard2 active" : "dashboard2"}
-              href="/recruiters"
-            >
-              <img src="/assets/control/imgs/page/dashboard/recruiters.svg" alt="jobBox" />
-              <span className="name">Recruiters</span>
-            </Link>
-          </li>
-          {mounted && userRole === 'ADMIN' && (
+          {mounted && userRole === "ADMIN" && (
             <>
               <li>
                 <Link
-                  className={isActive("/admin/users") ? "dashboard2 active" : "dashboard2"}
+                  className={
+                    isActive("/admin/user-activity")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
+                  href="/admin/user-activity"
+                >
+                  <img
+                    src="/assets/control/imgs/page/dashboard/profiles.svg"
+                    alt="jobBox"
+                  />
+                  <span className="name">User Activity</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className={
+                    isActive("/admin/users")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
                   href="/admin/users"
                 >
-                  <img src="/assets/control/imgs/page/dashboard/candidates.svg" alt="jobBox" />
+                  <img
+                    src="/assets/control/imgs/page/dashboard/candidates.svg"
+                    alt="jobBox"
+                  />
                   <span className="name">User Management</span>
                 </Link>
               </li>
               <li>
                 <Link
-                  className={isActive("/admin/approvals/hr-managers") ? "dashboard2 active" : "dashboard2"}
+                  className={
+                    isActive("/admin/approvals/hr-managers")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
                   href="/admin/approvals/hr-managers"
                 >
-                  <img src="/assets/control/imgs/page/dashboard/tasks.svg" alt="jobBox" />
+                  <img
+                    src="/assets/control/imgs/page/dashboard/tasks.svg"
+                    alt="jobBox"
+                  />
                   <span className="name">HR Approvals</span>
-                </Link>
-              </li>
-              <li>
-                <Link
-                  className={isActive("/admin/user-activity") ? "dashboard2 active" : "dashboard2"}
-                  href="/admin/user-activity"
-                >
-                  <img src="/assets/control/imgs/page/dashboard/profiles.svg" alt="jobBox" />
-                  <span className="name">User Activity</span>
                 </Link>
               </li>
             </>
           )}
-          {mounted && userRole === 'HR_MANAGER' && (
+          {mounted && userRole === "HR_MANAGER" && (
             <>
               <li>
                 <Link
-                  className={isActive("/hr-manager/hr-management") ? "dashboard2 active" : "dashboard2"}
+                  className={
+                    isActive("/hr-manager/hr-management")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
                   href="/hr-manager/hr-management"
                 >
-                  <img src="/assets/control/imgs/page/dashboard/candidates.svg" alt="jobBox" />
+                  <img
+                    src="/assets/control/imgs/page/dashboard/candidates.svg"
+                    alt="jobBox"
+                  />
                   <span className="name">HR Management</span>
                 </Link>
               </li>
               <li>
                 <Link
-                  className={isActive("/hr-manager/approvals/hr") ? "dashboard2 active" : "dashboard2"}
+                  className={
+                    isActive("/hr-manager/approvals/hr")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
                   href="/hr-manager/approvals/hr"
                 >
-                  <img src="/assets/control/imgs/page/dashboard/tasks.svg" alt="jobBox" />
+                  <img
+                    src="/assets/control/imgs/page/dashboard/tasks.svg"
+                    alt="jobBox"
+                  />
                   <span className="name">HR Staff Approvals</span>
                 </Link>
               </li>
             </>
           )}
+
           <li>
             <Link
-              className={isActive("/my-job-grid") ? "dashboard2 active" : "dashboard2"}
-              href="/my-job-grid"
-            >
-              <img src="/assets/control/imgs/page/dashboard/jobs.svg" alt="jobBox" />
-              <span className="name">My Jobs</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={isActive("/my-tasks-list") ? "dashboard2 active" : "dashboard2"}
-              href="/my-tasks-list"
-            >
-              <img src="/assets/control/imgs/page/dashboard/tasks.svg" alt="jobBox" />
-              <span className="name">Tasks List</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={isActive("/my-resume") ? "dashboard2 active" : "dashboard2"}
-              href="/my-resume"
-            >
-              <img src="/assets/control/imgs/page/dashboard/cv-manage.svg" alt="jobBox" />
-              <span className="name">CV Manage</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={isActive("/profile") ? "dashboard2 active" : "dashboard2"}
-              href="/profile"
-            >
-              <img src="/assets/control/imgs/page/dashboard/profiles.svg" alt="jobBox" />
-              <span className="name">My Profile</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={isActive("/settings") ? "dashboard2 active" : "dashboard2"}
+              className={
+                isActive("/settings") ? "dashboard2 active" : "dashboard2"
+              }
               href="/settings"
             >
-              <img src="/assets/control/imgs/page/dashboard/settings.svg" alt="jobBox" />
+              <img
+                src="/assets/control/imgs/page/dashboard/settings.svg"
+                alt="jobBox"
+              />
               <span className="name">Settings</span>
             </Link>
           </li>
           <li>
             <Link
-              className={isActive("/authentication") ? "dashboard2 active" : "dashboard2"}
-              href="/authentication"
+              className={
+                isActive("/signin") ? "dashboard2 active" : "dashboard2"
+              }
+              href="/signin"
             >
-              <img src="/assets/control/imgs/page/dashboard/authentication.svg" alt="jobBox" />
-              <span className="name">Authentication</span>
-            </Link>
-          </li>
-          <li>
-            <Link className={isActive("/signin") ? "dashboard2 active" : "dashboard2"} href="/signin">
-              <img src="/assets/control/imgs/page/dashboard/logout.svg" alt="jobBox" />
+              <img
+                src="/assets/control/imgs/page/dashboard/logout.svg"
+                alt="jobBox"
+              />
               <span className="name">Logout</span>
             </Link>
           </li>
@@ -176,7 +153,8 @@ export default function Sidebar() {
         <span className="text-grey">WE ARE</span>
         <span className="text-hiring">HIRING</span>
         <p className="font-xxs color-text-paragraph mt-5">
-          Lorem ipsum dolor sit amet, consectetur adipisicing elit. Recusandae architecto
+          Lorem ipsum dolor sit amet, consectetur adipisicing elit. Recusandae
+          architecto
         </p>
         <div className="mt-15">
           <Link className="btn btn-paragraph-2" href="#">

@@ -87,7 +87,7 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                   <span className="d-flex align-items-center">
                     <img
                       alt="WorkfitAI"
-                      src="assets/imgs/template/workfitai.png"
+                      src="/assets/imgs/template/workfitai.png"
                       style={{ width: 42, height: 42, objectFit: "contain" }}
                     />
                     <span
@@ -147,12 +147,11 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
             <div className="header-right" suppressHydrationWarning>
               {displayUser ? (
                 <>
-                  <NotificationBell />
                   <div
                     className="header-user"
                     ref={menuRef}
-                    style={{ marginLeft: "1rem" }}
                   >
+                    <NotificationBell/>
                     <button
                       type="button"
                       className={`header-user__button ${
@@ -206,11 +205,11 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                 </>
               ) : (
                 <div className="block-signin">
-                  <Link href="register">
+                  <Link href="/register">
                     <span className="text-link-bd-btom hover-up">Register</span>
                   </Link>
 
-                  <Link href="signin">
+                  <Link href="/signin">
                     <span className="btn btn-default btn-shadow ml-40 hover-up">
                       Sign in
                     </span>
