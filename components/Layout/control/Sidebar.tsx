@@ -86,17 +86,47 @@ export default function Sidebar() {
               <li>
                 <Link
                   className={
-                    isActive("/hr-manager/hr-management")
+                    isActive("/hr-manager") ? "dashboard2 active" : "dashboard2"
+                  }
+                  href="/hr-manager"
+                >
+                  <img
+                    src="/assets/control/imgs/page/dashboard/dashboard.svg"
+                    alt="jobBox"
+                  />
+                  <span className="name">HR Management</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className={
+                    isActive("/hr/applications")
                       ? "dashboard2 active"
                       : "dashboard2"
                   }
-                  href="/hr-manager/hr-management"
+                  href="/hr/applications"
                 >
                   <img
                     src="/assets/control/imgs/page/dashboard/candidates.svg"
                     alt="jobBox"
                   />
-                  <span className="name">HR Management</span>
+                  <span className="name">Applications</span>
+                </Link>
+              </li>
+              <li>
+                <Link
+                  className={
+                    isActive("/hr-manager/company-page")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
+                  href="/hr-manager/approvals/hr"
+                >
+                  <img
+                    src="/assets/control/imgs/page/dashboard/jobs.svg"
+                    alt="jobBox"
+                  />
+                  <span className="name">Company Page</span>
                 </Link>
               </li>
               <li>
@@ -117,51 +147,28 @@ export default function Sidebar() {
               </li>
             </>
           )}
-
-          <li>
-            <Link
-              className={
-                isActive("/settings") ? "dashboard2 active" : "dashboard2"
-              }
-              href="/settings"
-            >
-              <img
-                src="/assets/control/imgs/page/dashboard/settings.svg"
-                alt="jobBox"
-              />
-              <span className="name">Settings</span>
-            </Link>
-          </li>
-          <li>
-            <Link
-              className={
-                isActive("/signin") ? "dashboard2 active" : "dashboard2"
-              }
-              href="/signin"
-            >
-              <img
-                src="/assets/control/imgs/page/dashboard/logout.svg"
-                alt="jobBox"
-              />
-              <span className="name">Logout</span>
-            </Link>
-          </li>
+          {mounted && userRole === "HR" && (
+            <>
+              <li>
+                <Link
+                  className={
+                    isActive("/hr/applications")
+                      ? "dashboard2 active"
+                      : "dashboard2"
+                  }
+                  href="/hr/applications"
+                >
+                  <img
+                    src="/assets/control/imgs/page/dashboard/candidates.svg"
+                    alt="jobBox"
+                  />
+                  <span className="name">Applications</span>
+                </Link>
+              </li>
+            </>
+          )}
         </ul>
       </nav>
-      <div className="border-bottom mb-20 mt-20" />
-      <div className="sidebar-border-bg mt-50">
-        <span className="text-grey">WE ARE</span>
-        <span className="text-hiring">HIRING</span>
-        <p className="font-xxs color-text-paragraph mt-5">
-          Lorem ipsum dolor sit amet, consectetur adipisicing elit. Recusandae
-          architecto
-        </p>
-        <div className="mt-15">
-          <Link className="btn btn-paragraph-2" href="#">
-            Know More
-          </Link>
-        </div>
-      </div>
     </div>
   );
 }

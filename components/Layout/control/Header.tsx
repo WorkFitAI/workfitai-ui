@@ -276,14 +276,9 @@ export default function Header() {
                             style={{ right: "0", left: "auto" }}
                           >
                             <li>
-                              <Link className="dropdown-item" href="/profile">
+                              <a className="dropdown-item" href="/profile">
                                 Profiles
-                              </Link>
-                            </li>
-                            <li>
-                              <Link className="dropdown-item" href="/my-resume">
-                                CV Manager
-                              </Link>
+                              </a>
                             </li>
                             <li>
                               <button
