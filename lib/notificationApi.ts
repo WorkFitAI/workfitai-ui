@@ -2,6 +2,7 @@ import {
     getCurrentAccessToken,
     handle401WithTokenRefresh,
 } from "./tokenRefreshHandler";
+import { shouldAttemptRefresh, isPublicEndpoint } from "./endpointUtils";
 import type {
     Notification,
     NotificationPage,
@@ -16,6 +17,85 @@ interface ApiResponse<T> {
     message?: string;
 }
 
+// Generic request wrapper with automatic token refresh on 401
+async function notificationRequest<T>(
+    path: string,
+    options: RequestInit = {},
+    isRetry = false
+): Promise<T> {
+    // Check if endpoint is public
+    const isPublic = isPublicEndpoint(path);
+
+    // Only get access token for protected endpoints
+    const accessToken = isPublic ? null : getCurrentAccessToken();
+
+    const headers: HeadersInit = {
+        ...(options.body instanceof FormData
+            ? {}
+            : { "Content-Type": "application/json" }),
+        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
+        ...options.headers,
+    };
+
+    const response = await fetch(`${NOTIFICATION_SERVICE_URL}${path}`, {
+        ...options,
+        headers,
+        credentials: "include",
+    });
+
+    if (!response.ok) {
+        console.log(
+            `[NotificationAPI] Request to ${path} failed with status ${response.status}`
+        );
+        const error = await response
+            .json()
+            .catch(() => ({ message: "Request failed" }));
+
+        // On 401, check if we should attempt refresh
+        // Skip refresh for retry loops
+        if (response.status === 401 && !isRetry && shouldAttemptRefresh(path)) {
+            console.log(
+                `[NotificationAPI] 401 detected on ${path}, attempting token refresh...`
+            );
+
+            // Attempt to refresh the token using centralized queue
+            const newAccessToken = await handle401WithTokenRefresh();
+
+            if (newAccessToken) {
+                console.log(`[NotificationAPI] Token refreshed, retrying ${path}...`);
+                // Retry the original request with the new token
+                const retryHeaders: HeadersInit = {
+                    ...(options.body instanceof FormData
+                        ? {}
+                        : { "Content-Type": "application/json" }),
+                    Authorization: `Bearer ${newAccessToken}`,
+                    ...options.headers,
+                };
+
+                return notificationRequest<T>(
+                    path,
+                    {
+                        ...options,
+                        headers: retryHeaders,
+                    },
+                    true // Mark as retry to prevent infinite loops
+                );
+            } else {
+                console.error(`[NotificationAPI] Token refresh failed for ${path}`);
+            }
+        }
+
+        throw new Error(error.message || `HTTP ${response.status}`);
+    }
+
+    if (response.status === 204) {
+        return null as T;
+    }
+
+    const data = await response.json();
+    return data.data || data;
+}
+
 /**
  * Get notifications for the current user
  */
@@ -24,37 +104,10 @@ export const getNotifications = async (
     size: number = 20
 ): Promise<ApiResponse<NotificationPage>> => {
     try {
-        const token = getCurrentAccessToken();
-        if (!token) {
-            return { success: false, message: "No authentication token" };
-        }
-
-        const response = await fetch(
-            `${NOTIFICATION_SERVICE_URL}?page=${page}&size=${size}`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            }
+        const data = await notificationRequest<NotificationPage>(
+            `?page=${page}&size=${size}`,
+            { method: "GET" }
         );
-
-        if (response.status === 401) {
-            return handle401WithTokenRefresh(() =>
-                getNotifications(page, size)
-            );
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            return {
-                success: false,
-                message: errorText || "Failed to fetch notifications",
-            };
-        }
-
-        const data: NotificationPage = await response.json();
         return { success: true, data };
     } catch (error) {
         console.error("Error fetching notifications:", error);
@@ -73,35 +126,10 @@ export const getUnreadCount = async (): Promise<
     ApiResponse<UnreadCountResponse>
 > => {
     try {
-        const token = getCurrentAccessToken();
-        if (!token) {
-            return { success: false, message: "No authentication token" };
-        }
-
-        const response = await fetch(
-            `${NOTIFICATION_SERVICE_URL}/unread-count`,
-            {
-                method: "GET",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            }
+        const data = await notificationRequest<UnreadCountResponse>(
+            "/unread-count",
+            { method: "GET" }
         );
-
-        if (response.status === 401) {
-            return handle401WithTokenRefresh(() => getUnreadCount());
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            return {
-                success: false,
-                message: errorText || "Failed to fetch unread count",
-            };
-        }
-
-        const data: UnreadCountResponse = await response.json();
         return { success: true, data };
     } catch (error) {
         console.error("Error fetching unread count:", error);
@@ -120,35 +148,10 @@ export const markAsRead = async (
     notificationId: string
 ): Promise<ApiResponse<Notification>> => {
     try {
-        const token = getCurrentAccessToken();
-        if (!token) {
-            return { success: false, message: "No authentication token" };
-        }
-
-        const response = await fetch(
-            `${NOTIFICATION_SERVICE_URL}/${notificationId}/read`,
-            {
-                method: "PUT",
-                headers: {
-                    Authorization: `Bearer ${token}`,
-                    "Content-Type": "application/json",
-                },
-            }
+        const data = await notificationRequest<Notification>(
+            `/${notificationId}/read`,
+            { method: "PUT" }
         );
-
-        if (response.status === 401) {
-            return handle401WithTokenRefresh(() => markAsRead(notificationId));
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            return {
-                success: false,
-                message: errorText || "Failed to mark notification as read",
-            };
-        }
-
-        const data: Notification = await response.json();
         return { success: true, data };
     } catch (error) {
         console.error("Error marking notification as read:", error);
@@ -165,31 +168,10 @@ export const markAsRead = async (
  */
 export const markAllAsRead = async (): Promise<ApiResponse<void>> => {
     try {
-        const token = getCurrentAccessToken();
-        if (!token) {
-            return { success: false, message: "No authentication token" };
-        }
-
-        const response = await fetch(`${NOTIFICATION_SERVICE_URL}/read-all`, {
-            method: "PUT",
-            headers: {
-                Authorization: `Bearer ${token}`,
-                "Content-Type": "application/json",
-            },
-        });
-
-        if (response.status === 401) {
-            return handle401WithTokenRefresh(() => markAllAsRead());
-        }
-
-        if (!response.ok) {
-            const errorText = await response.text();
-            return {
-                success: false,
-                message: errorText || "Failed to mark all notifications as read",
-            };
-        }
-
+        await notificationRequest<void>(
+            "/read-all",
+            { method: "PUT" }
+        );
         return { success: true };
     } catch (error) {
         console.error("Error marking all notifications as read:", error);

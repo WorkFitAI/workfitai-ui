@@ -2,7 +2,6 @@
 
 import { useEffect, useRef, useCallback, useState } from "react";
 import { Client, StompSubscription } from "@stomp/stompjs";
-import SockJS from "sockjs-client";
 import { getCurrentAccessToken } from "@/lib/tokenRefreshHandler";
 
 const WEBSOCKET_URL =
@@ -50,23 +49,53 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
     }, []);
 
     /**
+     * Get username for WebSocket authentication
+     * Username is required in X-Username header for Spring to track user session
+     */
+    const getUsername = useCallback(() => {
+        // Try to get username from localStorage (stored during login)
+        const username = typeof window !== 'undefined' ? localStorage.getItem('username') : null;
+        if (username) {
+            return username;
+        }
+
+        // Fallback: decode from JWT token
+        const token = getAuthToken();
+        if (token) {
+            try {
+                const payload = JSON.parse(atob(token.split('.')[1]));
+                return payload.sub; // JWT subject contains username
+            } catch (error) {
+                console.error('[WebSocket] Failed to decode username from token:', error);
+            }
+        }
+
+        return null;
+    }, [getAuthToken]);
+
+    /**
      * Subscribe to a destination
      */
     const subscribe = useCallback(
         (destination: string, callback: (message: any) => void) => {
+            console.log(`[WebSocket] Subscribe called for: ${destination}, connected:`, clientRef.current?.connected);
+
             if (!clientRef.current?.connected) {
-                console.warn(`WebSocket not connected. Queuing subscription to ${destination}`);
+                console.warn(`[WebSocket] ⚠️ Not connected yet. Queuing subscription to ${destination}`);
                 return;
             }
 
             // Unsubscribe from existing subscription if any
             const existingSubscription = subscriptionsRef.current.get(destination);
             if (existingSubscription) {
+                console.log(`[WebSocket] Unsubscribing from existing: ${destination}`);
                 existingSubscription.unsubscribe();
             }
 
             // Create new subscription
+            console.log(`[WebSocket] Creating subscription for: ${destination}`);
             const subscription = clientRef.current.subscribe(destination, (message) => {
+                console.log(`[WebSocket] 📨 Received message on ${destination}:`, message.body);
                 try {
                     const body = JSON.parse(message.body);
                     callback(body);
@@ -77,7 +106,7 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             });
 
             subscriptionsRef.current.set(destination, subscription);
-            console.log(`[WebSocket] Subscribed to ${destination}`);
+            console.log(`[WebSocket] ✅ Subscribed to ${destination}, subscription ID:`, subscription.id);
         },
         []
     );
@@ -104,20 +133,33 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         }
 
         const token = getAuthToken();
+        const username = getUsername();
+
         if (!token) {
             console.warn("[WebSocket] No authentication token available, skipping connection");
             setStatus("error");
             return;
         }
 
-        console.log("[WebSocket] Connecting to", WEBSOCKET_URL);
+        if (!username) {
+            console.warn("[WebSocket] No username available, skipping connection");
+            setStatus("error");
+            return;
+        }
+
+        console.log("[WebSocket] Connecting to", WEBSOCKET_URL, "with username:", username);
         setStatus("connecting");
 
-        // Create STOMP client
+        // Create STOMP client with native WebSocket (no SockJS)
         const client = new Client({
-            webSocketFactory: () => new SockJS(WEBSOCKET_URL),
+            // 🚨 CRITICAL: Use native WebSocket (no SockJS)
+            webSocketFactory: () => {
+                const wsUrl = WEBSOCKET_URL.replace('http://', 'ws://').replace('https://', 'wss://');
+                return new WebSocket(wsUrl) as any;
+            },
+            // 🚨 CRITICAL: Must include X-Username header for Spring user session tracking
             connectHeaders: {
-                Authorization: `Bearer ${token}`,
+                'X-Username': username,
             },
             debug: (str) => {
                 if (process.env.NODE_ENV === "development") {
@@ -129,11 +171,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             heartbeatOutgoing: 10000,
 
             onConnect: () => {
-                if (!mountedRef.current) return;
+                console.log("[WebSocket] onConnect callback fired, mountedRef:", mountedRef.current);
 
-                console.log("[WebSocket] Connected successfully");
-                setStatus("connected");
+                // Always set status and call callback, regardless of mount status
+                // Subscriptions need to be created even if component temporarily unmounted
+                console.log("[WebSocket] ✅ Connected successfully");
+
+                // Only update state if still mounted to avoid React warnings
+                if (mountedRef.current) {
+                    setStatus("connected");
+                }
+
+                console.log("[WebSocket] Calling onConnect callback...");
                 onConnect?.();
+                console.log("[WebSocket] onConnect callback completed");
 
                 // Re-subscribe to all destinations after reconnect
                 const destinations = Array.from(subscriptionsRef.current.keys());
@@ -145,19 +196,25 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             },
 
             onDisconnect: () => {
-                if (!mountedRef.current) return;
-
                 console.log("[WebSocket] Disconnected");
-                setStatus("disconnected");
+
+                // Only update state if still mounted
+                if (mountedRef.current) {
+                    setStatus("disconnected");
+                }
+
                 onDisconnect?.();
             },
 
             onStompError: (frame) => {
-                if (!mountedRef.current) return;
-
                 console.error("[WebSocket] STOMP error:", frame.headers["message"]);
                 console.error("[WebSocket] Error details:", frame.body);
-                setStatus("error");
+
+                // Only update state if still mounted
+                if (mountedRef.current) {
+                    setStatus("error");
+                }
+
                 onError?.(frame);
 
                 // Attempt reconnection after error
@@ -173,17 +230,20 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             },
 
             onWebSocketError: (event) => {
-                if (!mountedRef.current) return;
-
                 console.error("[WebSocket] Connection error:", event);
-                setStatus("error");
+
+                // Only update state if still mounted
+                if (mountedRef.current) {
+                    setStatus("error");
+                }
+
                 onError?.(event);
             },
         });
 
         clientRef.current = client;
         client.activate();
-    }, [getAuthToken, onConnect, onDisconnect, onError]);
+    }, [getAuthToken, getUsername, onConnect, onDisconnect, onError]);
 
     /**
      * Disconnect from WebSocket server
@@ -210,8 +270,10 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
         console.log("[WebSocket] Disconnected and cleaned up");
     }, []);
 
-    // Auto-connect on mount
+    // Auto-connect on mount (only once)
     useEffect(() => {
+        mountedRef.current = true;
+
         if (autoConnect) {
             connect();
         }
@@ -220,7 +282,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
             mountedRef.current = false;
             disconnect();
         };
-    }, [autoConnect, connect, disconnect]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [autoConnect]); // Only re-run if autoConnect prop changes
 
     // Reconnect when token changes (e.g., token refresh)
     useEffect(() => {
@@ -237,8 +300,9 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
                 setTimeout(() => {
                     if (mountedRef.current && !clientRef.current?.connected) {
                         const token = getAuthToken();
-                        if (token && clientRef.current) {
-                            clientRef.current.connectHeaders = { Authorization: `Bearer ${token}` };
+                        const username = getUsername();
+                        if (token && username && clientRef.current) {
+                            clientRef.current.connectHeaders = { 'X-Username': username };
                             clientRef.current.activate();
                         }
                     }
@@ -248,8 +312,8 @@ export function useWebSocket(options: UseWebSocketOptions = {}): UseWebSocketRet
 
         window.addEventListener("storage", handleStorageChange);
         return () => window.removeEventListener("storage", handleStorageChange);
-        // Empty deps - listener only attached once to prevent re-runs
-    }, [getAuthToken]);
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []); // Only setup listener once
 
     return {
         client: clientRef.current,
