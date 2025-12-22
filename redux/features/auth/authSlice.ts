@@ -154,10 +154,18 @@ const persistSession = (session: StoredSession | null) => {
 
   if (!session) {
     localStorage.removeItem(AUTH_STORAGE_KEY);
+    // 🚨 CRITICAL: Also remove username for WebSocket cleanup
+    localStorage.removeItem('username');
     return;
   }
 
   localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+
+  // 🚨 CRITICAL: Store username separately for WebSocket authentication
+  // WebSocket needs username in X-Username header for Spring user session tracking
+  if (session.username) {
+    localStorage.setItem('username', session.username);
+  }
 };
 
 const clearRefreshTokenCookie = () => {

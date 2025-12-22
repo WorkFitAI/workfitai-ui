@@ -89,24 +89,36 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
         switch (type) {
             case "application_submitted":
             case "application_status_changed":
-                return "fi-rr-document";
+                return "fi-rr-file-invoice";
             case "application_accepted":
-                return "fi-rr-check-circle";
+                return "fi-rr-badge-check";
             case "application_rejected":
                 return "fi-rr-cross-circle";
             case "account_approved":
+            case "account_activated":
             case "ACCOUNT_ACTIVATED":
                 return "fi-rr-user-check";
             case "job_posted":
-            case "job_matching":
                 return "fi-rr-briefcase";
+            case "job_matching":
+            case "job_recommendation":
+                return "fi-rr-rocket-lunch";
             case "new_applicant":
                 return "fi-rr-users-alt";
             case "cv_viewed":
-            case "cv_downloaded":
                 return "fi-rr-eye";
+            case "cv_downloaded":
+                return "fi-rr-download";
+            case "interview_scheduled":
+                return "fi-rr-calendar";
             case "system_announcement":
+            case "system_alert":
                 return "fi-rr-megaphone";
+            case "message_received":
+                return "fi-rr-envelope";
+            case "otp_verification":
+                return "fi-rr-lock";
+            case "general":
             default:
                 return "fi-rr-bell";
         }
@@ -189,7 +201,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                 )}
             </div>
 
-            {/* Footer */}
+            {/* Footer 
             {notifications.length > 0 && (
                 <div className={styles.footer}>
                     <button
@@ -203,6 +215,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
                     </button>
                 </div>
             )}
+                */}
         </div>
     );
 };
