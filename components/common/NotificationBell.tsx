@@ -32,7 +32,7 @@ const NotificationBell: React.FC = () => {
     };
 
     return (
-        <div className={styles.bellContainer}>
+        <div className={styles.bellContainer} >
             <button
                 onClick={toggleDropdown}
                 className={styles.bellButton}

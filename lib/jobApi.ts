@@ -112,11 +112,14 @@ export const jobRequest = async <T>(
   // Only get access token for protected endpoints
   const accessToken = isPublic
     ? null
-    : (options?.accessToken || getCurrentAccessToken());
+    : options?.accessToken || getCurrentAccessToken();
 
   const response = await fetch(buildUrl(path), {
     method: options?.method ?? "GET",
-    headers: buildHeaders({ ...options, accessToken: accessToken || undefined }, path),
+    headers: buildHeaders(
+      { ...options, accessToken: accessToken || undefined },
+      path
+    ),
     body: options?.body ? JSON.stringify(options.body) : undefined,
     credentials: "include",
   });
@@ -203,6 +206,30 @@ export const jobRequestFormData = async <T>(
   }
 };
 
+/**
+ * Fetch company details by company number
+ * Public endpoint - no authentication required
+ */
+export const fetchCompanyDetails = async (companyNo: string) => {
+  return getJobs<import("@/types/job/company").Company>(
+    `/public/companies/${companyNo}`
+  );
+};
+
+/**
+ * Fetch jobs for a specific company
+ * Public endpoint - no authentication required
+ */
+export const fetchCompanyJobs = async (
+  companyNo: string,
+  page: number = 1,
+  size: number = 20
+) => {
+  return getJobs<{
+    meta: import("@/types/job/job").Meta;
+    result: import("@/types/job/job").Job[];
+  }>(`/public/companies/${companyNo}/jobs?page=${page}&size=${size}`);
+};
 
 export const getJobs = async <T>(path: string, options?: RequestOptions) =>
   jobRequest<T>(path, { ...options, method: "GET" });
@@ -216,9 +243,5 @@ export const putJob = async <T>(path: string, options?: RequestOptions) =>
 export const deleteJob = async <T>(path: string, options?: RequestOptions) =>
   jobRequest<T>(path, { ...options, method: "DELETE" });
 
-export const postJobFormData = async <T>(
-  path: string,
-  formData: FormData
-) => jobRequestFormData<T>(path, formData);
-
-
+export const postJobFormData = async <T>(path: string, formData: FormData) =>
+  jobRequestFormData<T>(path, formData);
