@@ -165,7 +165,8 @@ export const jobRequest = async <T>(
 export const jobRequestFormData = async <T>(
   path: string,
   formData: FormData,
-  isRetry = false
+  isRetry = false,
+  method: "POST" | "PUT" = "POST"
 ): Promise<ApiResponse<T>> => {
   const isPublic = isPublicEndpoint(path);
 
@@ -177,7 +178,7 @@ export const jobRequestFormData = async <T>(
   }
 
   const response = await fetch(buildUrl(path), {
-    method: "POST",
+    method,
     headers,
     body: formData,
     credentials: "include",
@@ -198,7 +199,7 @@ export const jobRequestFormData = async <T>(
       if (newAccessToken) {
         headers["Authorization"] = `Bearer ${newAccessToken}`;
 
-        return jobRequestFormData<T>(path, formData, true);
+        return jobRequestFormData<T>(path, formData, true, method);
       }
     }
 
@@ -245,3 +246,25 @@ export const deleteJob = async <T>(path: string, options?: RequestOptions) =>
 
 export const postJobFormData = async <T>(path: string, formData: FormData) =>
   jobRequestFormData<T>(path, formData);
+
+export const updateCompany = async (formData: FormData) => {
+  return jobRequestFormData<import("@/types/job/company").Company>(
+    `/hr/companies`,
+    formData,
+    false,
+    "PUT"
+  );
+};
+
+/**
+ * Fetch job recommendations for the current user
+ * Protected endpoint - requires authentication (CANDIDATE role)
+ */
+export const fetchRecommendations = async (topK: number = 10) => {
+  return jobRequest<import("@/types/job/job").RecommendationResponse>(
+    `/public/recommendations/for-me?topK=${topK}`,
+    {
+      method: "GET",
+    }
+  );
+};

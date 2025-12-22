@@ -9,24 +9,76 @@ import { selectUserRole } from "@/redux/features/auth/authSlice";
 import type { Job } from "@/types/job/job";
 import { useRouter } from "next/navigation";
 import { addFilterValue } from "@/redux/features/job/jobFilterSlice";
+import { fetchRecommendations } from "@/lib/jobApi";
 
 export default function Home() {
   const dispatch = useAppDispatch();
   const router = useRouter();
   const role = useAppSelector(selectUserRole);
-  const { jobs, loading } = useAppSelector((state) => state.jobList);
+  const { jobs: allJobs, loading: allJobsLoading } = useAppSelector(
+    (state) => state.jobList
+  );
   const [searchKeyword, setSearchKeyword] = useState("");
+  const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
+  const [loadingRecommendations, setLoadingRecommendations] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
-    dispatch(
-      fetchAllJobs({
-        page: 1,
-        size: 8,
-        sort: "Newest Post",
-        role: role as "USER" | "HR" | "ADMIN" | "HR_MANAGER",
-      })
-    );
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (role === "CANDIDATE") {
+      const loadRecommendations = async () => {
+        setLoadingRecommendations(true);
+        try {
+          const response = await fetchRecommendations(10);
+          if (response.data?.recommendations) {
+            // Map recommendations to Job array
+            const jobs = response.data.recommendations.map((rec) => rec.job);
+            setRecommendedJobs(jobs);
+          }
+        } catch (error) {
+          console.error("Failed to load recommendations:", error);
+          // Fallback to fetching all jobs if recommendations fail
+          dispatch(
+            fetchAllJobs({
+              page: 1,
+              size: 8,
+              sort: "Newest Post",
+              role: "USER",
+            })
+          );
+        } finally {
+          setLoadingRecommendations(false);
+        }
+      };
+
+      loadRecommendations();
+    } else {
+      // For non-candidates (Guest, HR, Admin), fetch standard job list
+      dispatch(
+        fetchAllJobs({
+          page: 1,
+          size: 8,
+          sort: "Newest Post",
+          role: role as "USER" | "HR" | "ADMIN" | "HR_MANAGER",
+        })
+      );
+    }
   }, [dispatch, role]);
+
+  // Determine which jobs to display based on role
+  const displayJobs =
+    mounted && role === "CANDIDATE" ? recommendedJobs : allJobs;
+  const isLoading =
+    mounted && role === "CANDIDATE" ? loadingRecommendations : allJobsLoading;
+  const sectionTitle =
+    mounted && role === "CANDIDATE" ? "Recommended for You" : "Jobs of the day";
+  const sectionSubtitle =
+    mounted && role === "CANDIDATE"
+      ? "Jobs tailored to your skills and experience"
+      : "Search and connect with the right candidates faster.";
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
@@ -142,20 +194,20 @@ export default function Home() {
         <div className="container">
           <div className="text-center">
             <h2 className="section-title mb-10 wow animate__animated animate__fadeInUp">
-              Jobs of the day
+              {sectionTitle}
             </h2>
             <p className="font-lg color-text-paragraph-2 wow animate__animated animate__fadeInUp">
-              Search and connect with the right candidates faster.{" "}
+              {sectionSubtitle}{" "}
             </p>
           </div>
           <div className="mt-70">
             <div className="row">
-              {loading ? (
+              {isLoading ? (
                 <div className="col-12 text-center">
                   <p>Loading jobs...</p>
                 </div>
-              ) : jobs.length > 0 ? (
-                jobs.slice(0, 8).map((job: Job) => (
+              ) : displayJobs.length > 0 ? (
+                displayJobs.slice(0, 8).map((job: Job) => (
                   <div
                     className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-12"
                     key={job.postId}
@@ -247,7 +299,7 @@ export default function Home() {
               )}
             </div>
             <div className="text-center mt-40">
-              <Link href="/jobs-grid">
+              <Link href="/jobs-list">
                 <span className="btn btn-brand-1 btn-icon-load mt--30 hover-up">
                   Load More Jobs
                 </span>
