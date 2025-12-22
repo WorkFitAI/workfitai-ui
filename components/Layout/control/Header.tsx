@@ -1,3 +1,4 @@
+/* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";
@@ -165,7 +166,7 @@ export default function Header() {
         <div className="main-header">
           <div className="header-left">
             <div className="header-logo">
-              <Link className="d-flex" href="/">
+              <a className="d-flex" href="/">
                 <span className="d-flex align-items-center">
                   <img
                     alt="WorkfitAI"
@@ -184,7 +185,7 @@ export default function Header() {
                     WorkfitAI
                   </span>
                 </span>
-              </Link>
+              </a>
             </div>
             {displayUser ? (
               <span
