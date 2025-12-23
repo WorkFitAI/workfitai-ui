@@ -1,4 +1,4 @@
-import { refreshToken, selectIsTokenValid } from "@/redux/features/auth/authSlice";
+import { refreshToken, selectIsTokenValid, selectIsLoggedOut } from "@/redux/features/auth/authSlice";
 import type { AppDispatch, AppStore } from "@/redux/store";
 
 /**
@@ -9,6 +9,14 @@ let storeInstance: AppStore | null = null;
 
 export const setStoreForTokenRefresh = (store: AppStore) => {
   storeInstance = store;
+};
+
+/**
+ * Get store instance for other modules
+ * Used by authApi.ts to check logout flag before retrying
+ */
+export const getStoreInstance = (): AppStore | null => {
+  return storeInstance;
 };
 
 /**
@@ -85,6 +93,17 @@ export const hasRefreshTokenCookie = (): boolean => {
  * This approach is more secure and reliable than client-side cookie inspection.
  */
 export const handle401WithTokenRefresh = async (): Promise<string | null> => {
+  // Check if user explicitly logged out
+  if (storeInstance) {
+    const state = storeInstance.getState();
+    const isLoggedOut = selectIsLoggedOut(state);
+
+    if (isLoggedOut) {
+      console.log("[TokenRefresh] User logged out, skipping refresh");
+      return null;
+    }
+  }
+
   // If already refreshing, return the existing promise
   if (isRefreshing && refreshPromise) {
     console.log("[TokenRefresh] Refresh already in progress, waiting...");

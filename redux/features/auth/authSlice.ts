@@ -14,6 +14,7 @@ import {
 import { getDeviceId } from "@/lib/deviceId";
 import { getUserGeolocation } from "@/lib/geolocation";
 import { resetRefreshState } from "@/lib/tokenRefreshHandler";
+import { showToast } from "@/lib/toast";
 import type { RootState } from "@/redux/store";
 
 export const AUTH_STORAGE_KEY = "auth_session";
@@ -36,6 +37,8 @@ export interface AuthState {
   approvalType: "hr-manager" | "admin" | null;
   registrationRole: "CANDIDATE" | "HR" | "HR_MANAGER" | null;
   userId: string | null; // For OTP verification after registration
+  // Track if user explicitly logged out
+  isLoggedOut: boolean;
 }
 
 interface AuthUserProfile {
@@ -140,6 +143,7 @@ const initialAuthState: AuthState = {
   approvalType: null,
   registrationRole: null,
   userId: null,
+  isLoggedOut: false,
 };
 
 // Helper to determine error type from caught error
@@ -170,8 +174,26 @@ const persistSession = (session: StoredSession | null) => {
 
 const clearRefreshTokenCookie = () => {
   if (typeof document === "undefined") return;
-  document.cookie = "RT=; path=/; max-age=0";
-  document.cookie = "RT=; path=/auth; max-age=0";
+
+  // Clear RT cookie for all possible paths
+  // Set max-age=0 to delete immediately
+  const cookiePaths = ["/", "/auth"];
+  const cookieDomains = [
+    window.location.hostname,
+    `.${window.location.hostname}`, // Subdomain variant
+  ];
+
+  cookiePaths.forEach(path => {
+    cookieDomains.forEach(domain => {
+      // Clear for specific domain
+      document.cookie = `RT=; path=${path}; domain=${domain}; max-age=0; SameSite=Lax`;
+      // Clear without domain (for exact domain match)
+      document.cookie = `RT=; path=${path}; max-age=0; SameSite=Lax`;
+    });
+  });
+
+  // Log for debugging
+  console.log("[Auth] Attempted to clear RT cookies for paths:", cookiePaths);
 };
 
 const clearPersistedSession = () => {
@@ -655,6 +677,7 @@ const authSlice = createSlice({
           state.expiryTime = action.payload.expiryTime;
           state.user = action.payload.user ?? null;
           state.message = action.payload.message;
+          state.isLoggedOut = false; // Clear logout flag on successful login
         } else {
           // For 2FA, just show the message
           state.message = action.payload.message;
@@ -681,6 +704,7 @@ const authSlice = createSlice({
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message;
+        state.isLoggedOut = false; // Clear logout flag on successful refresh
       })
       .addCase(refreshToken.rejected, (state, action) => {
         state.status = "idle";
@@ -689,6 +713,15 @@ const authSlice = createSlice({
         state.user = null;
         state.error = action.payload?.message ?? "Refresh token failed";
         state.errorType = action.payload?.errorType ?? "generic";
+
+        // Only show notification if user hasn't explicitly logged out
+        if (!state.isLoggedOut) {
+          // Show user-friendly notification about session expiry
+          showToast.warning("Your session has expired. Please sign in again.", {
+            toastId: "session-expired", // Prevent duplicate toasts
+            autoClose: 7000,
+          });
+        }
       })
       .addCase(logoutUser.pending, (state) => {
         state.status = "loading";
@@ -709,6 +742,8 @@ const authSlice = createSlice({
         state.approvalType = null;
         state.registrationRole = null;
         state.userId = null;
+        // Mark as explicitly logged out
+        state.isLoggedOut = true;
       });
   },
 });
@@ -737,6 +772,7 @@ export const selectUserRoles = createSelector(
 export const selectUserId = (state: RootState) => state.auth.userId;
 export const selectRegistrationRole = (state: RootState) =>
   state.auth.registrationRole;
+export const selectIsLoggedOut = (state: RootState) => state.auth.isLoggedOut;
 
 /**
  * Simple selector to check if token is valid

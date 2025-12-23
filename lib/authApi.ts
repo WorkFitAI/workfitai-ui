@@ -1,8 +1,10 @@
 import {
   handle401WithTokenRefresh,
   getCurrentAccessToken,
+  getStoreInstance,
 } from "@/lib/tokenRefreshHandler";
 import { isPublicEndpoint, shouldAttemptRefresh } from "@/lib/endpointUtils";
+import { selectIsLoggedOut } from "@/redux/features/auth/authSlice";
 
 export class UnauthorizedError extends Error {
   constructor(message = "Unauthorized") {
@@ -92,6 +94,16 @@ export const authRequest = async <T>(
 
     if (isError) {
       if (statusCode === 401) {
+        // Check if user logged out before attempting refresh
+        const store = getStoreInstance();
+        const isLoggedOut = store ? selectIsLoggedOut(store.getState()) : false;
+
+        if (isLoggedOut) {
+          // User logged out, don't retry or refresh
+          console.log("[AuthAPI] User logged out, not attempting refresh");
+          throw new UnauthorizedError(data.message || "Unauthorized");
+        }
+
         // On 401, check if we should attempt refresh
         // Skip refresh for public endpoints and retry loops
         if (!isRetry && shouldAttemptRefresh(endpoint)) {
@@ -180,5 +192,5 @@ export interface TwoFactorStatus {
 }
 
 export const get2FAStatus = async (): Promise<ApiResponse<TwoFactorStatus>> => {
-  return getAuth<TwoFactorStatus>("/2fa/status", {});
+  return authRequest<TwoFactorStatus>("/2fa/status", {});
 };

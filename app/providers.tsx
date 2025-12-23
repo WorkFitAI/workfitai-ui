@@ -9,9 +9,10 @@ import {
   isCompleteStoredSession,
   refreshToken,
   restoreSessionFromStorage,
+  selectIsLoggedOut,
   type StoredSession,
 } from "@/redux/features/auth/authSlice";
-import { useAppDispatch } from "@/redux/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setStoreForTokenRefresh } from "@/lib/tokenRefreshHandler";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -75,9 +76,16 @@ const loadStoredSession = (): StoredSession | null => {
 
 const AuthHydrator = () => {
   const dispatch = useAppDispatch();
+  const isLoggedOut = useAppSelector(selectIsLoggedOut);
 
   useIsomorphicLayoutEffect(() => {
     if (typeof window === "undefined") return;
+
+    // Skip refresh if user explicitly logged out
+    if (isLoggedOut) {
+      console.log("[AuthHydrator] User logged out, skipping refresh");
+      return;
+    }
 
     const raw = localStorage.getItem(AUTH_STORAGE_KEY);
     let storageValid = false;
@@ -131,11 +139,13 @@ const AuthHydrator = () => {
       }
     }
 
-    // Refresh only when RT cookie exists but storage is missing or invalid.
-    if (!storageValid) {
+    // Refresh only when RT cookie exists but storage is missing or invalid
+    // AND user hasn't explicitly logged out
+    if (!storageValid && !isLoggedOut) {
+      console.log("[AuthHydrator] No valid storage, attempting refresh");
       dispatch(refreshToken());
     }
-  }, [dispatch]);
+  }, [dispatch, isLoggedOut]);
 
   return null;
 };
