@@ -1,8 +1,8 @@
 /* Dropdown Container */
 .dropdown {
-    position: fixed;
-    top: 80px;
-    right: 24px;
+    position: absolute;
+    top: calc(100% + 12px);
+    right: 0;
     width: 380px;
     max-width: 90vw;
     max-height: 60vh;
@@ -15,6 +15,21 @@
     border: 1px solid rgba(0, 0, 0, 0.07);
     display: flex;
     flex-direction: column;
+}
+
+/* Caret Arrow */
+.dropdown::before {
+    content: '';
+    position: absolute;
+    top: -8px;
+    right: 16px;
+    width: 16px;
+    height: 16px;
+    background-color: white;
+    border-left: 1px solid rgba(0, 0, 0, 0.07);
+    border-top: 1px solid rgba(0, 0, 0, 0.07);
+    transform: rotate(45deg);
+    z-index: 1;
 }
 
 @keyframes slideDown {
@@ -309,19 +324,25 @@
 @media (max-width: 768px) {
     .dropdown {
         width: 94vw;
-        right: 50%;
-        transform: translateX(50%);
-        top: 70px;
+        right: -60px;
+        top: calc(100% + 8px);
         max-height: 55vh;
+    }
+    
+    .dropdown::before {
+        right: 76px;
     }
 }
 
 @media (max-width: 480px) {
     .dropdown {
         width: 96vw;
-        right: 50%;
-        transform: translateX(50%);
-        top: 65px;
+        right: -80px;
+        top: calc(100% + 8px);
         max-height: 50vh;
+    }
+    
+    .dropdown::before {
+        right: 96px;
     }
 }

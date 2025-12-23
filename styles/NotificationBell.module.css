@@ -1,5 +1,6 @@
 .bellContainer {
     position: relative;
+    display: inline-flex;
 }
 
 .bellButton {

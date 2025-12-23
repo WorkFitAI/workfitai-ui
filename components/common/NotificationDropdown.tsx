@@ -145,7 +145,7 @@ const NotificationDropdown: React.FC<NotificationDropdownProps> = ({
     if (!isOpen) return null;
 
     return (
-        <div ref={dropdownRef} className={styles.dropdown}>
+        <div ref={dropdownRef} className={styles.dropdown} style={{ position: 'absolute' }}>
             {/* Header */}
             <div className={styles.header}>
                 <h5>Notifications</h5>
