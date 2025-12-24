@@ -51,7 +51,7 @@ const loadStoredSession = (): StoredSession | null => {
         // Backward compatibility: convert expiryInMinutes to expiryTime
         // Assume token was just created (not accurate but safe)
         expiryTime = typeof candidate.expiryInMinutes === "number" && candidate.expiryInMinutes > 0
-          ? Date.now() + (candidate.expiryInMinutes * 60 * 1000)
+          ? Date.now() + candidate.expiryInMinutes
           : null;
       }
 
@@ -81,8 +81,12 @@ const AuthHydrator = () => {
   useIsomorphicLayoutEffect(() => {
     if (typeof window === "undefined") return;
 
+    // Check separate logout flag in localStorage
+    // This flag persists even after session is cleared
+    const logoutFlag = localStorage.getItem("auth_logged_out") === "true";
+
     // Skip refresh if user explicitly logged out
-    if (isLoggedOut) {
+    if (isLoggedOut || logoutFlag) {
       console.log("[AuthHydrator] User logged out, skipping refresh");
       return;
     }

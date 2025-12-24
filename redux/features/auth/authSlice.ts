@@ -196,9 +196,28 @@ const clearRefreshTokenCookie = () => {
   console.log("[Auth] Attempted to clear RT cookies for paths:", cookiePaths);
 };
 
+const LOGOUT_FLAG_KEY = "auth_logged_out";
+
 const clearPersistedSession = () => {
   persistSession(null);
   clearRefreshTokenCookie();
+};
+
+const setLogoutFlag = () => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(LOGOUT_FLAG_KEY, "true");
+  }
+};
+
+const clearLogoutFlag = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(LOGOUT_FLAG_KEY);
+  }
+};
+
+const getLogoutFlag = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(LOGOUT_FLAG_KEY) === "true";
 };
 
 export const isCompleteStoredSession = (
@@ -256,6 +275,7 @@ export const buildAuthStateFromStoredSession = (
   accessToken: session.accessToken,
   expiryTime: session.expiryTime,
   user: getUserFromStoredSession(session),
+  isLoggedOut: getLogoutFlag(), // Read from separate localStorage flag
 });
 
 /**
@@ -538,8 +558,11 @@ export const logoutUser = createAsyncThunk<
   const token = state.auth.accessToken;
   const deviceId = payload?.deviceId ?? getDeviceId();
 
-  // Always clear local session regardless of API response
-  // This ensures UI logout works even if server returns 401 (token already invalid)
+  // Set logout flag FIRST, before clearing session
+  // This flag persists across page refresh to prevent token refresh attempts
+  setLogoutFlag();
+
+  // Then clear the session data
   clearPersistedSession();
 
   // Clear token refresh state to prevent pending refresh requests
@@ -577,6 +600,7 @@ const authSlice = createSlice({
       state.expiryTime = action.payload.expiryTime;
       state.user = getUserFromStoredSession(action.payload);
       state.message = null;
+      state.isLoggedOut = getLogoutFlag(); // Read from separate localStorage flag
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -678,6 +702,7 @@ const authSlice = createSlice({
           state.user = action.payload.user ?? null;
           state.message = action.payload.message;
           state.isLoggedOut = false; // Clear logout flag on successful login
+          clearLogoutFlag(); // Clear separate logout flag in localStorage
         } else {
           // For 2FA, just show the message
           state.message = action.payload.message;
@@ -705,6 +730,7 @@ const authSlice = createSlice({
         state.errorType = null;
         state.message = action.payload.message;
         state.isLoggedOut = false; // Clear logout flag on successful refresh
+        clearLogoutFlag(); // Clear separate logout flag in localStorage
       })
       .addCase(refreshToken.rejected, (state, action) => {
         state.status = "idle";
