@@ -1,10 +1,18 @@
-import {
-  handle401WithTokenRefresh,
-  getCurrentAccessToken,
-  getStoreInstance,
-} from "@/lib/tokenRefreshHandler";
-import { isPublicEndpoint, shouldAttemptRefresh } from "@/lib/endpointUtils";
-import { selectIsLoggedOut } from "@/redux/features/auth/authSlice";
+/**
+ * Auth API Client
+ *
+ * Uses centralized axios client with interceptors for:
+ * - Automatic token injection
+ * - 401 handling with token refresh
+ * - Queue pattern for concurrent requests
+ */
+
+import { authClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
+
+// ============================================================================
+// ERROR CLASSES
+// ============================================================================
 
 export class UnauthorizedError extends Error {
   constructor(message = "Unauthorized") {
@@ -19,6 +27,10 @@ export class ForbiddenError extends Error {
     this.name = "ForbiddenError";
   }
 }
+
+// ============================================================================
+// TYPES
+// ============================================================================
 
 export interface AuthTokens {
   accessToken: string;
@@ -39,119 +51,75 @@ export interface ApiResponse<T = unknown> {
 interface RequestOptions {
   body?: unknown;
   deviceId?: string;
-  accessToken?: string;
+  accessToken?: string; // Legacy, not used with axios interceptor
 }
 
-const API_URL =
-  process.env.NEXT_PUBLIC_AUTH_BASE_URL || "http://localhost:9085/auth";
+// ============================================================================
+// AUTH REQUEST FUNCTION
+// ============================================================================
 
+/**
+ * Make an authenticated request to the auth API
+ * Uses axios interceptor for automatic token injection and 401 handling
+ */
 export const authRequest = async <T>(
   endpoint: string,
-  options: RequestOptions = {},
-  isRetry = false
+  options: RequestOptions = {}
 ): Promise<ApiResponse<T>> => {
   const { body, deviceId } = options;
 
-  // Check if endpoint is public
-  const isPublic = isPublicEndpoint(endpoint);
-
-  // Only get access token for protected endpoints
-  const accessToken = isPublic
-    ? null
-    : (options.accessToken || getCurrentAccessToken());
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-  };
-
+  const headers: Record<string, string> = {};
   if (deviceId) {
     headers["X-Device-Id"] = deviceId;
   }
 
-  // Only add Authorization header for protected endpoints
-  if (!isPublic && accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-
-  // Determine method: POST for refresh/logout endpoints or when body exists, otherwise GET
-  const method = endpoint === "/refresh" || endpoint === "/logout" || body ? "POST" : "GET";
-
-  const config: RequestInit = {
-    method,
-    headers,
-    body: body ? JSON.stringify(body) : undefined,
-    credentials: "include", // Required for HttpOnly refresh token cookies
-  };
+  // Determine method: POST for refresh/logout endpoints or when body exists
+  const method =
+    endpoint === "/refresh" || endpoint === "/logout" || body ? "POST" : "GET";
 
   try {
-    const response = await fetch(`${API_URL}${endpoint}`, config);
-    const data = await response.json();
+    const response = await authClient.request<ApiResponse<T>>({
+      url: endpoint,
+      method,
+      data: body,
+      headers,
+    });
 
-    // Check both HTTP status and response body status
-    // Backend may return HTTP 200 with error payload like {"status": 401, "message": "..."}
-    const statusCode = data.status || response.status;
-    const isError = !response.ok || (data.status && data.status >= 400);
-
-    if (isError) {
-      if (statusCode === 401) {
-        // Check if user logged out before attempting refresh
-        const store = getStoreInstance();
-        const isLoggedOut = store ? selectIsLoggedOut(store.getState()) : false;
-
-        if (isLoggedOut) {
-          // User logged out, don't retry or refresh
-          console.log("[AuthAPI] User logged out, not attempting refresh");
-          throw new UnauthorizedError(data.message || "Unauthorized");
-        }
-
-        // On 401, check if we should attempt refresh
-        // Skip refresh for public endpoints and retry loops
-        if (!isRetry && shouldAttemptRefresh(endpoint)) {
-          console.log(
-            `[AuthAPI] 401 detected on ${endpoint}, attempting token refresh...`
-          );
-
-          // Attempt to refresh the token using centralized queue
-          const newAccessToken = await handle401WithTokenRefresh();
-
-          if (newAccessToken) {
-            console.log(`[AuthAPI] Token refreshed, retrying ${endpoint}...`);
-            // Retry the original request with the new token
-            return authRequest<T>(
-              endpoint,
-              {
-                ...options,
-                accessToken: newAccessToken,
-              },
-              true // Mark as retry to prevent infinite loops
-            );
-          } else {
-            console.error(`[AuthAPI] Token refresh failed for ${endpoint}`);
-          }
-        }
-        throw new UnauthorizedError(data.message || "Unauthorized");
-      }
-      if (statusCode === 403) {
-        throw new ForbiddenError(data.message || "Forbidden");
-      }
-      throw new Error(data.message || "An error occurred");
-    }
-
-    return data;
+    return response.data;
   } catch (error) {
-    if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
-      throw error;
+    const axiosError = error as AxiosError<{
+      message?: string;
+      status?: number;
+    }>;
+
+    if (axiosError.response?.status === 401) {
+      throw new UnauthorizedError(
+        axiosError.response.data?.message || "Unauthorized"
+      );
     }
-    throw new Error(error instanceof Error ? error.message : "Network error");
+    if (axiosError.response?.status === 403) {
+      throw new ForbiddenError(
+        axiosError.response.data?.message || "Forbidden"
+      );
+    }
+
+    throw new Error(axiosError.response?.data?.message || "Network error");
   }
 };
 
+/**
+ * POST request to auth API
+ */
 export const postAuth = async <T>(
   endpoint: string,
   options: RequestOptions
 ): Promise<ApiResponse<T>> => {
   return authRequest<T>(endpoint, { ...options, body: options.body });
 };
+
+// ============================================================================
+// REGISTRATION
+// ============================================================================
 
 export interface RegisterRequest {
   fullName: string;
@@ -161,7 +129,7 @@ export interface RegisterRequest {
   role: "CANDIDATE" | "HR" | "HR_MANAGER" | "ADMIN";
   hrProfile?: {
     department: string;
-    hrManagerEmail?: string; // Required for HR only
+    hrManagerEmail?: string;
     address: string;
   };
   company?: {
@@ -185,9 +153,13 @@ export const register = async (
   });
 };
 
+// ============================================================================
+// TWO-FACTOR AUTHENTICATION
+// ============================================================================
+
 export interface TwoFactorStatus {
   enabled: boolean;
-  method: 'TOTP' | 'EMAIL' | null;
+  method: "TOTP" | "EMAIL" | null;
   enabledAt: string | null;
 }
 

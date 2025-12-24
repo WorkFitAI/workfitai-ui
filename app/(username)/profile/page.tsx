@@ -14,7 +14,11 @@ import {
     selectTwoFactorStatus,
     clearSuccessMessage,
 } from "@/redux/features/profile/profileSlice";
-import { selectAuthUser } from "@/redux/features/auth/authSlice";
+import {
+    selectAuthUser,
+    selectAuthToken,
+    selectAuthStatus,
+} from "@/redux/features/auth/authSlice";
 import ProfileHeader from "@/components/profile/ProfileHeader";
 import ProfileOverview from "@/components/profile/ProfileOverview";
 import AvatarUploader from "@/components/profile/AvatarUploader";
@@ -28,15 +32,40 @@ export default function ProfilePage() {
 
     const profile = useAppSelector(selectProfile);
     const authUser = useAppSelector(selectAuthUser);
+    const authToken = useAppSelector(selectAuthToken);
+    const authStatus = useAppSelector(selectAuthStatus);
     const loading = useAppSelector(selectProfileLoading);
     const error = useAppSelector(selectProfileError);
     const successMessage = useAppSelector(selectProfileSuccessMessage);
     const twoFactorStatus = useAppSelector(selectTwoFactorStatus);
 
     const [showAvatarUploader, setShowAvatarUploader] = useState(false);
+    const [authChecked, setAuthChecked] = useState(false);
 
     // Always viewing own profile in this route
     const isOwnProfile = true;
+
+    // Client-side auth protection
+    // Wait for auth hydration to complete before checking
+    useEffect(() => {
+        // Skip during initial load (auth might be refreshing)
+        if (authStatus === "loading") return;
+
+        // Give AuthHydrator time to refresh token
+        const timer = setTimeout(() => {
+            setAuthChecked(true);
+        }, 500);
+
+        return () => clearTimeout(timer);
+    }, [authStatus]);
+
+    // Redirect to signin if not authenticated after auth check
+    useEffect(() => {
+        if (authChecked && !authToken && authStatus !== "loading") {
+            console.log("[ProfilePage] No auth token after hydration, redirecting to signin");
+            router.push("/signin?redirect=/profile");
+        }
+    }, [authChecked, authToken, authStatus, router]);
 
     // Determine breadcrumb link based on user role
     const getBreadcrumbLink = () => {

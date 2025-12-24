@@ -13,7 +13,7 @@ import {
 } from "@/lib/authApi";
 import { getDeviceId } from "@/lib/deviceId";
 import { getUserGeolocation } from "@/lib/geolocation";
-import { resetRefreshState } from "@/lib/tokenRefreshHandler";
+import { setAccessToken, resetAxiosAuth } from "@/lib/axios-client";
 import { showToast } from "@/lib/toast";
 import type { RootState } from "@/redux/store";
 
@@ -108,7 +108,8 @@ interface LogoutPayload {
 
 interface AuthResponseData {
   accessToken: string;
-  expiryInMinutes: number;
+  expiryInMs?: number; // Backend sends expiry in milliseconds
+  expiryInMinutes?: number; // Legacy support
   username: string;
   roles: string[];
   companyId?: string;
@@ -163,37 +164,46 @@ const persistSession = (session: StoredSession | null) => {
     return;
   }
 
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  // 🚨 SECURITY: DO NOT store accessToken in localStorage anymore
+  // Token is now in-memory only via axios-client (XSS protection)
+  // Only store non-sensitive session metadata for WebSocket compatibility
 
   // 🚨 CRITICAL: Store username separately for WebSocket authentication
   // WebSocket needs username in X-Username header for Spring user session tracking
   if (session.username) {
     localStorage.setItem('username', session.username);
   }
+
+  // Store minimal session info (no token) for UI state restoration
+  const minimalSession = {
+    username: session.username,
+    roles: session.roles,
+    companyId: session.companyId,
+    // Note: expiryTime stored for reference but token comes from memory
+    expiryTime: session.expiryTime,
+  };
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(minimalSession));
 };
 
 const clearRefreshTokenCookie = () => {
   if (typeof document === "undefined") return;
 
-  // Clear RT cookie for all possible paths
-  // Set max-age=0 to delete immediately
-  const cookiePaths = ["/", "/auth"];
-  const cookieDomains = [
-    window.location.hostname,
-    `.${window.location.hostname}`, // Subdomain variant
-  ];
+  // NOTE: RT cookie is HttpOnly, so JavaScript cannot clear it directly.
+  // The backend logout API (/auth/logout) clears the RT cookie via Set-Cookie header.
+  // This function attempts to clear any non-HttpOnly cookies that might exist.
+
+  // Attempt to clear RT cookie for various paths (only works if not HttpOnly)
+  const cookiePaths = ["/", "/auth", "/api"];
 
   cookiePaths.forEach(path => {
-    cookieDomains.forEach(domain => {
-      // Clear for specific domain
-      document.cookie = `RT=; path=${path}; domain=${domain}; max-age=0; SameSite=Lax`;
-      // Clear without domain (for exact domain match)
-      document.cookie = `RT=; path=${path}; max-age=0; SameSite=Lax`;
-    });
+    // Clear without domain (most common case)
+    document.cookie = `RT=; path=${path}; max-age=0; SameSite=Lax`;
+    document.cookie = `RT=; path=${path}; max-age=0; SameSite=None; Secure`;
+    document.cookie = `RT=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
   });
 
   // Log for debugging
-  console.log("[Auth] Attempted to clear RT cookies for paths:", cookiePaths);
+  console.log("[Auth] RT cookie clear attempted (HttpOnly cookies require backend Set-Cookie)");
 };
 
 const LOGOUT_FLAG_KEY = "auth_logged_out";
@@ -279,20 +289,22 @@ export const buildAuthStateFromStoredSession = (
 });
 
 /**
- * Convert expiryInMinutes to absolute timestamp
+ * Convert expiry to absolute timestamp
+ * Supports both expiryInMs (milliseconds) and expiryInMinutes (legacy)
  * Returns null if no expiry (never expires)
  */
-const calculateExpiryTime = (expiryInMinutes: number | undefined): number | null => {
-  if (
-    expiryInMinutes === undefined ||
-    typeof expiryInMinutes !== "number" ||
-    Number.isNaN(expiryInMinutes) ||
-    expiryInMinutes <= 0
-  ) {
-    return null; // No expiry or invalid
+const calculateExpiryTime = (expiryInMs?: number, expiryInMinutes?: number): number | null => {
+  // Prefer expiryInMs (backend sends this)
+  if (typeof expiryInMs === "number" && !Number.isNaN(expiryInMs) && expiryInMs > 0) {
+    return Date.now() + expiryInMs;
   }
-  // Convert milisecond to absolute timestamp
-  return Date.now() + expiryInMinutes;
+
+  // Fallback to expiryInMinutes (legacy)
+  if (typeof expiryInMinutes === "number" && !Number.isNaN(expiryInMinutes) && expiryInMinutes > 0) {
+    return Date.now() + (expiryInMinutes * 60 * 1000);
+  }
+
+  return null; // No expiry or invalid
 };
 
 const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
@@ -303,11 +315,12 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
   const companyId = data.companyId;
 
   // Derive role from roles array
+  // Support both formats: "ROLE_CANDIDATE" and "CANDIDATE"
   let role: string | undefined = undefined;
-  if (roles.includes("ROLE_CANDIDATE")) role = "CANDIDATE";
-  else if (roles.includes("ROLE_HR")) role = "HR";
-  else if (roles.includes("ROLE_HR_MANAGER")) role = "HR_MANAGER";
-  else if (roles.includes("ROLE_ADMIN")) role = "ADMIN";
+  if (roles.includes("ROLE_CANDIDATE") || roles.includes("CANDIDATE")) role = "CANDIDATE";
+  else if (roles.includes("ROLE_HR") || roles.includes("HR")) role = "HR";
+  else if (roles.includes("ROLE_HR_MANAGER") || roles.includes("HR_MANAGER")) role = "HR_MANAGER";
+  else if (roles.includes("ROLE_ADMIN") || roles.includes("ADMIN")) role = "ADMIN";
 
   return { username, role, roles, companyId };
 };
@@ -319,7 +332,7 @@ const parseAuthResponse = (
     throw new Error(response.message || "Missing response data");
   }
 
-  const { accessToken, expiryInMinutes } = response.data;
+  const { accessToken, expiryInMs, expiryInMinutes } = response.data;
   const user = normalizeUser(response.data);
 
   if (!accessToken) {
@@ -328,7 +341,7 @@ const parseAuthResponse = (
 
   return {
     accessToken,
-    expiryTime: calculateExpiryTime(expiryInMinutes),
+    expiryTime: calculateExpiryTime(expiryInMs, expiryInMinutes),
     message: response.message ?? null,
     user,
     tokenType: response.tokenType,
@@ -513,7 +526,19 @@ export const loginUser = createAsyncThunk<
 
     // Normal login
     const parsed = parseAuthResponse(response);
-    persistSession(toStoredSession(parsed));
+
+    // Store token in axios in-memory store (not localStorage)
+    const storedSession = toStoredSession(parsed);
+    setAccessToken(
+      parsed.accessToken,
+      parsed.expiryTime ?? undefined,
+      storedSession.username,
+      storedSession.roles,
+      storedSession.companyId
+    );
+
+    // Store minimal session info (username, roles - no token)
+    persistSession(storedSession);
     return parsed;
   } catch (error) {
     return rejectWithValue({
@@ -535,11 +560,23 @@ export const refreshToken = createAsyncThunk<
 
     const parsed = parseAuthResponse(response);
     const fallbackUser = getState().auth.user;
-    persistSession(
-      toStoredSession({ ...parsed, user: parsed.user ?? fallbackUser ?? null })
+    const storedSession = toStoredSession({ ...parsed, user: parsed.user ?? fallbackUser ?? null });
+
+    // Store token in axios in-memory store (not localStorage)
+    setAccessToken(
+      parsed.accessToken,
+      parsed.expiryTime ?? undefined,
+      storedSession.username,
+      storedSession.roles,
+      storedSession.companyId
     );
+
+    // Store minimal session info (username, roles - no token)
+    persistSession(storedSession);
     return { ...parsed, user: parsed.user ?? fallbackUser ?? null };
   } catch (error) {
+    // Clear in-memory token on refresh failure
+    resetAxiosAuth();
     clearPersistedSession();
     return rejectWithValue({
       message:
@@ -558,31 +595,27 @@ export const logoutUser = createAsyncThunk<
   const token = state.auth.accessToken;
   const deviceId = payload?.deviceId ?? getDeviceId();
 
-  // Set logout flag FIRST, before clearing session
-  // This flag persists across page refresh to prevent token refresh attempts
+  // Set logout flag FIRST to prevent any refresh attempts during logout
   setLogoutFlag();
 
-  // Then clear the session data
+  // Call backend logout API FIRST (while we still have the token)
+  // This allows backend to clear the RT HttpOnly cookie via Set-Cookie header
+  if (token) {
+    try {
+      await postAuth<undefined>("/logout", {
+        deviceId,
+        accessToken: token,
+      });
+      console.log("[Auth] Backend logout successful, RT cookie should be cleared by Set-Cookie header");
+    } catch (error) {
+      // Log but don't fail - we still want to clear local state
+      console.warn("[Auth] Logout API call failed:", error);
+    }
+  }
+
+  // THEN clear local state (after backend has had chance to clear RT cookie)
+  resetAxiosAuth();
   clearPersistedSession();
-
-  // Clear token refresh state to prevent pending refresh requests
-  resetRefreshState();
-
-  if (!token) {
-    // No token but still consider logout successful since session is cleared
-    return;
-  }
-
-  try {
-    await postAuth<undefined>("/logout", {
-      deviceId,
-      accessToken: token,
-    });
-  } catch (error) {
-    // Don't reject on 401 - the token is already invalid, logout is effectively done
-    // For other errors, we still cleared the local session so UI logout succeeds
-    console.warn("Logout API call failed:", error);
-  }
 });
 
 const authSlice = createSlice({
