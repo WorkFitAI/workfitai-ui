@@ -154,6 +154,7 @@ function isPublicRoute(pathname: string): boolean {
     "/reset-password",
     "/forgot-password",
     "/unauthorized",
+    "/oauth-callback",
     "/jobs-grid",
     "/jobs-list",
     "/job-details",

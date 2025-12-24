@@ -36,6 +36,7 @@ function SigninContent() {
   const [password, setPassword] = useState("");
   const [localMessage, setLocalMessage] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified");
@@ -98,9 +99,32 @@ function SigninContent() {
 
   const handleSubmit = async (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
-    if (!usernameOrEmail || !password) return;
 
+    // Clear previous errors
+    setFieldErrors({});
     setLocalMessage(null);
+
+    // Validate fields
+    const errors: Record<string, string> = {};
+
+    if (!usernameOrEmail.trim()) {
+      errors.usernameOrEmail = "Username or email is required";
+    } else if (usernameOrEmail.includes("@") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(usernameOrEmail)) {
+      errors.usernameOrEmail = "Invalid email format";
+    } else if (!usernameOrEmail.includes("@") && usernameOrEmail.trim().length < 3) {
+      errors.usernameOrEmail = "Username must be at least 3 characters";
+    }
+
+    if (!password) {
+      errors.password = "Password is required";
+    } else if (password.length < 6) {
+      errors.password = "Password must be at least 6 characters";
+    }
+
+    if (Object.keys(errors).length > 0) {
+      setFieldErrors(errors);
+      return;
+    }
 
     try {
       const result = await dispatch(loginUser({ usernameOrEmail, password })).unwrap();
@@ -145,6 +169,7 @@ function SigninContent() {
           required
           placeholder="stevenjob"
           autoComplete="username"
+          error={fieldErrors.usernameOrEmail}
         />
 
         <PasswordInput
@@ -155,6 +180,7 @@ function SigninContent() {
           required
           placeholder="************"
           showForgotPassword={true}
+          error={fieldErrors.password}
         />
 
         <FormError error={error} />
