@@ -25,20 +25,7 @@ export default function UnifiedLayoutWrapper({ children }: UnifiedLayoutWrapperP
             pathname?.startsWith('/hr-manager');
     }, [pathname]);
 
-    // Conditionally load CSS - this happens on client side only
-    useMemo(() => {
-        if (typeof window !== 'undefined') {
-            if (isControlRoute) {
-                // Load control CSS
-                import("@/public/assets/control/css/style.css");
-                import("@/public/assets/control/css/application-table.css");
-                import("@/public/assets/control/css/search-filters.css");
-            } else {
-                // Load default CSS
-                import("@/public/assets/css/style.css");
-            }
-        }
-    }, [isControlRoute]);
+    // Note: CSS is loaded in respective layout files, not dynamically here
 
     return <>{children}</>;
 }

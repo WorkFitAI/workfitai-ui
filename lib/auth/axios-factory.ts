@@ -30,7 +30,7 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
     },
   });
 
-  // REQUEST INTERCEPTOR: Inject access token
+  // REQUEST INTERCEPTOR: Check token expiry and inject access token
   instance.interceptors.request.use(
     (config: InternalAxiosRequestConfig) => {
       const path = config.url || "";
@@ -40,8 +40,21 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
         return config;
       }
 
+      // Check if token is expired BEFORE making the request
       const token = getAccessToken();
-      if (token) {
+
+      if (!token) {
+        // No token available - check if user is logged out
+        if (getIsLoggedOut()) {
+          // User explicitly logged out - redirect to signin
+          if (typeof document !== "undefined") {
+            document.location.href = "/signin";
+          }
+          return Promise.reject(new Error("User is logged out"));
+        }
+        // Token might have expired - will be handled by response interceptor
+      } else {
+        // Token exists, add to headers
         config.headers.Authorization = `Bearer ${token}`;
       }
 
@@ -50,13 +63,22 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
     (error) => Promise.reject(error)
   );
 
-  // RESPONSE INTERCEPTOR: Handle 401 with refresh
+  // RESPONSE INTERCEPTOR: Handle 401 with refresh and 403 redirect
   instance.interceptors.response.use(
     (response) => response,
     async (error: AxiosError) => {
       const originalRequest = error.config as InternalAxiosRequestConfig & {
         _retry?: boolean;
       };
+
+      // Handle 403 Forbidden - redirect to unauthorized page WITHOUT logging out
+      // 403 means user is authenticated but lacks permission - don't clear their session
+      if (error.response?.status === 403) {
+        if (typeof document !== 'undefined') {
+          document.location.href = '/unauthorized';
+        }
+        return Promise.reject(error);
+      }
 
       // Check if 401 and should attempt refresh
       if (
@@ -67,6 +89,10 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
       ) {
         // Check if logged out
         if (getIsLoggedOut()) {
+          // Redirect to unauthorized page
+          if (typeof document !== "undefined") {
+            document.location.href = "/unauthorized";
+          }
           return Promise.reject(error);
         }
 
@@ -96,8 +122,17 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
           if (newToken) {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return instance(originalRequest);
+          } else {
+            // Refresh failed, redirect to unauthorized page
+            if (typeof document !== "undefined") {
+              document.location.href = "/unauthorized";
+            }
           }
         } catch (refreshError) {
+          // Refresh error, redirect to unauthorized page
+          if (typeof document !== "undefined") {
+            document.location.href = "/unauthorized";
+          }
           return Promise.reject(refreshError);
         }
       }

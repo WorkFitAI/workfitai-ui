@@ -12,7 +12,7 @@ interface Props {
 export default function JobStatusActions({ job, onReload }: Props) {
   const handleStatusChange = async (status: string) => {
     try {
-      await updateReportedJobStatus(job.postId, status as any);
+      await updateReportedJobStatus(job.jobId, status as any);
       toast.success("Job status updated");
       onReload();
     } catch {
@@ -24,7 +24,7 @@ export default function JobStatusActions({ job, onReload }: Props) {
     if (!confirm("Delete this job permanently?")) return;
 
     try {
-      await deleteReportedJob(job.postId);
+      await deleteReportedJob(job.jobId);
       toast.success("Job deleted");
       onReload();
     } catch {

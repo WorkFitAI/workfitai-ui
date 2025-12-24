@@ -644,6 +644,15 @@ const authSlice = createSlice({
         state.user.avatarUrl = action.payload ?? undefined;
       }
     },
+    clearExpiredSession: (state) => {
+      // Clear auth state when token expires (but don't mark as logged out)
+      state.accessToken = null;
+      state.expiryTime = null;
+      state.user = null;
+      state.error = "Session expired";
+      state.errorType = "unauthorized";
+      // Don't set isLoggedOut = true - token just expired
+    },
   },
   extraReducers: (builder) => {
     builder
@@ -807,7 +816,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { restoreSessionFromStorage, clearAuthError, updateUserAvatar } = authSlice.actions;
+export const { restoreSessionFromStorage, clearAuthError, updateUserAvatar, clearExpiredSession } = authSlice.actions;
 
 export const selectAuthToken = (state: RootState) => state.auth.accessToken;
 export const selectAuthStatus = (state: RootState) => state.auth.status;

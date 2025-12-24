@@ -7,7 +7,7 @@
 
 import {
   setAccessToken,
-  clearAccessToken,
+  clearAccessTokenSilent,
   getIsLoggedOut,
 } from "./token-store";
 import { AUTH_BASE_URL } from "./api-config";
@@ -103,11 +103,18 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
       return accessToken;
     } catch (error) {
-      // Clear token and process queue with error
-      clearAccessToken();
+      // Clear token silently (don't mark as logged out - refresh just failed)
+      clearAccessTokenSilent();
       processQueue(
         error instanceof Error ? error : new Error("Refresh failed")
       );
+
+      // Redirect to unauthorized page on refresh failure
+      // User is still "logged in" but needs to re-authenticate
+      if (typeof window !== 'undefined') {
+        window.location.href = '/unauthorized';
+      }
+
       return null;
     } finally {
       isRefreshing = false;

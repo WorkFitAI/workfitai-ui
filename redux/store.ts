@@ -21,9 +21,9 @@ const rootReducer = {
 const tempStore = configureStore({ reducer: rootReducer });
 export type RootState = ReturnType<typeof tempStore.getState>;
 
-export const makeStore = (preloadedState?: Partial<RootState>) => {
+export const makeStore = (preloadedState?: any) => {
   return configureStore({
-    reducer: rootReducer,
+    reducer: rootReducer as any,
     preloadedState,
   });
 };

@@ -1,5 +1,4 @@
 import { jobClient } from "@/lib/axios-client";
-import { isPublicEndpoint } from "@/lib/endpointUtils";
 import type { AxiosError } from "axios";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
@@ -85,7 +84,6 @@ export const jobRequest = async <T>(
 export const jobRequestFormData = async <T>(
   path: string,
   formData: FormData,
-  _isRetry = false, // Kept for backward compatibility but unused
   method: "POST" | "PUT" = "POST"
 ): Promise<ApiResponse<T>> => {
   try {
@@ -163,7 +161,6 @@ export const updateCompany = async (formData: FormData) => {
   return jobRequestFormData<import("@/types/job/company").Company>(
     `/hr/companies`,
     formData,
-    false,
     "PUT"
   );
 };

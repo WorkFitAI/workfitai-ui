@@ -30,26 +30,16 @@ export default function TopJobsWidget({ jobs }: TopJobsWidgetProps): React.React
           </div>
         ) : (
           jobs.map((job, index) => {
-            const conversionRate = getConversionRate(job.hiredCount, job.applicationCount);
             return (
               <div key={job.jobId} className="job-card">
                 <div className="job-rank">#{index + 1}</div>
                 <div className="job-info">
                   <h4 className="job-title">{job.jobTitle}</h4>
-                  <p className="job-company">{job.companyName}</p>
                 </div>
                 <div className="job-stats">
                   <div className="stat">
                     <div className="stat-label">Applications</div>
-                    <div className="stat-value">{job.applicationCount}</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-label">Hired</div>
-                    <div className="stat-value stat-hired">{job.hiredCount}</div>
-                  </div>
-                  <div className="stat">
-                    <div className="stat-label">Conversion</div>
-                    <div className="stat-value">{conversionRate}%</div>
+                    <div className="stat-value">{job.applicantCount}</div>
                   </div>
                 </div>
               </div>

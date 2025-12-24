@@ -29,6 +29,7 @@ export function middleware(request: NextRequest) {
     pathname.startsWith("/verify-otp") ||
     pathname.startsWith("/reset-password") ||
     pathname.startsWith("/forgot-password") ||
+    pathname.startsWith("/unauthorized") || // Allow unauthorized page for all users
     pathname.startsWith("/_next") ||
     pathname.startsWith("/api") ||
     pathname.includes(".")  // Static files

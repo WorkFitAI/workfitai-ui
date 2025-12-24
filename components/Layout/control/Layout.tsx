@@ -10,6 +10,7 @@ import MobileMenu from "./MobileMenu";
 import PageHead from "./PageHead";
 import Sidebar from "./Sidebar";
 import useAuthErrorRedirect from "@/util/useAuthErrorRedirect";
+import useRouteGuard from "@/util/useRouteGuard";
 
 type LayoutProps = {
   headTitle?: string;
@@ -25,6 +26,9 @@ export default function Layout({
   children,
 }: LayoutProps) {
   const [isToggled, setToggled] = useState<boolean>(false);
+
+  // Check token expiry and role-based access BEFORE rendering
+  useRouteGuard();
 
   // Handle auth errors: 401 -> signin, 403 -> unauthorized page
   useAuthErrorRedirect();

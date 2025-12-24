@@ -91,6 +91,21 @@ export const clearAccessToken = (): void => {
 };
 
 /**
+ * Clear access token without setting logged out flag
+ * Use this for token refresh failures where user shouldn't be logged out
+ */
+export const clearAccessTokenSilent = (): void => {
+  tokenStore = {
+    accessToken: null,
+    expiryTime: null,
+    username: null,
+    roles: [],
+    companyId: null,
+  };
+  // DON'T set isLoggedOut or localStorage flag
+};
+
+/**
  * Check if token is expired
  */
 export const isTokenExpired = (): boolean => {

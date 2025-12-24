@@ -17,7 +17,7 @@ import type {
   HRUser,
   HRActivitiesResponse,
 } from "@/types/application/application";
-import { applicationClient, APPLICATION_BASE_URL } from "@/lib/axios-client";
+import { applicationClient } from "@/lib/axios-client";
 import type { AxiosError } from "axios";
 
 // Generic request wrapper using axios client
