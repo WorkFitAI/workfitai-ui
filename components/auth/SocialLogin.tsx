@@ -42,7 +42,10 @@ export default function SocialLogin({
   };
 
   const handleClick = async (): Promise<void> => {
-    if (disabled || loading) return;
+    if (disabled || loading) {
+      console.log("[OAuth Button] Click ignored - disabled or loading");
+      return;
+    }
 
     // If custom onClick is provided, use it
     if (onClick) {
@@ -50,16 +53,35 @@ export default function SocialLogin({
       return;
     }
 
-    // Default OAuth flow
+    // Default OAuth flow with retry
+    console.log(`[OAuth Button] Initiating ${provider} OAuth flow...`);
     setLoading(true);
+
     try {
       const oauthProvider: OAuthProvider = provider.toUpperCase() as OAuthProvider;
+
+      // Small delay to ensure component state is updated
+      await new Promise(resolve => setTimeout(resolve, 50));
+
+      console.log(`[OAuth Button] Calling initiateOAuth for ${oauthProvider}...`);
       await initiateOAuth(oauthProvider);
-      // Note: initiateOAuth will redirect, so we won't reach here
+      // Note: initiateOAuth will redirect, so we won't reach here normally
+      console.log("[OAuth Button] OAuth initiated successfully (should redirect)");
     } catch (error) {
+      console.error(`[OAuth Button] OAuth initiation failed:`, error);
       setLoading(false);
-      const message = error instanceof Error ? error.message : "Failed to sign in";
-      showToast.error(message);
+
+      const errorMessage = error instanceof Error ? error.message : "Unknown error";
+      const isNetworkError = errorMessage.includes("network") || errorMessage.includes("Network");
+
+      let displayMessage = errorMessage;
+      if (isNetworkError) {
+        displayMessage = "Network error. Please check your connection and try again.";
+      } else if (errorMessage.includes("Failed to initiate")) {
+        displayMessage = `Unable to connect to ${provider} OAuth. Please try again.`;
+      }
+
+      showToast.error(displayMessage);
     }
   };
 

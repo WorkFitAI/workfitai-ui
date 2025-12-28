@@ -75,10 +75,13 @@ function OAuthCallbackContent() {
         }
 
         // Exchange code for tokens
+        // Backend now returns opaque tokens (not JWT) after going through Gateway
         const response = await processOAuthCallback(provider, code, state);
 
         // Handle successful login
         if (response.tokenType === "Bearer" && (response.token || response.accessToken)) {
+          // response.token or response.accessToken is now an OPAQUE token (32-char UUID)
+          // NOT a JWT - this is converted by API Gateway for security
           const accessToken = response.token || response.accessToken;
           const expiryTime = response.expiresIn
             ? Date.now() + (response.expiresIn * 1000)

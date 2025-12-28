@@ -120,6 +120,8 @@ export const getOAuthAuthorizationUrl = async (
   options: OAuthAuthorizeRequest = {}
 ): Promise<OAuthAuthorizeResponse> => {
   try {
+    console.log(`[OAuth] Requesting authorization URL for ${provider}...`);
+
     // Backend returns wrapped response: {status, message, data}
     const response = await authClient.post<{
       status: number;
@@ -129,12 +131,24 @@ export const getOAuthAuthorizationUrl = async (
       timestamp?: string;
     }>(`/oauth/authorize/${provider}`, options);
 
+    console.log(`[OAuth] Received authorization URL:`, response.data);
+
     // Unwrap the data field
     return response.data.data;
   } catch (error) {
-    const axiosError = error as AxiosError<{ message?: string }>;
+    const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+    console.error(`[OAuth] Failed to get authorization URL:`, {
+      status: axiosError.response?.status,
+      message: axiosError.response?.data?.message,
+      error: axiosError.response?.data?.error,
+      fullError: axiosError,
+    });
+
     throw new Error(
-      axiosError.response?.data?.message || "Failed to initiate OAuth flow"
+      axiosError.response?.data?.message ||
+      axiosError.response?.data?.error ||
+      axiosError.message ||
+      "Failed to initiate OAuth flow. Please check your network connection."
     );
   }
 };
@@ -262,4 +276,126 @@ export const getProviderIcon = (provider: OAuthProvider): string => {
     default:
       return "/assets/imgs/template/icons/icon-google.svg";
   }
+};
+
+// ============================================================================
+// OAUTH ACCOUNT MANAGEMENT (LINK/UNLINK)
+// ============================================================================
+
+/**
+ * Link OAuth provider to existing account
+ * Requires authentication (Bearer token)
+ */
+export const linkOAuthProvider = async (
+  provider: OAuthProvider,
+  options: OAuthAuthorizeRequest = {}
+): Promise<OAuthAuthorizeResponse> => {
+  try {
+    // This endpoint requires Authorization header
+    // Backend will detect authenticated user and switch to LINK mode
+    const response = await authClient.post<{
+      status: number;
+      message: string;
+      data: OAuthAuthorizeResponse;
+    }>(`/oauth/authorize/${provider}`, options);
+
+    return response.data.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to link OAuth provider"
+    );
+  }
+};
+
+/**
+ * Unlink OAuth provider from account
+ * Requires authentication (Bearer token)
+ */
+export const unlinkOAuthProvider = async (
+  provider: OAuthProvider
+): Promise<void> => {
+  try {
+    await authClient.delete(`/oauth/unlink/${provider}`);
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to unlink OAuth provider"
+    );
+  }
+};
+
+/**
+ * Get user's authentication status
+ * Returns available auth methods (password + OAuth providers)
+ */
+export interface AuthStatusResponse {
+  userId: string;
+  hasPassword: boolean;
+  oauthProviders: OAuthProvider[];
+  canUnlinkOAuth: boolean;
+  message: string;
+}
+
+export const getAuthStatus = async (): Promise<AuthStatusResponse> => {
+  try {
+    const response = await authClient.get<{
+      status: number;
+      message: string;
+      data: AuthStatusResponse;
+    }>("/oauth/auth-status");
+
+    return response.data.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to get auth status"
+    );
+  }
+};
+
+/**
+ * Set password for OAuth-only users
+ * Allows OAuth users to add password authentication
+ */
+export interface SetPasswordRequest {
+  newPassword: string;
+}
+
+export interface SetPasswordResponse {
+  message: string;
+}
+
+export const setPassword = async (
+  newPassword: string
+): Promise<SetPasswordResponse> => {
+  try {
+    const response = await authClient.post<{
+      status: number;
+      message: string;
+      data?: SetPasswordResponse;
+    }>("/set-password", { newPassword });
+
+    return response.data.data || { message: response.data.message };
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to set password"
+    );
+  }
+};
+
+/**
+ * Initiate OAuth link flow
+ * Similar to initiateOAuth but for linking accounts
+ */
+export const initiateLinkOAuth = async (provider: OAuthProvider): Promise<void> => {
+  // Get authorization URL (with Bearer token, backend will detect LINK mode)
+  const response = await linkOAuthProvider(provider);
+
+  // Store state for CSRF validation
+  storeOAuthState(response.state, provider);
+
+  // Redirect to provider's authorization page
+  window.location.href = response.authorizationUrl;
 };

@@ -13,6 +13,8 @@ import {
 import ChangePasswordForm from "./ChangePasswordForm";
 import Enable2FAModal from "./Enable2FAModal";
 import Disable2FAModal from "./Disable2FAModal";
+import ConnectedAccounts from "./ConnectedAccounts";
+import SetPasswordForm from "./SetPasswordForm";
 
 interface SecuritySettingsProps {
     twoFactorStatus: {
@@ -30,6 +32,7 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
     const [showPasswordForm, setShowPasswordForm] = useState(false);
     const [show2FAModal, setShow2FAModal] = useState(false);
     const [showDisable2FAModal, setShowDisable2FAModal] = useState(false);
+    const [showSetPasswordForm, setShowSetPasswordForm] = useState(false);
 
     const is2FAEnabled = twoFactorStatus?.enabled || false;
     const twoFactorMethod = twoFactorStatus?.method;
@@ -165,6 +168,22 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
                     <i className={`fi-rr-${is2FAEnabled ? 'shield-exclamation' : 'plus'}`}></i>
                     {is2FAEnabled ? ' Disable 2FA' : ' Enable 2FA'}
                 </button>
+            </div>
+
+            {/* OAuth Connected Accounts Section */}
+            <div className="settings-section mt-4">
+                <ConnectedAccounts
+                    onPasswordRequired={() => setShowSetPasswordForm(true)}
+                />
+
+                {showSetPasswordForm && (
+                    <SetPasswordForm
+                        onSuccess={() => {
+                            setShowSetPasswordForm(false);
+                            // Optionally refresh auth status
+                        }}
+                    />
+                )}
             </div>
 
             {/* Enable 2FA Modal */}
