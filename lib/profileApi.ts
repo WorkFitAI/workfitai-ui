@@ -1,8 +1,5 @@
-import {
-    handle401WithTokenRefresh,
-    getCurrentAccessToken,
-} from "@/lib/tokenRefreshHandler";
-import { isPublicEndpoint, shouldAttemptRefresh } from "@/lib/endpointUtils";
+import { userClient, authClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 import type {
     UserProfile,
     AvatarUploadResponse,
@@ -48,87 +45,41 @@ export interface ApiResponse<T = unknown> {
     status: "success" | "error";
 }
 
-interface RequestOptions {
-    body?: unknown;
-    accessToken?: string;
-}
-
-const USER_API_URL =
-    process.env.NEXT_PUBLIC_USER_BASE_URL || "http://localhost:9085/user";
-
-const AUTH_API_URL =
-    process.env.NEXT_PUBLIC_AUTH_BASE_URL || "http://localhost:9085/auth";
-
-// Note: All requests should go through API Gateway
-// API Gateway will add X-Username header from JWT token
-
-// Generic request handler
+// Generic request handler using axios clients
 const profileRequest = async <T>(
     endpoint: string,
-    options: RequestOptions & { method?: string } = {},
-    isRetry = false
+    options: { method?: string; body?: unknown } = {}
 ): Promise<ApiResponse<T>> => {
-    const isPublic = isPublicEndpoint(endpoint);
-    const accessToken = options.accessToken || (!isPublic ? getCurrentAccessToken() : null);
-
-    const headers: HeadersInit = {
-        "Content-Type": "application/json",
-    };
-
-    if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
-    }
-
-    const requestOptions: RequestInit = {
-        method: options.method || "GET",
-        headers,
-        credentials: "include",
-    };
-
-    if (options.body) {
-        requestOptions.body = JSON.stringify(options.body);
-    }
-
-    const baseUrl = endpoint.startsWith("/auth") ? AUTH_API_URL : USER_API_URL;
-    const url = `${baseUrl}${endpoint.replace(/^\/(auth|user)/, "")}`; // ex: /auth/sessions to AUTH_API_URL/sessions
+    // Route to correct client based on endpoint
+    const client = endpoint.startsWith("/auth") ? authClient : userClient;
+    const url = endpoint.replace(/^\/(auth|user)/, "");
 
     try {
-        const response = await fetch(url, requestOptions);
-
-        if (response.status === 401 && !isPublic && !isRetry && shouldAttemptRefresh(endpoint)) {
-            try {
-                await handle401WithTokenRefresh();
-                return profileRequest<T>(endpoint, options, true);
-            } catch (refreshError) {
-                throw new UnauthorizedError("Session expired. Please login again.");
-            }
-        }
-
-        if (response.status === 403) {
-            throw new ForbiddenError("You don't have permission to access this resource");
-        }
-
-        const responseData = await response.json();
-
-        if (!response.ok) {
-            return {
-                status: "error",
-                message: responseData.message || `Request failed with status ${response.status}`,
-            };
-        }
+        const response = await client.request<{ data?: T; message?: string }>({
+            url,
+            method: options.method || "GET",
+            data: options.body,
+        });
 
         return {
             status: "success",
-            data: responseData.data,
-            message: responseData.message,
+            data: response.data?.data,
+            message: response.data?.message,
         };
     } catch (error) {
-        if (error instanceof UnauthorizedError || error instanceof ForbiddenError) {
-            throw error;
+        const axiosError = error as AxiosError<{ message?: string }>;
+
+        if (axiosError.response?.status === 401) {
+            throw new UnauthorizedError("Session expired. Please login again.");
+        }
+        if (axiosError.response?.status === 403) {
+            throw new ForbiddenError("You don't have permission to access this resource");
         }
 
-        console.error("Profile API request failed:", error);
-        throw error;
+        return {
+            status: "error",
+            message: axiosError.response?.data?.message || "Request failed",
+        };
     }
 };
 
@@ -177,16 +128,12 @@ export const getCurrentProfile = async (): Promise<ApiResponse<UserProfile>> => 
 
 /**
  * Update profile based on user role
- * Backend endpoints:
- * - PUT /user/profile/candidate (for CANDIDATE role)
- * - PUT /user/profile/hr (for HR/HR_MANAGER roles)
- * - PUT /user/profile/admin (for ADMIN role)
  */
 export const updateProfile = async (
     data: UpdateProfileRequest,
     role: "CANDIDATE" | "HR" | "HR_MANAGER" | "ADMIN"
 ): Promise<ApiResponse<UserProfile>> => {
-    let endpoint = "/profile/candidate"; // default
+    let endpoint = "/profile/candidate";
 
     if (role === "HR" || role === "HR_MANAGER") {
         endpoint = "/profile/hr";
@@ -205,41 +152,31 @@ export const updateProfile = async (
  * POST /user/profile/avatar
  */
 export const uploadAvatar = async (file: File): Promise<ApiResponse<AvatarUploadResponse>> => {
-    const accessToken = getCurrentAccessToken();
-
     const formData = new FormData();
     formData.append("file", file);
 
-    const headers: HeadersInit = {};
-    if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
-    }
-
     try {
-        const response = await fetch(`${USER_API_URL}/profile/avatar`, {
-            method: "POST",
-            headers,
-            body: formData,
-            credentials: "include",
-        });
-
-        const responseData = await response.json();
-
-        if (!response.ok) {
-            return {
-                status: "error",
-                message: responseData.message || "Avatar upload failed",
-            };
-        }
+        const response = await userClient.post<{ data?: AvatarUploadResponse; message?: string }>(
+            "/profile/avatar",
+            formData,
+            {
+                headers: {
+                    "Content-Type": "multipart/form-data",
+                },
+            }
+        );
 
         return {
             status: "success",
-            data: responseData.data,
-            message: responseData.message,
+            data: response.data?.data,
+            message: response.data?.message,
         };
     } catch (error) {
-        console.error("Avatar upload failed:", error);
-        throw error;
+        const axiosError = error as AxiosError<{ message?: string }>;
+        return {
+            status: "error",
+            message: axiosError.response?.data?.message || "Avatar upload failed",
+        };
     }
 };
 

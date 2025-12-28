@@ -27,6 +27,7 @@
     "@tiptap/pm": "^3.13.0",
     "@tiptap/react": "^3.13.0",
     "@tiptap/starter-kit": "^3.13.0",
+    "axios": "^1.13.2",
     "bootstrap": "^5.3.8",
     "chart.js": "^4.2.1",
     "date-fns": "^4.1.0",

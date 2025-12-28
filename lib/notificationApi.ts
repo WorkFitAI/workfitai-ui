@@ -1,15 +1,10 @@
-import {
-    getCurrentAccessToken,
-    handle401WithTokenRefresh,
-} from "./tokenRefreshHandler";
-import { shouldAttemptRefresh, isPublicEndpoint } from "./endpointUtils";
+import { notificationClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 import type {
     Notification,
     NotificationPage,
     UnreadCountResponse,
 } from "@/types/notification";
-
-const NOTIFICATION_SERVICE_URL = process.env.NEXT_PUBLIC_NOTIFICATION_BASE_URL || "http://localhost:9085/notification";
 
 interface ApiResponse<T> {
     success: boolean;
@@ -17,83 +12,37 @@ interface ApiResponse<T> {
     message?: string;
 }
 
-// Generic request wrapper with automatic token refresh on 401
+// Generic request wrapper using axios client
 async function notificationRequest<T>(
     path: string,
-    options: RequestInit = {},
-    isRetry = false
+    options: { method?: string; body?: unknown } = {}
 ): Promise<T> {
-    // Check if endpoint is public
-    const isPublic = isPublicEndpoint(path);
+    try {
+        const response = await notificationClient.request<{ data?: T } | T>({
+            url: path,
+            method: options.method || "GET",
+            data: options.body,
+        });
 
-    // Only get access token for protected endpoints
-    const accessToken = isPublic ? null : getCurrentAccessToken();
-
-    const headers: HeadersInit = {
-        ...(options.body instanceof FormData
-            ? {}
-            : { "Content-Type": "application/json" }),
-        ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-        ...options.headers,
-    };
-
-    const response = await fetch(`${NOTIFICATION_SERVICE_URL}${path}`, {
-        ...options,
-        headers,
-        credentials: "include",
-    });
-
-    if (!response.ok) {
-        console.log(
-            `[NotificationAPI] Request to ${path} failed with status ${response.status}`
-        );
-        const error = await response
-            .json()
-            .catch(() => ({ message: "Request failed" }));
-
-        // On 401, check if we should attempt refresh
-        // Skip refresh for retry loops
-        if (response.status === 401 && !isRetry && shouldAttemptRefresh(path)) {
-            console.log(
-                `[NotificationAPI] 401 detected on ${path}, attempting token refresh...`
-            );
-
-            // Attempt to refresh the token using centralized queue
-            const newAccessToken = await handle401WithTokenRefresh();
-
-            if (newAccessToken) {
-                console.log(`[NotificationAPI] Token refreshed, retrying ${path}...`);
-                // Retry the original request with the new token
-                const retryHeaders: HeadersInit = {
-                    ...(options.body instanceof FormData
-                        ? {}
-                        : { "Content-Type": "application/json" }),
-                    Authorization: `Bearer ${newAccessToken}`,
-                    ...options.headers,
-                };
-
-                return notificationRequest<T>(
-                    path,
-                    {
-                        ...options,
-                        headers: retryHeaders,
-                    },
-                    true // Mark as retry to prevent infinite loops
-                );
-            } else {
-                console.error(`[NotificationAPI] Token refresh failed for ${path}`);
-            }
+        // Handle 204 No Content
+        if (response.status === 204) {
+            return null as T;
         }
 
-        throw new Error(error.message || `HTTP ${response.status}`);
+        const responseData = response.data;
+        // Unwrap data if nested
+        if (responseData && typeof responseData === "object" && "data" in responseData) {
+            return (responseData as { data: T }).data;
+        }
+        return responseData as T;
+    } catch (error) {
+        const axiosError = error as AxiosError<{ message?: string }>;
+        throw new Error(
+            axiosError.response?.data?.message ||
+                axiosError.message ||
+                "Request failed"
+        );
     }
-
-    if (response.status === 204) {
-        return null as T;
-    }
-
-    const data = await response.json();
-    return data.data || data;
 }
 
 /**
@@ -105,8 +54,7 @@ export const getNotifications = async (
 ): Promise<ApiResponse<NotificationPage>> => {
     try {
         const data = await notificationRequest<NotificationPage>(
-            `?page=${page}&size=${size}`,
-            { method: "GET" }
+            `?page=${page}&size=${size}`
         );
         return { success: true, data };
     } catch (error) {
@@ -127,8 +75,7 @@ export const getUnreadCount = async (): Promise<
 > => {
     try {
         const data = await notificationRequest<UnreadCountResponse>(
-            "/unread-count",
-            { method: "GET" }
+            "/unread-count"
         );
         return { success: true, data };
     } catch (error) {

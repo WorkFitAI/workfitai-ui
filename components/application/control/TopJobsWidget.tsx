@@ -27,9 +27,9 @@ const TopJobsWidget = ({ topJobs }: TopJobsWidgetProps): React.ReactElement => {
                 <span className="badge bg-primary">#{index + 1}</span>
               </td>
               <td><strong>{job.jobTitle}</strong></td>
-              <td>{job.companyName}</td>
+              <td>-</td>
               <td>
-                <span className="badge bg-info">{job.applicationCount}</span>
+                <span className="badge bg-info">{job.applicantCount}</span>
               </td>
             </tr>
           ))}

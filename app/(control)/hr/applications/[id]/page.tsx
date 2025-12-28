@@ -808,11 +808,11 @@ export default function ApplicationDetailPage({
                     className="fi fi-rr-marker"
                     style={{ marginRight: "8px" }}
                   ></i>
-                  {application.jobSnapshot.companyAddress}
+                  {application.jobSnapshot.location}
                 </p>
               </div>
 
-              {/* Job Status & Stats */}
+              {/* Job Basic Info */}
               <div
                 style={{
                   display: "flex",
@@ -826,72 +826,19 @@ export default function ApplicationDetailPage({
                     padding: "6px 12px",
                     borderRadius: "6px",
                     fontSize: "13px",
-                    fontWeight: 600,
-                    backgroundColor:
-                      application.jobSnapshot.status === "PUBLISHED"
-                        ? "#27AE60"
-                        : "#95A5A6",
-                    color: "#FFFFFF",
-                  }}
-                >
-                  {application.jobSnapshot.status}
-                </span>
-                <span
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
                     fontWeight: 500,
                     backgroundColor: "#F8F9FA",
                     color: "#495057",
                   }}
                 >
                   <i
-                    className="fi fi-rr-users"
+                    className="fi fi-rr-briefcase"
                     style={{ marginRight: "6px" }}
                   ></i>
-                  {application.jobSnapshot.totalApplications} Application(s)
-                </span>
-                <span
-                  style={{
-                    padding: "6px 12px",
-                    borderRadius: "6px",
-                    fontSize: "13px",
-                    fontWeight: 500,
-                    backgroundColor: "#F8F9FA",
-                    color: "#495057",
-                  }}
-                >
-                  <i
-                    className="fi fi-rr-user-add"
-                    style={{ marginRight: "6px" }}
-                  ></i>
-                  {application.jobSnapshot.quantity} Position(s)
+                  {application.jobSnapshot.employmentType}
                 </span>
               </div>
 
-              {/* Short Description */}
-              {application.jobSnapshot.shortDescription && (
-                <div
-                  style={{
-                    padding: "16px",
-                    backgroundColor: "#F8F9FA",
-                    borderRadius: "8px",
-                    marginBottom: "24px",
-                  }}
-                >
-                  <p
-                    style={{
-                      fontSize: "14px",
-                      color: "#495057",
-                      marginBottom: 0,
-                      fontStyle: "italic",
-                    }}
-                  >
-                    {application.jobSnapshot.shortDescription}
-                  </p>
-                </div>
-              )}
 
               {/* Job Details Grid */}
               <div className="row g-4" style={{ marginBottom: "24px" }}>
@@ -993,7 +940,7 @@ export default function ApplicationDetailPage({
                         marginBottom: 0,
                       }}
                     >
-                      {application.jobSnapshot.educationLevel}
+                      N/A
                     </p>
                   </div>
                 </div>
@@ -1061,52 +1008,12 @@ export default function ApplicationDetailPage({
                         marginBottom: 0,
                       }}
                     >
-                      {application.jobSnapshot.salaryMin.toLocaleString()} -{" "}
-                      {application.jobSnapshot.salaryMax.toLocaleString()}{" "}
-                      {application.jobSnapshot.currency}
+                      Contact for details
                     </p>
                   </div>
                 </div>
               </div>
 
-              {/* Skills */}
-              {application.jobSnapshot.skillNames &&
-                application.jobSnapshot.skillNames.length > 0 && (
-                  <div style={{ marginBottom: "24px" }}>
-                    <h6
-                      style={{
-                        color: "#2D3E50",
-                        fontWeight: 600,
-                        marginBottom: "12px",
-                      }}
-                    >
-                      <i
-                        className="fi fi-rr-lightbulb"
-                        style={{ marginRight: "8px", color: "#F39C12" }}
-                      ></i>
-                      Required Skills
-                    </h6>
-                    <div
-                      style={{ display: "flex", flexWrap: "wrap", gap: "8px" }}
-                    >
-                      {application.jobSnapshot.skillNames.map((skill, idx) => (
-                        <span
-                          key={idx}
-                          style={{
-                            padding: "6px 14px",
-                            backgroundColor: "#3498DB",
-                            color: "#FFFFFF",
-                            borderRadius: "20px",
-                            fontSize: "13px",
-                            fontWeight: 500,
-                          }}
-                        >
-                          {skill}
-                        </span>
-                      ))}
-                    </div>
-                  </div>
-                )}
 
               {/* Job Description */}
               <div style={{ marginBottom: "24px" }}>
@@ -1140,7 +1047,7 @@ export default function ApplicationDetailPage({
                       whiteSpace: "pre-wrap",
                     }}
                   >
-                    {application.jobSnapshot.description}
+                    {application.jobSnapshot.title} - {application.jobSnapshot.employmentType}
                   </p>
                 </div>
               </div>
@@ -1169,13 +1076,7 @@ export default function ApplicationDetailPage({
                       marginBottom: 0,
                     }}
                   >
-                    {new Date(
-                      application.jobSnapshot.createdDate
-                    ).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    N/A
                   </p>
                 </div>
                 <div className="col-md-4">
@@ -1200,13 +1101,7 @@ export default function ApplicationDetailPage({
                       marginBottom: 0,
                     }}
                   >
-                    {new Date(
-                      application.jobSnapshot.expiresAt
-                    ).toLocaleDateString("en-US", {
-                      year: "numeric",
-                      month: "short",
-                      day: "numeric",
-                    })}
+                    N/A
                   </p>
                 </div>
                 <div className="col-md-4">
@@ -1231,7 +1126,7 @@ export default function ApplicationDetailPage({
                       marginBottom: 0,
                     }}
                   >
-                    {application.jobSnapshot.createdBy}
+                    System
                   </p>
                 </div>
               </div>

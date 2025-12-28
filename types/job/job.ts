@@ -120,6 +120,21 @@ export interface ReqUpdateJobDTO
 }
 
 /* =======================
+ * JOB RECOMMENDATION
+ * ======================= */
+export interface RecommendationJob {
+    job: Job;
+    score: number;
+    rank: number;
+}
+
+export interface RecommendationResponse {
+    recommendations: RecommendationJob[];
+    totalResults: number;
+    processingTime: string;
+}
+
+/* =======================
  * JOB LIST RESPONSE
  * ======================= */
 export interface JobResponse {

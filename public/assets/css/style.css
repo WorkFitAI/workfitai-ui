@@ -7251,7 +7251,7 @@ ul li:last-child .card-list-4 {
 }
 
 .login-register-cover {
-  border-bottom: 1px solid #E0E6F6;
+  /* border-bottom: 1px solid #E0E6F6; */
   position: relative;
   width: 100%;
 }

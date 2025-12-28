@@ -1,72 +1,10 @@
 /**
  * HR Approval API client for admin and HR manager approval workflows
+ * Uses axios client with interceptors for automatic token injection and 401 handling
  */
 
-import {
-    handle401WithTokenRefresh,
-    getCurrentAccessToken,
-} from "@/lib/tokenRefreshHandler";
-
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9085";
-
-const USER_API_URL = `${API_BASE_URL}/user`;
-
-/**
- * Make authenticated API request
- */
-const apiRequest = async <T>(
-    endpoint: string,
-    options: RequestInit = {}
-): Promise<T> => {
-    const accessToken = getCurrentAccessToken();
-
-    const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-        ...(options.headers as Record<string, string>),
-    };
-
-    if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
-    }
-
-    const config: RequestInit = {
-        ...options,
-        headers,
-    };
-
-    const response = await fetch(`${USER_API_URL}${endpoint}`, config);
-
-    // Handle 401 Unauthorized - attempt token refresh
-    if (response.status === 401) {
-        const refreshed = await handle401WithTokenRefresh();
-        if (refreshed) {
-            // Retry request with new token
-            const newToken = getCurrentAccessToken();
-            if (newToken) {
-                headers["Authorization"] = `Bearer ${newToken}`;
-                const retryResponse = await fetch(`${USER_API_URL}${endpoint}`, {
-                    ...config,
-                    headers,
-                });
-                if (!retryResponse.ok) {
-                    throw new Error(`HTTP error! status: ${retryResponse.status}`);
-                }
-                return retryResponse.json();
-            }
-        }
-        throw new Error("Unauthorized - please login again");
-    }
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
-        );
-    }
-
-    return response.json();
-};
+import { userClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 
 export interface HRApprovalUser {
     userId: string;
@@ -86,7 +24,7 @@ export interface HRApprovalUser {
     createdAt: string;
     updatedAt?: string;
     score?: string;
-    highlights?: Record<string, any>;
+    highlights?: Record<string, string[]>;
 }
 
 export interface SearchResponse<T> {
@@ -121,6 +59,32 @@ export interface ResponseData<T> {
 }
 
 /**
+ * Make authenticated API request using axios client
+ */
+const apiRequest = async <T>(
+    endpoint: string,
+    options: { method?: string; body?: unknown; headers?: Record<string, string> } = {}
+): Promise<T> => {
+    try {
+        const response = await userClient.request<T>({
+            url: endpoint,
+            method: options.method || "GET",
+            data: options.body,
+            headers: options.headers,
+        });
+
+        return response.data;
+    } catch (error) {
+        const axiosError = error as AxiosError<{ message?: string }>;
+        throw new Error(
+            axiosError.response?.data?.message ||
+                axiosError.message ||
+                `HTTP error! status: ${axiosError.response?.status}`
+        );
+    }
+};
+
+/**
  * HR Approval API
  */
 export const approvalApi = {
@@ -151,7 +115,7 @@ export const approvalApi = {
             `/admins/users/search`,
             {
                 method: "POST",
-                body: JSON.stringify(searchRequest),
+                body: searchRequest,
             }
         );
     },
@@ -183,7 +147,7 @@ export const approvalApi = {
             `/hr/users/search`,
             {
                 method: "POST",
-                body: JSON.stringify(searchRequest),
+                body: searchRequest,
             }
         );
     },

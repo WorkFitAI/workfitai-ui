@@ -1,7 +1,7 @@
 import CompanyDetailsClient from "@/components/job/CompanyDetails/CompanyDetailsClient";
 
 interface Props {
-  params: { companyNo: string };
+  params: Promise<{ companyNo: string }>;
 }
 
 export default async function CompanyDetailsWrapper({ params }: Props) {

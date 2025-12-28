@@ -1,12 +1,5 @@
-import {
-  handle401WithTokenRefresh,
-  getCurrentAccessToken,
-} from "./tokenRefreshHandler";
-import { shouldAttemptRefresh, isPublicEndpoint } from "./endpointUtils";
-
-const MONITORING_API_URL =
-  process.env.NEXT_PUBLIC_MONITORING_API_URL ||
-  "http://localhost:9085/monitoring";
+import { monitoringClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 
 interface ResponseData<T> {
   status: number;
@@ -93,86 +86,37 @@ export interface LogStatistics {
   recentErrors: LogEntry[];
 }
 
-// Generic request wrapper with automatic token refresh on 401
+// Generic request wrapper using axios client
 async function monitoringRequest<T>(
   endpoint: string,
-  options: RequestInit = {},
-  isRetry = false
+  options: { method?: string; body?: unknown } = {}
 ): Promise<T> {
-  // Check if endpoint is public
-  const isPublic = isPublicEndpoint(endpoint);
+  try {
+    const response = await monitoringClient.request<T>({
+      url: endpoint,
+      method: options.method || "GET",
+      data: options.body,
+    });
 
-  // Only get access token for protected endpoints
-  const accessToken = isPublic ? null : getCurrentAccessToken();
-
-  const headers: HeadersInit = {
-    "Content-Type": "application/json",
-    ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-    ...options.headers,
-  };
-
-  const response = await fetch(`${MONITORING_API_URL}${endpoint}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    console.log(
-      `[MonitoringAPI] Request to ${endpoint} failed with status ${response.status}`
-    );
-    const error = await response
-      .json()
-      .catch(() => ({ message: "Request failed" }));
-
-    // On 401, check if we should attempt refresh
-    // Skip refresh for retry loops
-    if (response.status === 401 && !isRetry && shouldAttemptRefresh(endpoint)) {
-      console.log(
-        `[MonitoringAPI] 401 detected on ${endpoint}, attempting token refresh...`
-      );
-
-      // Attempt to refresh the token using centralized queue
-      const newAccessToken = await handle401WithTokenRefresh();
-
-      if (newAccessToken) {
-        console.log(`[MonitoringAPI] Token refreshed, retrying ${endpoint}...`);
-        // Retry the original request with the new token
-        const retryHeaders: HeadersInit = {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${newAccessToken}`,
-          ...options.headers,
-        };
-
-        return monitoringRequest<T>(
-          endpoint,
-          {
-            ...options,
-            headers: retryHeaders,
-          },
-          true // Mark as retry to prevent infinite loops
-        );
-      } else {
-        console.error(`[MonitoringAPI] Token refresh failed for ${endpoint}`);
-      }
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return null as T;
     }
 
+    return response.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
     throw new Error(
-      error.message ||
-        `API request failed: ${response.status} ${response.statusText}`
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Request failed"
     );
   }
-
-  if (response.status === 204) {
-    return null as T;
-  }
-
-  return response.json();
 }
 
 export const monitoringApi = {
   /**
-   * Get user activities for admin dashboard (NEW ENDPOINT)
+   * Get user activities for admin dashboard
    */
   getUserActivities: async (params: {
     username?: string;
@@ -195,7 +139,6 @@ export const monitoringApi = {
       ResponseData<UserActivityResponse>
     >(`/api/admin/user-activities?${queryParams.toString()}`);
 
-    // Extract data from nested response structure
     return (
       response.data || {
         total: 0,
@@ -208,7 +151,7 @@ export const monitoringApi = {
   },
 
   /**
-   * Get user activity for admin dashboard (OLD ENDPOINT - DEPRECATED)
+   * Get user activity (deprecated - use getUserActivities)
    * @deprecated Use getUserActivities instead
    */
   getUserActivity: async (params: {
@@ -266,7 +209,7 @@ export const monitoringApi = {
   },
 
   /**
-   * Get currently active/online users (NEW ENDPOINT)
+   * Get currently active/online users
    */
   getOnlineUsers: async (
     minutes: number = 15
@@ -277,14 +220,13 @@ export const monitoringApi = {
   },
 
   /**
-   * Get activity summary statistics (NEW ENDPOINT)
+   * Get activity summary statistics
    */
   getActivitySummary: async (hours: number = 24): Promise<ActivitySummary> => {
     const response = await monitoringRequest<ResponseData<ActivitySummary>>(
       `/api/admin/activity-summary?hours=${hours}`
     );
 
-    // Extract data from nested response structure
     return (
       response.data || {
         activeUsers: 0,
