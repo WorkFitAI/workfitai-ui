@@ -284,10 +284,6 @@ export default function Register() {
     await dispatch(registerUser(payload));
   };
 
-  const handleGoogleLogin = () => {
-    console.log("Google login clicked");
-  };
-
   const renderStep1 = () => (
     <div className="animate-fade-in">
       <h5 className="mb-20 text-center">Choose your role</h5>
@@ -501,10 +497,16 @@ export default function Register() {
     >
       {step === 1 && (
         <>
+          {/* OAuth Registration Buttons - Google and GitHub */}
           <SocialLogin
             provider="google"
-            onClick={handleGoogleLogin}
             text="Sign up with Google"
+            disabled={isLoading}
+          />
+          <SocialLogin
+            provider="github"
+            text="Sign up with GitHub"
+            disabled={isLoading}
           />
           <FormDivider text="Or continue with email" />
         </>

@@ -374,22 +374,26 @@ Use middleware.ts for automatic route protection:
 - ✅ Authentication system with JWT + refresh tokens
 - ✅ Role-based registration (Candidate, HR, HR Manager)
 - ✅ OTP verification flow
+- ✅ Password reset with email validation
 - ✅ Job listing with advanced filters
 - ✅ Grid and list view modes
 - ✅ Admin dashboard with metrics
 - ✅ Route protection middleware
+- ✅ Application submission and tracking
+- ✅ HR application management
+- ✅ Axios-based API clients with interceptors
 
-### In Progress
-- 🔄 Job application submission
-- 🔄 Candidate profile management
-- 🔄 HR job posting interface
+### In Progress (Hotfix Branch)
+- 🔄 Enhanced authentication flow improvements
+- 🔄 Navigation and routing enhancements
+- 🔄 User profile management features
 
 ### Planned
-- 📋 Resume upload and parsing
-- 📋 Email notifications
-- 📋 Real-time messaging
-- 📋 Advanced analytics
-- 📋 Mobile app
+- 📋 Email notifications integration
+- 📋 Real-time messaging system
+- 📋 Advanced analytics dashboard
+- 📋 Mobile app development
+- 📋 Component refactoring (large files)
 
 See [Project Roadmap](docs/project-roadmap.md) for detailed phases.
 
@@ -436,5 +440,6 @@ Private - All rights reserved
 
 For issues, questions, or feature requests, contact the development team.
 
-**Last Updated**: 2025-12-11
+**Last Updated**: 2025-12-27
+**Current Branch**: hotfix
 **Maintained by**: WorkfitAI Development Team

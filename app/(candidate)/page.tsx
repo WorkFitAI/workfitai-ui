@@ -262,7 +262,7 @@ export default function Home() {
                         </p>
                         <div className="mt-30">
                           {job.skillNames?.slice(0, 3).map((skill, index) => (
-                            <Link href="/jobs-grid" key={index}>
+                            <Link href="/jobs-list" key={index}>
                               <span className="btn btn-grey-small mr-5">
                                 {skill}
                               </span>
@@ -347,7 +347,7 @@ export default function Home() {
                 </div>
                 <div className="mt-40">
                   <div className="wow animate__animated animate__fadeInUp">
-                    <Link href="/jobs-grid">
+                    <Link href="/jobs-list">
                       <span className="btn btn-default">Search Jobs</span>
                     </Link>
 

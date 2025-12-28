@@ -53,11 +53,11 @@ export const useAuthErrorRedirect = (
     switch (errorType) {
       case "unauthorized":
         // 401: Token expired or invalid - redirect to signin
-        router.push(unauthorizedPath);
+        document.location.href = unauthorizedPath;
         break;
       case "forbidden":
         // 403: User doesn't have permission - redirect to unauthorized page
-        router.push(forbiddenPath);
+        document.location.href = unauthorizedPath;
         break;
       default:
         // Generic errors don't trigger redirects

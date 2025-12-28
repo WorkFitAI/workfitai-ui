@@ -635,6 +635,32 @@ const authSlice = createSlice({
       state.message = null;
       state.isLoggedOut = getLogoutFlag(); // Read from separate localStorage flag
     },
+    hydrateFromLocalStorage: (state) => {
+      // Synchronously restore minimal session from localStorage
+      // This runs immediately on page load, before async token refresh
+      if (typeof window === "undefined") return;
+
+      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!stored) return;
+
+      try {
+        const session = JSON.parse(stored);
+        // Restore user info (username, roles) from localStorage
+        // Token will be restored by async refreshToken
+        if (session.username && session.roles) {
+          state.user = {
+            username: session.username,
+            roles: session.roles,
+            role: session.roles[0],
+            companyId: session.companyId,
+          };
+          state.expiryTime = session.expiryTime;
+          state.isLoggedOut = getLogoutFlag();
+        }
+      } catch (error) {
+        console.error("[Auth] Failed to hydrate from localStorage:", error);
+      }
+    },
     clearAuthError: (state) => {
       state.error = null;
       state.errorType = null;
@@ -652,6 +678,36 @@ const authSlice = createSlice({
       state.error = "Session expired";
       state.errorType = "unauthorized";
       // Don't set isLoggedOut = true - token just expired
+    },
+    setOAuthLoginSuccess: (
+      state,
+      action: PayloadAction<{
+        accessToken: string;
+        expiryTime: number | null;
+        username: string;
+        roles: string[];
+        companyId?: string;
+        email?: string;
+        avatarUrl?: string;
+      }>
+    ) => {
+      // Set auth state after successful OAuth login
+      const { accessToken, expiryTime, username, roles, companyId, email, avatarUrl } = action.payload;
+      state.accessToken = accessToken;
+      state.expiryTime = expiryTime;
+      state.user = {
+        username,
+        email,
+        roles,
+        role: roles[0],
+        companyId,
+        avatarUrl,
+      };
+      state.status = "idle";
+      state.error = null;
+      state.errorType = null;
+      state.message = "Successfully signed in";
+      state.isLoggedOut = false;
     },
   },
   extraReducers: (builder) => {
@@ -816,7 +872,7 @@ const authSlice = createSlice({
   },
 });
 
-export const { restoreSessionFromStorage, clearAuthError, updateUserAvatar, clearExpiredSession } = authSlice.actions;
+export const { restoreSessionFromStorage, hydrateFromLocalStorage, clearAuthError, updateUserAvatar, clearExpiredSession, setOAuthLoginSuccess } = authSlice.actions;
 
 export const selectAuthToken = (state: RootState) => state.auth.accessToken;
 export const selectAuthStatus = (state: RootState) => state.auth.status;

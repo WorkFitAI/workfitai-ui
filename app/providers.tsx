@@ -6,6 +6,7 @@ import { makeStore, type AppStore } from "@/redux/store";
 import {
   refreshToken,
   selectIsLoggedOut,
+  hydrateFromLocalStorage,
 } from "@/redux/features/auth/authSlice";
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setStoreForTokenRefresh } from "@/lib/tokenRefreshHandler";
@@ -21,11 +22,12 @@ const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
 /**
- * AuthHydrator - Handles token refresh on app mount
+ * AuthHydrator - Handles auth state restoration on app mount
  *
- * NEW FLOW (In-Memory Token):
+ * NEW FLOW (Sync then Async):
+ * 1. SYNC: Restore user/roles from localStorage immediately (for route guards)
+ * 2. ASYNC: Attempt token refresh via RT cookie in background
  * - No access token stored in localStorage anymore (XSS protection)
- * - Always attempt silent refresh on mount via RT cookie
  * - RT cookie (HttpOnly) is sent automatically with refresh request
  * - If refresh succeeds: token stored in memory via axios-client
  * - If refresh fails: user remains logged out
@@ -42,12 +44,17 @@ const AuthHydrator = () => {
     const logoutFlag = localStorage.getItem("auth_logged_out") === "true";
 
     if (isLoggedOut || logoutFlag) {
-      console.log("[AuthHydrator] User logged out, skipping refresh");
+      console.log("[AuthHydrator] User logged out, skipping hydration");
       return;
     }
 
-    // Always attempt refresh on mount (RT cookie will be sent automatically)
-    // This is the ONLY way to get a token now (no localStorage for access token)
+    // STEP 1: Synchronously restore user/roles from localStorage
+    // This makes user data available to route guards immediately
+    console.log("[AuthHydrator] Hydrating user/roles from localStorage");
+    dispatch(hydrateFromLocalStorage());
+
+    // STEP 2: Async token refresh in background
+    // This gets fresh token from RT cookie
     console.log("[AuthHydrator] Attempting token refresh on mount");
     dispatch(refreshToken());
   }, [dispatch, isLoggedOut]);

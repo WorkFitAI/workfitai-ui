@@ -12,7 +12,7 @@ import {
 import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import Link from "next/link";
 import { useRouter, useSearchParams } from "next/navigation";
-import { FormEvent, useEffect, useState, Suspense } from "react";
+import { FormEvent, useEffect, useState, Suspense, useRef } from "react";
 import AuthLayout from "@/components/auth/AuthLayout";
 import FormInput from "@/components/auth/FormInput";
 import PasswordInput from "@/components/auth/PasswordInput";
@@ -21,6 +21,7 @@ import SocialLogin from "@/components/auth/SocialLogin";
 import FormDivider from "@/components/auth/FormDivider";
 import FormError from "@/components/auth/FormError";
 import FormSuccess from "@/components/auth/FormSuccess";
+import { showToast } from "@/lib/toast";
 
 function SigninContent() {
   const dispatch = useAppDispatch();
@@ -38,6 +39,10 @@ function SigninContent() {
   const [mounted, setMounted] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
+  // Track previous error/message to show toast only on change
+  const prevErrorRef = useRef<string | null>(null);
+  const prevMessageRef = useRef<string | null>(null);
+
   const searchParams = useSearchParams();
   const verified = searchParams.get("verified");
 
@@ -53,25 +58,49 @@ function SigninContent() {
   useEffect(() => {
     if (verified === "true") {
       setLocalMessage("Email verified successfully! Please log in.");
+      showToast.success("Email verified successfully! Please log in.");
     }
   }, [verified]);
 
+  // Show toast notifications for auth errors
+  useEffect(() => {
+    if (error && error !== prevErrorRef.current) {
+      showToast.error(error);
+    }
+    prevErrorRef.current = error;
+  }, [error]);
+
+  // Show toast notifications for auth success messages
+  useEffect(() => {
+    if (message && message !== prevMessageRef.current) {
+      showToast.success(message);
+    }
+    prevMessageRef.current = message;
+  }, [message]);
+
   // Redirect if already authenticated
   useEffect(() => {
-    if (accessToken && roles.length > 0) {
-      if (roles.includes("ADMIN")) {
-        document.location.href = "/admin";
-      } else if (roles.includes("HR_MANAGER")) {
-        document.location.href = "/hr-manager";
-      } else if (roles.includes("HR")) {
-        document.location.href = "/hr/applications";
-      } else {
+    const handleRedirect = async () => {
+      if (accessToken && roles.length > 0) {
+        // Wait briefly to ensure localStorage persistence completes
+        await new Promise(resolve => setTimeout(resolve, 50));
+
+        if (roles.includes("ADMIN")) {
+          document.location.href = "/admin/users";
+        } else if (roles.includes("HR_MANAGER")) {
+          document.location.href = "/hr-manager";
+        } else if (roles.includes("HR")) {
+          document.location.href = "/hr/applications";
+        } else {
+          router.replace("/");
+        }
+      } else if (accessToken) {
+        // Fallback if no roles yet
         router.replace("/");
       }
-    } else if (accessToken) {
-      // Fallback if no roles yet
-      router.replace("/");
-    }
+    };
+
+    handleRedirect();
   }, [accessToken, roles, router]);
 
   // Handle 403 Forbidden errors (pending approval)
@@ -109,9 +138,15 @@ function SigninContent() {
 
     if (!usernameOrEmail.trim()) {
       errors.usernameOrEmail = "Username or email is required";
-    } else if (usernameOrEmail.includes("@") && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(usernameOrEmail)) {
+    } else if (
+      usernameOrEmail.includes("@") &&
+      !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(usernameOrEmail)
+    ) {
       errors.usernameOrEmail = "Invalid email format";
-    } else if (!usernameOrEmail.includes("@") && usernameOrEmail.trim().length < 3) {
+    } else if (
+      !usernameOrEmail.includes("@") &&
+      usernameOrEmail.trim().length < 3
+    ) {
       errors.usernameOrEmail = "Username must be at least 3 characters";
     }
 
@@ -127,20 +162,19 @@ function SigninContent() {
     }
 
     try {
-      const result = await dispatch(loginUser({ usernameOrEmail, password })).unwrap();
+      const result = await dispatch(
+        loginUser({ usernameOrEmail, password })
+      ).unwrap();
 
       // Check if 2FA is required and redirect
-      if ('require2FA' in result && result.require2FA) {
-        router.push(`/verify-2fa?tempToken=${result.tempToken}&method=${result.method}`);
+      if ("require2FA" in result && result.require2FA) {
+        router.push(
+          `/verify-2fa?tempToken=${result.tempToken}&method=${result.method}`
+        );
       }
     } catch (error) {
       // Error is already handled by Redux reducer
     }
-  };
-
-  const handleGoogleLogin = () => {
-    // Implement Google login logic here
-    console.log("Google login clicked");
   };
 
   return (
@@ -151,13 +185,19 @@ function SigninContent() {
       showSocialLogin={true}
       imageVariant="4"
     >
+      {/* OAuth Login Buttons - Google and GitHub */}
       <SocialLogin
         provider="google"
-        onClick={handleGoogleLogin}
         text="Sign in with Google"
+        disabled={isLoading}
+      />
+      <SocialLogin
+        provider="github"
+        text="Sign in with GitHub"
+        disabled={isLoading}
       />
 
-      <FormDivider text="Or continue with" />
+      <FormDivider text="Or continue with email" />
 
       <form className="login-register text-start mt-20" onSubmit={handleSubmit}>
         <FormInput

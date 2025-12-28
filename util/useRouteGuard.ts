@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useRouter, usePathname } from "next/navigation";
 import { useAppSelector, useAppDispatch } from "@/redux/hooks";
 import {
@@ -8,6 +8,7 @@ import {
   selectIsTokenValid,
   selectTokenExpiryTime,
   clearExpiredSession,
+  AUTH_STORAGE_KEY,
 } from "@/redux/features/auth/authSlice";
 import { clearAccessTokenSilent } from "@/lib/axios-client";
 
@@ -71,6 +72,38 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
   const isTokenValid = useAppSelector(selectIsTokenValid);
   const expiryTime = useAppSelector(selectTokenExpiryTime);
 
+  // Track if initial hydration is complete
+  const [hydrated, setHydrated] = useState(false);
+
+  // Check for hydration: if localStorage has session but Redux is empty, wait briefly
+  useEffect(() => {
+    if (typeof window === "undefined") {
+      setHydrated(true);
+      return;
+    }
+
+    // If user data is already in Redux, we're hydrated
+    if (user) {
+      setHydrated(true);
+      return;
+    }
+
+    // Check if localStorage has session data
+    const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+    if (!stored) {
+      // No stored session, we're hydrated (empty state is correct)
+      setHydrated(true);
+      return;
+    }
+
+    // localStorage has data but Redux doesn't yet - wait for AuthHydrator
+    const timeout = setTimeout(() => {
+      setHydrated(true);
+    }, 150); // Wait 150ms for sync hydration to complete
+
+    return () => clearTimeout(timeout);
+  }, [user]);
+
   useEffect(() => {
     console.log("[RouteGuard] Running effect:", {
       disabled,
@@ -81,11 +114,18 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
       isTokenValid,
       expiryTime,
       now: Date.now(),
+      hydrated,
     });
 
     // Skip guard if disabled or for public routes
     if (disabled || isPublicRoute(pathname)) {
       console.log("[RouteGuard] Guard disabled or public route, skipping checks for", pathname);
+      return;
+    }
+
+    // Wait for hydration before checking auth
+    if (!hydrated) {
+      console.log("[RouteGuard] Waiting for hydration...");
       return;
     }
 
@@ -133,7 +173,7 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
     }
 
     console.log(`[RouteGuard] Access granted for ${pathname} (role: ${userRole})`);
-  }, [pathname, user, isTokenValid, expiryTime, router, dispatch, unauthorizedPath, unauthenticatedPath, disableRedirect, disabled]);
+  }, [pathname, user, isTokenValid, expiryTime, router, dispatch, unauthorizedPath, unauthenticatedPath, disableRedirect, disabled, hydrated]);
 
   return {
     user,
