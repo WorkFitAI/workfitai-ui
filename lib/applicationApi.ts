@@ -17,93 +17,70 @@ import type {
   HRUser,
   HRActivitiesResponse,
 } from "@/types/application/application";
-import {
-  handle401WithTokenRefresh,
-  getCurrentAccessToken,
-} from "@/lib/tokenRefreshHandler";
-import { shouldAttemptRefresh, isPublicEndpoint } from "@/lib/endpointUtils";
+import { applicationClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 
-const BASE_URL =
-  process.env.NEXT_PUBLIC_AUTH_BASE_URL?.replace("/auth", "/application") ||
-  "http://localhost:9085/application";
-
-// Generic request wrapper with automatic token refresh on 401
+// Generic request wrapper using axios client
 async function applicationRequest<T>(
   path: string,
-  options: RequestInit = {},
-  isRetry = false
+  options: { method?: string; body?: unknown } = {}
 ): Promise<T> {
-  // Check if endpoint is public
-  const isPublic = isPublicEndpoint(path);
+  try {
+    const response = await applicationClient.request<{ data?: T } | T>({
+      url: path,
+      method: options.method || "GET",
+      data: options.body,
+    });
 
-  // Only get access token for protected endpoints
-  const accessToken = isPublic ? null : getCurrentAccessToken();
-
-  const headers: HeadersInit = {
-    ...(options.body instanceof FormData
-      ? {}
-      : { "Content-Type": "application/json" }),
-    ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-    ...options.headers,
-  };
-
-  const response = await fetch(`${BASE_URL}${path}`, {
-    ...options,
-    headers,
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    console.log(
-      `[ApplicationAPI] Request to ${path} failed with status ${response.status}`
-    );
-    const error = await response
-      .json()
-      .catch(() => ({ message: "Request failed" }));
-
-    // On 401, check if we should attempt refresh
-    // Skip refresh for retry loops
-    if (response.status === 401 && !isRetry && shouldAttemptRefresh(path)) {
-      console.log(
-        `[ApplicationAPI] 401 detected on ${path}, attempting token refresh...`
-      );
-
-      // Attempt to refresh the token using centralized queue
-      const newAccessToken = await handle401WithTokenRefresh();
-
-      if (newAccessToken) {
-        console.log(`[ApplicationAPI] Token refreshed, retrying ${path}...`);
-        // Retry the original request with the new token
-        const retryHeaders: HeadersInit = {
-          ...(options.body instanceof FormData
-            ? {}
-            : { "Content-Type": "application/json" }),
-          Authorization: `Bearer ${newAccessToken}`,
-          ...options.headers,
-        };
-
-        return applicationRequest<T>(
-          path,
-          {
-            ...options,
-            headers: retryHeaders,
-          },
-          true // Mark as retry to prevent infinite loops
-        );
-      } else {
-        console.error(`[ApplicationAPI] Token refresh failed for ${path}`);
-      }
+    // Handle 204 No Content
+    if (response.status === 204) {
+      return null as T;
     }
 
-    throw new Error(error.message || `HTTP ${response.status}`);
+    const responseData = response.data;
+    // Unwrap data if nested
+    if (responseData && typeof responseData === "object" && "data" in responseData) {
+      return (responseData as { data: T }).data;
+    }
+    return responseData as T;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Request failed"
+    );
   }
+}
 
-  if (response.status === 204) {
-    return null as T;
+// FormData request wrapper
+async function applicationRequestFormData<T>(
+  path: string,
+  formData: FormData
+): Promise<T> {
+  try {
+    const response = await applicationClient.request<{ data?: T } | T>({
+      url: path,
+      method: "POST",
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    const responseData = response.data;
+    if (responseData && typeof responseData === "object" && "data" in responseData) {
+      return (responseData as { data: T }).data;
+    }
+    return responseData as T;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message ||
+        axiosError.message ||
+        "Request failed"
+    );
   }
-
-  const data = await response.json();
-  return data.data || data;
 }
 
 // Candidate endpoints
@@ -118,10 +95,7 @@ export const createApplication = async (
     formData.append("coverLetter", request.coverLetter);
   }
 
-  return applicationRequest<Application>("", {
-    method: "POST",
-    body: formData,
-  });
+  return applicationRequestFormData<Application>("", formData);
 };
 
 export const getMyApplications = async (params: {
@@ -227,7 +201,7 @@ export const bulkUpdateStatus = async (
     "/bulk/status",
     {
       method: "PUT",
-      body: JSON.stringify(request),
+      body: request,
     }
   );
 };
@@ -238,7 +212,7 @@ export const addNote = async (
 ): Promise<Note> => {
   return applicationRequest<Note>(`/${id}/notes`, {
     method: "POST",
-    body: JSON.stringify(request),
+    body: request,
   });
 };
 
@@ -253,7 +227,7 @@ export const updateNote = async (
 ): Promise<Note> => {
   return applicationRequest<Note>(`/${id}/notes/${noteId}`, {
     method: "PUT",
-    body: JSON.stringify(request),
+    body: request,
   });
 };
 
@@ -264,24 +238,10 @@ export const deleteNote = async (id: string, noteId: string): Promise<void> => {
 };
 
 export const downloadCV = async (id: string): Promise<Blob> => {
-  const accessToken = getCurrentAccessToken();
-
-  const response = await fetch(`${BASE_URL}/${id}/cv/download`, {
-    method: "GET",
-    headers: {
-      ...(accessToken && { Authorization: `Bearer ${accessToken}` }),
-    },
-    credentials: "include",
+  const response = await applicationClient.get(`/${id}/cv/download`, {
+    responseType: "blob",
   });
-
-  if (!response.ok) {
-    const error = await response
-      .json()
-      .catch(() => ({ message: "Download failed" }));
-    throw new Error(error.message || `HTTP ${response.status}`);
-  }
-
-  return response.blob();
+  return response.data;
 };
 
 // HR Manager endpoints
@@ -310,7 +270,7 @@ export const assignApplication = async (
 ): Promise<Application> => {
   return applicationRequest<Application>(`/${id}/assign`, {
     method: "PUT",
-    body: JSON.stringify(request),
+    body: request,
   });
 };
 
@@ -412,7 +372,7 @@ export const adminExportApplications = async (params: {
 
   return applicationRequest<ExportResponse>(`/admin/export?${query}`, {
     method: "POST",
-    body: JSON.stringify({ columns: params.columns }),
+    body: { columns: params.columns },
   });
 };
 
@@ -426,7 +386,7 @@ export const adminOverrideApplication = async (
 ): Promise<Application> => {
   return applicationRequest<Application>(`/admin/${id}/override`, {
     method: "PUT",
-    body: JSON.stringify(data),
+    body: data,
   });
 };
 
@@ -467,7 +427,6 @@ export const getHRDashboardStats = async (): Promise<DashboardStats> => {
 export const getManagerStats = async (
   companyId: string
 ): Promise<ManagerStats> => {
-  // applicationRequest already unwraps data.data
   return applicationRequest<ManagerStats>(
     `/manager/stats?companyId=${companyId}`
   );
@@ -540,20 +499,10 @@ export const exportApplications = async (request: {
     to: string;
   };
 }): Promise<Blob> => {
-  const response = await fetch(`${BASE_URL}/export`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${getCurrentAccessToken()}`,
-    },
-    body: JSON.stringify(request),
+  const response = await applicationClient.post("/export", request, {
+    responseType: "blob",
   });
-
-  if (!response.ok) {
-    throw new Error(`Export failed: ${response.statusText}`);
-  }
-
-  return response.blob();
+  return response.data;
 };
 
 /**
@@ -569,7 +518,6 @@ export const getHRActivities = async (
   query.append("page", page.toString());
   query.append("size", size.toString());
 
-  // applicationRequest already unwraps data.data, so we get { items: [...], meta: {...} } directly
   return applicationRequest<HRActivitiesResponse>(
     `/company/${companyId}/hr-activities?${query}`
   );

@@ -44,8 +44,8 @@ export default function TeamPerformanceWidget({ members }: TeamPerformanceWidget
               </tr>
             ) : (
               members.map((member) => {
-                const pending = member.assignedCount - member.completedCount;
-                const completionRate = getCompletionRate(member.completedCount, member.assignedCount);
+                const pending = member.assigned - member.reviewed;
+                const completionRate = getCompletionRate(member.reviewed, member.assigned);
                 return (
                   <tr key={member.hrUsername}>
                     <td>
@@ -60,10 +60,10 @@ export default function TeamPerformanceWidget({ members }: TeamPerformanceWidget
                       </div>
                     </td>
                     <td className="text-center">
-                      <span className="badge badge-neutral">{member.assignedCount}</span>
+                      <span className="badge badge-neutral">{member.assigned}</span>
                     </td>
                     <td className="text-center">
-                      <span className="badge badge-success">{member.completedCount}</span>
+                      <span className="badge badge-success">{member.reviewed}</span>
                     </td>
                     <td className="text-center">
                       <span className="badge badge-warning">{pending}</span>
@@ -80,7 +80,7 @@ export default function TeamPerformanceWidget({ members }: TeamPerformanceWidget
                       </div>
                     </td>
                     <td className="text-center">
-                      <span className="avg-time">{formatDays(member.avgTimeToReview)}</span>
+                      <span className="avg-time">{member.avgTimeToReviewDays}d</span>
                     </td>
                   </tr>
                 );

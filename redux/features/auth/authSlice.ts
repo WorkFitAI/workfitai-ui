@@ -13,7 +13,8 @@ import {
 } from "@/lib/authApi";
 import { getDeviceId } from "@/lib/deviceId";
 import { getUserGeolocation } from "@/lib/geolocation";
-import { resetRefreshState } from "@/lib/tokenRefreshHandler";
+import { setAccessToken, resetAxiosAuth } from "@/lib/axios-client";
+import { showToast } from "@/lib/toast";
 import type { RootState } from "@/redux/store";
 
 export const AUTH_STORAGE_KEY = "auth_session";
@@ -36,6 +37,8 @@ export interface AuthState {
   approvalType: "hr-manager" | "admin" | null;
   registrationRole: "CANDIDATE" | "HR" | "HR_MANAGER" | null;
   userId: string | null; // For OTP verification after registration
+  // Track if user explicitly logged out
+  isLoggedOut: boolean;
 }
 
 interface AuthUserProfile {
@@ -105,7 +108,8 @@ interface LogoutPayload {
 
 interface AuthResponseData {
   accessToken: string;
-  expiryInMinutes: number;
+  expiryInMs?: number; // Backend sends expiry in milliseconds
+  expiryInMinutes?: number; // Legacy support
   username: string;
   roles: string[];
   companyId?: string;
@@ -140,6 +144,7 @@ const initialAuthState: AuthState = {
   approvalType: null,
   registrationRole: null,
   userId: null,
+  isLoggedOut: false,
 };
 
 // Helper to determine error type from caught error
@@ -159,24 +164,70 @@ const persistSession = (session: StoredSession | null) => {
     return;
   }
 
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+  // 🚨 SECURITY: DO NOT store accessToken in localStorage anymore
+  // Token is now in-memory only via axios-client (XSS protection)
+  // Only store non-sensitive session metadata for WebSocket compatibility
 
   // 🚨 CRITICAL: Store username separately for WebSocket authentication
   // WebSocket needs username in X-Username header for Spring user session tracking
   if (session.username) {
     localStorage.setItem('username', session.username);
   }
+
+  // Store minimal session info (no token) for UI state restoration
+  const minimalSession = {
+    username: session.username,
+    roles: session.roles,
+    companyId: session.companyId,
+    // Note: expiryTime stored for reference but token comes from memory
+    expiryTime: session.expiryTime,
+  };
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(minimalSession));
 };
 
 const clearRefreshTokenCookie = () => {
   if (typeof document === "undefined") return;
-  document.cookie = "RT=; path=/; max-age=0";
-  document.cookie = "RT=; path=/auth; max-age=0";
+
+  // NOTE: RT cookie is HttpOnly, so JavaScript cannot clear it directly.
+  // The backend logout API (/auth/logout) clears the RT cookie via Set-Cookie header.
+  // This function attempts to clear any non-HttpOnly cookies that might exist.
+
+  // Attempt to clear RT cookie for various paths (only works if not HttpOnly)
+  const cookiePaths = ["/", "/auth", "/api"];
+
+  cookiePaths.forEach(path => {
+    // Clear without domain (most common case)
+    document.cookie = `RT=; path=${path}; max-age=0; SameSite=Lax`;
+    document.cookie = `RT=; path=${path}; max-age=0; SameSite=None; Secure`;
+    document.cookie = `RT=; path=${path}; expires=Thu, 01 Jan 1970 00:00:00 GMT`;
+  });
+
+  // Log for debugging
+  console.log("[Auth] RT cookie clear attempted (HttpOnly cookies require backend Set-Cookie)");
 };
+
+const LOGOUT_FLAG_KEY = "auth_logged_out";
 
 const clearPersistedSession = () => {
   persistSession(null);
   clearRefreshTokenCookie();
+};
+
+const setLogoutFlag = () => {
+  if (typeof window !== "undefined") {
+    localStorage.setItem(LOGOUT_FLAG_KEY, "true");
+  }
+};
+
+const clearLogoutFlag = () => {
+  if (typeof window !== "undefined") {
+    localStorage.removeItem(LOGOUT_FLAG_KEY);
+  }
+};
+
+const getLogoutFlag = (): boolean => {
+  if (typeof window === "undefined") return false;
+  return localStorage.getItem(LOGOUT_FLAG_KEY) === "true";
 };
 
 export const isCompleteStoredSession = (
@@ -234,23 +285,26 @@ export const buildAuthStateFromStoredSession = (
   accessToken: session.accessToken,
   expiryTime: session.expiryTime,
   user: getUserFromStoredSession(session),
+  isLoggedOut: getLogoutFlag(), // Read from separate localStorage flag
 });
 
 /**
- * Convert expiryInMinutes to absolute timestamp
+ * Convert expiry to absolute timestamp
+ * Supports both expiryInMs (milliseconds) and expiryInMinutes (legacy)
  * Returns null if no expiry (never expires)
  */
-const calculateExpiryTime = (expiryInMinutes: number | undefined): number | null => {
-  if (
-    expiryInMinutes === undefined ||
-    typeof expiryInMinutes !== "number" ||
-    Number.isNaN(expiryInMinutes) ||
-    expiryInMinutes <= 0
-  ) {
-    return null; // No expiry or invalid
+const calculateExpiryTime = (expiryInMs?: number, expiryInMinutes?: number): number | null => {
+  // Prefer expiryInMs (backend sends this)
+  if (typeof expiryInMs === "number" && !Number.isNaN(expiryInMs) && expiryInMs > 0) {
+    return Date.now() + expiryInMs;
   }
-  // Convert milisecond to absolute timestamp
-  return Date.now() + expiryInMinutes;
+
+  // Fallback to expiryInMinutes (legacy)
+  if (typeof expiryInMinutes === "number" && !Number.isNaN(expiryInMinutes) && expiryInMinutes > 0) {
+    return Date.now() + (expiryInMinutes * 60 * 1000);
+  }
+
+  return null; // No expiry or invalid
 };
 
 const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
@@ -261,11 +315,12 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
   const companyId = data.companyId;
 
   // Derive role from roles array
+  // Support both formats: "ROLE_CANDIDATE" and "CANDIDATE"
   let role: string | undefined = undefined;
-  if (roles.includes("ROLE_CANDIDATE")) role = "CANDIDATE";
-  else if (roles.includes("ROLE_HR")) role = "HR";
-  else if (roles.includes("ROLE_HR_MANAGER")) role = "HR_MANAGER";
-  else if (roles.includes("ROLE_ADMIN")) role = "ADMIN";
+  if (roles.includes("ROLE_CANDIDATE") || roles.includes("CANDIDATE")) role = "CANDIDATE";
+  else if (roles.includes("ROLE_HR") || roles.includes("HR")) role = "HR";
+  else if (roles.includes("ROLE_HR_MANAGER") || roles.includes("HR_MANAGER")) role = "HR_MANAGER";
+  else if (roles.includes("ROLE_ADMIN") || roles.includes("ADMIN")) role = "ADMIN";
 
   return { username, role, roles, companyId };
 };
@@ -277,7 +332,7 @@ const parseAuthResponse = (
     throw new Error(response.message || "Missing response data");
   }
 
-  const { accessToken, expiryInMinutes } = response.data;
+  const { accessToken, expiryInMs, expiryInMinutes } = response.data;
   const user = normalizeUser(response.data);
 
   if (!accessToken) {
@@ -286,7 +341,7 @@ const parseAuthResponse = (
 
   return {
     accessToken,
-    expiryTime: calculateExpiryTime(expiryInMinutes),
+    expiryTime: calculateExpiryTime(expiryInMs, expiryInMinutes),
     message: response.message ?? null,
     user,
     tokenType: response.tokenType,
@@ -471,7 +526,19 @@ export const loginUser = createAsyncThunk<
 
     // Normal login
     const parsed = parseAuthResponse(response);
-    persistSession(toStoredSession(parsed));
+
+    // Store token in axios in-memory store (not localStorage)
+    const storedSession = toStoredSession(parsed);
+    setAccessToken(
+      parsed.accessToken,
+      parsed.expiryTime ?? undefined,
+      storedSession.username,
+      storedSession.roles,
+      storedSession.companyId
+    );
+
+    // Store minimal session info (username, roles - no token)
+    persistSession(storedSession);
     return parsed;
   } catch (error) {
     return rejectWithValue({
@@ -493,11 +560,23 @@ export const refreshToken = createAsyncThunk<
 
     const parsed = parseAuthResponse(response);
     const fallbackUser = getState().auth.user;
-    persistSession(
-      toStoredSession({ ...parsed, user: parsed.user ?? fallbackUser ?? null })
+    const storedSession = toStoredSession({ ...parsed, user: parsed.user ?? fallbackUser ?? null });
+
+    // Store token in axios in-memory store (not localStorage)
+    setAccessToken(
+      parsed.accessToken,
+      parsed.expiryTime ?? undefined,
+      storedSession.username,
+      storedSession.roles,
+      storedSession.companyId
     );
+
+    // Store minimal session info (username, roles - no token)
+    persistSession(storedSession);
     return { ...parsed, user: parsed.user ?? fallbackUser ?? null };
   } catch (error) {
+    // Clear in-memory token on refresh failure
+    resetAxiosAuth();
     clearPersistedSession();
     return rejectWithValue({
       message:
@@ -516,28 +595,27 @@ export const logoutUser = createAsyncThunk<
   const token = state.auth.accessToken;
   const deviceId = payload?.deviceId ?? getDeviceId();
 
-  // Always clear local session regardless of API response
-  // This ensures UI logout works even if server returns 401 (token already invalid)
+  // Set logout flag FIRST to prevent any refresh attempts during logout
+  setLogoutFlag();
+
+  // Call backend logout API FIRST (while we still have the token)
+  // This allows backend to clear the RT HttpOnly cookie via Set-Cookie header
+  if (token) {
+    try {
+      await postAuth<undefined>("/logout", {
+        deviceId,
+        accessToken: token,
+      });
+      console.log("[Auth] Backend logout successful, RT cookie should be cleared by Set-Cookie header");
+    } catch (error) {
+      // Log but don't fail - we still want to clear local state
+      console.warn("[Auth] Logout API call failed:", error);
+    }
+  }
+
+  // THEN clear local state (after backend has had chance to clear RT cookie)
+  resetAxiosAuth();
   clearPersistedSession();
-
-  // Clear token refresh state to prevent pending refresh requests
-  resetRefreshState();
-
-  if (!token) {
-    // No token but still consider logout successful since session is cleared
-    return;
-  }
-
-  try {
-    await postAuth<undefined>("/logout", {
-      deviceId,
-      accessToken: token,
-    });
-  } catch (error) {
-    // Don't reject on 401 - the token is already invalid, logout is effectively done
-    // For other errors, we still cleared the local session so UI logout succeeds
-    console.warn("Logout API call failed:", error);
-  }
 });
 
 const authSlice = createSlice({
@@ -555,6 +633,33 @@ const authSlice = createSlice({
       state.expiryTime = action.payload.expiryTime;
       state.user = getUserFromStoredSession(action.payload);
       state.message = null;
+      state.isLoggedOut = getLogoutFlag(); // Read from separate localStorage flag
+    },
+    hydrateFromLocalStorage: (state) => {
+      // Synchronously restore minimal session from localStorage
+      // This runs immediately on page load, before async token refresh
+      if (typeof window === "undefined") return;
+
+      const stored = localStorage.getItem(AUTH_STORAGE_KEY);
+      if (!stored) return;
+
+      try {
+        const session = JSON.parse(stored);
+        // Restore user info (username, roles) from localStorage
+        // Token will be restored by async refreshToken
+        if (session.username && session.roles) {
+          state.user = {
+            username: session.username,
+            roles: session.roles,
+            role: session.roles[0],
+            companyId: session.companyId,
+          };
+          state.expiryTime = session.expiryTime;
+          state.isLoggedOut = getLogoutFlag();
+        }
+      } catch (error) {
+        console.error("[Auth] Failed to hydrate from localStorage:", error);
+      }
     },
     clearAuthError: (state) => {
       state.error = null;
@@ -564,6 +669,45 @@ const authSlice = createSlice({
       if (state.user) {
         state.user.avatarUrl = action.payload ?? undefined;
       }
+    },
+    clearExpiredSession: (state) => {
+      // Clear auth state when token expires (but don't mark as logged out)
+      state.accessToken = null;
+      state.expiryTime = null;
+      state.user = null;
+      state.error = "Session expired";
+      state.errorType = "unauthorized";
+      // Don't set isLoggedOut = true - token just expired
+    },
+    setOAuthLoginSuccess: (
+      state,
+      action: PayloadAction<{
+        accessToken: string;
+        expiryTime: number | null;
+        username: string;
+        roles: string[];
+        companyId?: string;
+        email?: string;
+        avatarUrl?: string;
+      }>
+    ) => {
+      // Set auth state after successful OAuth login
+      const { accessToken, expiryTime, username, roles, companyId, email, avatarUrl } = action.payload;
+      state.accessToken = accessToken;
+      state.expiryTime = expiryTime;
+      state.user = {
+        username,
+        email,
+        roles,
+        role: roles[0],
+        companyId,
+        avatarUrl,
+      };
+      state.status = "idle";
+      state.error = null;
+      state.errorType = null;
+      state.message = "Successfully signed in";
+      state.isLoggedOut = false;
     },
   },
   extraReducers: (builder) => {
@@ -655,6 +799,8 @@ const authSlice = createSlice({
           state.expiryTime = action.payload.expiryTime;
           state.user = action.payload.user ?? null;
           state.message = action.payload.message;
+          state.isLoggedOut = false; // Clear logout flag on successful login
+          clearLogoutFlag(); // Clear separate logout flag in localStorage
         } else {
           // For 2FA, just show the message
           state.message = action.payload.message;
@@ -681,6 +827,8 @@ const authSlice = createSlice({
         state.error = null;
         state.errorType = null;
         state.message = action.payload.message;
+        state.isLoggedOut = false; // Clear logout flag on successful refresh
+        clearLogoutFlag(); // Clear separate logout flag in localStorage
       })
       .addCase(refreshToken.rejected, (state, action) => {
         state.status = "idle";
@@ -689,6 +837,15 @@ const authSlice = createSlice({
         state.user = null;
         state.error = action.payload?.message ?? "Refresh token failed";
         state.errorType = action.payload?.errorType ?? "generic";
+
+        // Only show notification if user hasn't explicitly logged out
+        if (!state.isLoggedOut) {
+          // Show user-friendly notification about session expiry
+          showToast.warning("Your session has expired. Please sign in again.", {
+            toastId: "session-expired", // Prevent duplicate toasts
+            autoClose: 7000,
+          });
+        }
       })
       .addCase(logoutUser.pending, (state) => {
         state.status = "loading";
@@ -709,11 +866,13 @@ const authSlice = createSlice({
         state.approvalType = null;
         state.registrationRole = null;
         state.userId = null;
+        // Mark as explicitly logged out
+        state.isLoggedOut = true;
       });
   },
 });
 
-export const { restoreSessionFromStorage, clearAuthError, updateUserAvatar } = authSlice.actions;
+export const { restoreSessionFromStorage, hydrateFromLocalStorage, clearAuthError, updateUserAvatar, clearExpiredSession, setOAuthLoginSuccess } = authSlice.actions;
 
 export const selectAuthToken = (state: RootState) => state.auth.accessToken;
 export const selectAuthStatus = (state: RootState) => state.auth.status;
@@ -737,6 +896,7 @@ export const selectUserRoles = createSelector(
 export const selectUserId = (state: RootState) => state.auth.userId;
 export const selectRegistrationRole = (state: RootState) =>
   state.auth.registrationRole;
+export const selectIsLoggedOut = (state: RootState) => state.auth.isLoggedOut;
 
 /**
  * Simple selector to check if token is valid

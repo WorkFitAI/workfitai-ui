@@ -1,12 +1,10 @@
 /**
  * User API client for admin user management
- * Uses the same authentication and error handling patterns as other API clients
+ * Uses axios client with interceptors for automatic token injection and 401 handling
  */
 
-import {
-    handle401WithTokenRefresh,
-    getCurrentAccessToken,
-} from "@/lib/tokenRefreshHandler";
+import { userClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 import {
     UserListItem,
     UserSearchRequest,
@@ -16,93 +14,60 @@ import {
     ResponseData,
     ReindexRequest,
     FullUserProfile,
+    UserRole,
+    UserStatus,
+    UserSearchHit,
 } from "@/types/users";
-
-const API_BASE_URL =
-    process.env.NEXT_PUBLIC_API_BASE_URL || "http://localhost:9085";
-
-const USER_API_URL = `${API_BASE_URL}/user`;
 
 /**
  * Transform backend user response to frontend UserListItem format
  * Handles both formats: {userRole, userStatus} and {role, status}
  */
-const transformUserResponse = (backendUser: any): UserListItem => {
+const transformUserResponse = (backendUser: Record<string, unknown>): UserListItem => {
     return {
-        userId: backendUser.userId,
-        username: backendUser.username,
-        email: backendUser.email,
-        fullName: backendUser.fullName,
-        phoneNumber: backendUser.phoneNumber,
-        avatarUrl: backendUser.avatarUrl,
-        // Handle both backend formats
-        role: backendUser.role || backendUser.userRole,
-        status: backendUser.status || backendUser.userStatus,
-        blocked: backendUser.blocked || false,
-        deleted: backendUser.deleted || false,
-        createdAt: backendUser.createdDate || backendUser.createdAt,
-        updatedAt: backendUser.lastModifiedDate || backendUser.updatedAt,
-        department: backendUser.department,
-        address: backendUser.address,
-        companyId: backendUser.companyId,
-        companyNo: backendUser.companyNo,
-        companyName: backendUser.companyName,
+        userId: backendUser.userId as string,
+        username: backendUser.username as string,
+        email: backendUser.email as string,
+        fullName: backendUser.fullName as string,
+        phoneNumber: backendUser.phoneNumber as string,
+        avatarUrl: backendUser.avatarUrl as string,
+        role: ((backendUser.role || backendUser.userRole) as string) as UserRole,
+        status: ((backendUser.status || backendUser.userStatus) as string) as UserStatus,
+        blocked: (backendUser.blocked as boolean) || false,
+        deleted: (backendUser.deleted as boolean) || false,
+        createdAt: (backendUser.createdDate || backendUser.createdAt) as string,
+        updatedAt: (backendUser.lastModifiedDate || backendUser.updatedAt) as string,
+        department: backendUser.department as string,
+        address: backendUser.address as string,
+        companyId: backendUser.companyId as string,
+        companyNo: backendUser.companyNo as string,
+        companyName: backendUser.companyName as string,
     };
 };
 
 /**
- * Make authenticated API request
+ * Make authenticated API request using axios client
  */
 const apiRequest = async <T>(
     endpoint: string,
-    options: RequestInit = {}
+    options: { method?: string; body?: unknown } = {}
 ): Promise<T> => {
-    const accessToken = getCurrentAccessToken();
+    try {
+        const response = await userClient.request<T>({
+            url: endpoint,
+            method: options.method || "GET",
+            data: options.body,
+        });
 
-    const headers: Record<string, string> = {
-        "Content-Type": "application/json",
-    };
-
-    if (accessToken) {
-        headers["Authorization"] = `Bearer ${accessToken}`;
-    }
-
-    const config: RequestInit = {
-        ...options,
-        headers,
-    };
-
-    const response = await fetch(`${USER_API_URL}${endpoint}`, config);
-
-    // Handle 401 Unauthorized - attempt token refresh
-    if (response.status === 401) {
-        const refreshed = await handle401WithTokenRefresh();
-        if (refreshed) {
-            // Retry request with new token
-            const newToken = getCurrentAccessToken();
-            if (newToken) {
-                headers["Authorization"] = `Bearer ${newToken}`;
-                const retryResponse = await fetch(`${USER_API_URL}${endpoint}`, {
-                    ...config,
-                    headers,
-                });
-                if (!retryResponse.ok) {
-                    throw new Error(`HTTP error! status: ${retryResponse.status}`);
-                }
-                return retryResponse.json();
-            }
-        }
-        throw new Error("Unauthorized - please login again");
-    }
-
-    if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
+        return response.data;
+    } catch (error) {
+        const axiosError = error as AxiosError<{ message?: string }>;
         throw new Error(
-            errorData.message || `HTTP error! status: ${response.status}`
+            axiosError.response?.data?.message ||
+                axiosError.message ||
+                `HTTP error! status: ${axiosError.response?.status}`
         );
     }
-
-    return response.json();
 };
 
 /**
@@ -111,7 +76,6 @@ const apiRequest = async <T>(
 export const userApi = {
     /**
      * Get all users with basic filters (PostgreSQL)
-     * Uses existing /admins/all-users endpoint
      */
     getAllUsers: async (params: {
         keyword?: string;
@@ -133,24 +97,23 @@ export const userApi = {
     },
 
     /**
-     * Get single user by username (changed from userId)
+     * Get single user by username
      */
     getUserByUsername: async (username: string): Promise<ResponseData<UserListItem>> => {
-        const response = await apiRequest<ResponseData<any>>(
+        const response = await apiRequest<ResponseData<Record<string, unknown>>>(
             `/admins/users/username/${username}`,
             { method: "GET" }
         );
 
-        // Transform backend response to frontend format
         if (response.data) {
-            response.data = transformUserResponse(response.data);
+            response.data = transformUserResponse(response.data) as unknown as Record<string, unknown>;
         }
 
-        return response as ResponseData<UserListItem>;
+        return response as unknown as ResponseData<UserListItem>;
     },
 
     /**
-     * Get full user profile with role-specific details (using username)
+     * Get full user profile with role-specific details
      */
     getFullUserProfile: async (
         username: string
@@ -201,53 +164,85 @@ export const userApi = {
 
     /**
      * Advanced search using Elasticsearch
-     * Provides full-text search, filters, aggregations
      */
     searchUsers: async (
         request: UserSearchRequest
     ): Promise<ResponseData<UserSearchResponse>> => {
-        const response = await apiRequest<ResponseData<any>>(
+        // Backend returns raw hits that need transformation
+        interface RawSearchResponse {
+            hits?: Array<Record<string, unknown> & { score?: number; highlights?: Record<string, string[]> }>;
+            totalHits?: number;
+            from?: number;
+            size?: number;
+            roleAggregations?: Record<string, number>;
+            statusAggregations?: Record<string, number>;
+        }
+
+        const response = await apiRequest<ResponseData<RawSearchResponse>>(
             "/admins/users/search",
             {
                 method: "POST",
-                body: JSON.stringify(request),
+                body: request,
             }
         );
 
-        // Transform each user hit in the search results
         if (response.data?.hits) {
-            response.data.hits = response.data.hits.map((hit: any) => ({
+            const transformedHits: UserSearchHit[] = response.data.hits.map((hit) => ({
                 ...transformUserResponse(hit),
-                score: hit.score,
+                score: hit.score ?? 0,
                 highlights: hit.highlights || {},
             }));
+
+            return {
+                ...response,
+                data: {
+                    ...response.data,
+                    hits: transformedHits,
+                } as UserSearchResponse,
+            };
         }
 
-        return response as ResponseData<UserSearchResponse>;
+        return response as unknown as ResponseData<UserSearchResponse>;
     },
 
     searchUsersByHr: async (
         request: UserSearchRequest
     ): Promise<ResponseData<UserSearchResponse>> => {
-        console.log("HR Search Request:", request);
-        const response = await apiRequest<ResponseData<any>>(
+        // Backend returns raw hits that need transformation
+        interface RawSearchResponse {
+            hits?: Array<Record<string, unknown> & { score?: number; highlights?: Record<string, string[]> }>;
+            totalHits?: number;
+            from?: number;
+            size?: number;
+            roleAggregations?: Record<string, number>;
+            statusAggregations?: Record<string, number>;
+        }
+
+        const response = await apiRequest<ResponseData<RawSearchResponse>>(
             "/hr/users/search",
             {
                 method: "POST",
-                body: JSON.stringify(request),
+                body: request,
             }
         );
 
-        // Transform each user hit in the search results
         if (response.data?.hits) {
-            response.data.hits = response.data.hits.map((hit: any) => ({
+            const transformedHits: UserSearchHit[] = response.data.hits.map((hit) => ({
                 ...transformUserResponse(hit),
-                score: hit.score,
+                score: hit.score ?? 0,
                 highlights: hit.highlights || {},
             }));
+
+            return {
+                ...response,
+                data: {
+                    ...response.data,
+                    hits: transformedHits,
+                } as UserSearchResponse,
+            };
         }
 
-        return response as ResponseData<UserSearchResponse>;
+        return response as unknown as ResponseData<UserSearchResponse>;
     },
 
     /**
@@ -259,7 +254,7 @@ export const userApi = {
         const body: ReindexRequest = batchSize ? { batchSize } : {};
         return apiRequest<ResponseData<string>>("/admins/users/reindex", {
             method: "POST",
-            body: JSON.stringify(body),
+            body,
         });
     },
 };

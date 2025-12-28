@@ -1,11 +1,5 @@
-import {
-  handle401WithTokenRefresh,
-  getCurrentAccessToken,
-} from "@/lib/tokenRefreshHandler";
-import { isPublicEndpoint, shouldAttemptRefresh } from "@/lib/endpointUtils";
-
-const JOB_BASE_URL =
-  process.env.NEXT_PUBLIC_JOB_BASE_URL ?? "http://localhost:9085/job";
+import { jobClient } from "@/lib/axios-client";
+import type { AxiosError } from "axios";
 
 type HttpMethod = "GET" | "POST" | "PUT" | "DELETE";
 
@@ -45,26 +39,8 @@ export interface ApiResponse<T> {
 export interface RequestOptions {
   method?: HttpMethod;
   body?: unknown;
-  accessToken?: string;
+  accessToken?: string; // Legacy, not used with axios interceptor
 }
-
-const buildUrl = (path: string) =>
-  `${JOB_BASE_URL}${path.startsWith("/") ? path : `/${path}`}`;
-
-const buildHeaders = (options?: RequestOptions, path?: string): HeadersInit => {
-  const headers: Record<string, string> = {
-    Accept: "application/json",
-    "Content-Type": "application/json",
-  };
-
-  // Only add Authorization header for protected endpoints
-  const isPublic = path ? isPublicEndpoint(path) : false;
-  if (!isPublic && options?.accessToken) {
-    headers["Authorization"] = `Bearer ${options.accessToken}`;
-  }
-
-  return headers;
-};
 
 const parseErrors = (errors: unknown): string[] => {
   if (!errors) return [];
@@ -72,138 +48,72 @@ const parseErrors = (errors: unknown): string[] => {
   return [String(errors)];
 };
 
-const handleResponse = async <T>(
-  response: Response
-): Promise<ApiResponse<T>> => {
-  const isJson = response.headers
-    .get("content-type")
-    ?.includes("application/json");
-  const body = isJson ? await response.json().catch(() => null) : null;
-
-  const apiResponse: ApiResponse<T> = body ?? {
-    status: response.status,
-    message: response.statusText,
-  };
-
-  if (!response.ok) {
-    const msg = apiResponse.message || response.statusText || "Request failed";
-    const errorMsg = [...parseErrors(apiResponse.errors), msg].join(" | ");
-
-    if (response.status === 401) throw new UnauthorizedError(errorMsg);
-    if (response.status === 403) throw new ForbiddenError(errorMsg);
-
-    throw new ApiError(errorMsg, response.status);
-  }
-
-  if (!apiResponse.message) apiResponse.message = "OK";
-
-  return apiResponse;
-};
-
 // MAIN REQUEST WRAPPER
 export const jobRequest = async <T>(
   path: string,
-  options?: RequestOptions,
-  isRetry = false
+  options?: RequestOptions
 ): Promise<ApiResponse<T>> => {
-  // Check if endpoint is public
-  const isPublic = isPublicEndpoint(path);
-
-  // Only get access token for protected endpoints
-  const accessToken = isPublic
-    ? null
-    : options?.accessToken || getCurrentAccessToken();
-
-  const response = await fetch(buildUrl(path), {
-    method: options?.method ?? "GET",
-    headers: buildHeaders(
-      { ...options, accessToken: accessToken || undefined },
-      path
-    ),
-    body: options?.body ? JSON.stringify(options.body) : undefined,
-    credentials: "include",
-  });
-
   try {
-    return await handleResponse<T>(response);
+    const response = await jobClient.request<ApiResponse<T>>({
+      url: path,
+      method: options?.method ?? "GET",
+      data: options?.body,
+    });
+
+    const apiResponse = response.data;
+    if (!apiResponse.message) apiResponse.message = "OK";
+
+    return apiResponse;
   } catch (error) {
-    // On 401 UnauthorizedError, check if we should attempt refresh
-    // Skip refresh for public endpoints and retry loops
-    if (
-      error instanceof UnauthorizedError &&
-      !isRetry &&
-      shouldAttemptRefresh(path)
-    ) {
-      console.log(
-        `[JobAPI] 401 detected on ${path}, attempting token refresh...`
-      );
+    const axiosError = error as AxiosError<ApiResponse<T>>;
+    const responseData = axiosError.response?.data;
+    const msg = responseData?.message || axiosError.message || "Request failed";
+    const errorMsg = [...parseErrors(responseData?.errors), msg].join(" | ");
 
-      // Attempt to refresh the token using centralized queue
-      const newAccessToken = await handle401WithTokenRefresh();
-
-      if (newAccessToken) {
-        console.log(`[JobAPI] Token refreshed, retrying ${path}...`);
-        // Retry the original request with the new token
-        return jobRequest<T>(
-          path,
-          {
-            ...options,
-            accessToken: newAccessToken,
-          },
-          true // Mark as retry to prevent infinite loops
-        );
-      } else {
-        console.error(`[JobAPI] Token refresh failed for ${path}`);
-      }
+    if (axiosError.response?.status === 401) {
+      throw new UnauthorizedError(errorMsg);
+    }
+    if (axiosError.response?.status === 403) {
+      throw new ForbiddenError(errorMsg);
     }
 
-    // Re-throw the error if refresh failed or wasn't attempted
-    throw error;
+    throw new ApiError(errorMsg, axiosError.response?.status || 500);
   }
 };
 
 export const jobRequestFormData = async <T>(
   path: string,
   formData: FormData,
-  isRetry = false,
   method: "POST" | "PUT" = "POST"
 ): Promise<ApiResponse<T>> => {
-  const isPublic = isPublicEndpoint(path);
-
-  const accessToken = isPublic ? null : getCurrentAccessToken();
-
-  const headers: HeadersInit = {};
-  if (!isPublic && accessToken) {
-    headers["Authorization"] = `Bearer ${accessToken}`;
-  }
-
-  const response = await fetch(buildUrl(path), {
-    method,
-    headers,
-    body: formData,
-    credentials: "include",
-  });
-
   try {
-    return await handleResponse<T>(response);
+    const response = await jobClient.request<ApiResponse<T>>({
+      url: path,
+      method,
+      data: formData,
+      headers: {
+        "Content-Type": "multipart/form-data",
+      },
+    });
+
+    const apiResponse = response.data;
+    if (!apiResponse.message) apiResponse.message = "OK";
+
+    return apiResponse;
   } catch (error) {
-    if (
-      error instanceof UnauthorizedError &&
-      !isRetry &&
-      shouldAttemptRefresh(path)
-    ) {
-      console.log(`[JobAPI] 401 on ${path}, refreshing token...`);
+    const axiosError = error as AxiosError<ApiResponse<T>>;
+    const responseData = axiosError.response?.data;
+    const msg = responseData?.message || axiosError.message || "Request failed";
+    const errorMsg = [...parseErrors(responseData?.errors), msg].join(" | ");
 
-      const newAccessToken = await handle401WithTokenRefresh();
-
-      if (newAccessToken) {
-        headers["Authorization"] = `Bearer ${newAccessToken}`;
-
-        return jobRequestFormData<T>(path, formData, true, method);
-      }
+    if (axiosError.response?.status === 401) {
+      throw new UnauthorizedError(errorMsg);
+    }
+    if (axiosError.response?.status === 403) {
+      throw new ForbiddenError(errorMsg);
     }
 
-    throw error;
+    throw new ApiError(errorMsg, axiosError.response?.status || 500);
   }
 };
 
@@ -251,7 +161,6 @@ export const updateCompany = async (formData: FormData) => {
   return jobRequestFormData<import("@/types/job/company").Company>(
     `/hr/companies`,
     formData,
-    false,
     "PUT"
   );
 };

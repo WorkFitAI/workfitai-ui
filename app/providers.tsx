@@ -4,14 +4,11 @@ import React, { useEffect, useLayoutEffect, useRef } from "react";
 import { Provider } from "react-redux";
 import { makeStore, type AppStore } from "@/redux/store";
 import {
-  AUTH_STORAGE_KEY,
-  buildAuthStateFromStoredSession,
-  isCompleteStoredSession,
   refreshToken,
-  restoreSessionFromStorage,
-  type StoredSession,
+  selectIsLoggedOut,
+  hydrateFromLocalStorage,
 } from "@/redux/features/auth/authSlice";
-import { useAppDispatch } from "@/redux/hooks";
+import { useAppDispatch, useAppSelector } from "@/redux/hooks";
 import { setStoreForTokenRefresh } from "@/lib/tokenRefreshHandler";
 import { ToastContainer } from "react-toastify";
 import "react-toastify/dist/ReactToastify.css";
@@ -24,118 +21,43 @@ ChartJS.register(ArcElement, Tooltip, Legend);
 const useIsomorphicLayoutEffect =
   typeof window !== "undefined" ? useLayoutEffect : useEffect;
 
-const loadStoredSession = (): StoredSession | null => {
-  if (typeof window === "undefined") return null;
-
-  const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-  if (!raw) return null;
-
-  try {
-    const parsed = JSON.parse(raw) as unknown;
-
-    if (isCompleteStoredSession(parsed)) {
-      return parsed;
-    }
-
-    // Handle old format (expiryInMinutes instead of expiryTime)
-    const candidate = parsed as Partial<StoredSession> & { expiryInMinutes?: number };
-    if (candidate?.accessToken) {
-      // Convert old expiryInMinutes to new expiryTime format
-      let expiryTime: number | null = null;
-      if (candidate.expiryTime !== undefined) {
-        expiryTime = typeof candidate.expiryTime === "number" && Number.isFinite(candidate.expiryTime)
-          ? candidate.expiryTime
-          : null;
-      } else if (candidate.expiryInMinutes !== undefined) {
-        // Backward compatibility: convert expiryInMinutes to expiryTime
-        // Assume token was just created (not accurate but safe)
-        expiryTime = typeof candidate.expiryInMinutes === "number" && candidate.expiryInMinutes > 0
-          ? Date.now() + (candidate.expiryInMinutes * 60 * 1000)
-          : null;
-      }
-
-      return {
-        accessToken: candidate.accessToken,
-        expiryTime,
-        username:
-          typeof candidate.username === "string" ? candidate.username : "",
-        roles: Array.isArray(candidate.roles)
-          ? candidate.roles.filter(
-            (role): role is string => typeof role === "string"
-          )
-          : [],
-      };
-    }
-  } catch {
-    // fall through
-  }
-
-  return null;
-};
-
+/**
+ * AuthHydrator - Handles auth state restoration on app mount
+ *
+ * NEW FLOW (Sync then Async):
+ * 1. SYNC: Restore user/roles from localStorage immediately (for route guards)
+ * 2. ASYNC: Attempt token refresh via RT cookie in background
+ * - No access token stored in localStorage anymore (XSS protection)
+ * - RT cookie (HttpOnly) is sent automatically with refresh request
+ * - If refresh succeeds: token stored in memory via axios-client
+ * - If refresh fails: user remains logged out
+ */
 const AuthHydrator = () => {
   const dispatch = useAppDispatch();
+  const isLoggedOut = useAppSelector(selectIsLoggedOut);
 
   useIsomorphicLayoutEffect(() => {
     if (typeof window === "undefined") return;
 
-    const raw = localStorage.getItem(AUTH_STORAGE_KEY);
-    let storageValid = false;
+    // Check logout flag in localStorage
+    // This flag persists across page refresh to prevent token refresh attempts
+    const logoutFlag = localStorage.getItem("auth_logged_out") === "true";
 
-    if (raw) {
-      try {
-        const parsed = JSON.parse(raw) as unknown;
-
-        if (isCompleteStoredSession(parsed)) {
-          dispatch(restoreSessionFromStorage(parsed));
-          storageValid = true;
-        } else {
-          // Handle old format or partial session
-          const candidate = parsed as Partial<StoredSession> & { expiryInMinutes?: number };
-          if (candidate?.accessToken) {
-            // Convert old expiryInMinutes to new expiryTime format
-            let expiryTime: number | null = null;
-            if (candidate.expiryTime !== undefined) {
-              expiryTime = typeof candidate.expiryTime === "number" && Number.isFinite(candidate.expiryTime)
-                ? candidate.expiryTime
-                : null;
-            } else if (candidate.expiryInMinutes !== undefined) {
-              // Backward compatibility: convert expiryInMinutes to expiryTime
-              expiryTime = typeof candidate.expiryInMinutes === "number" && candidate.expiryInMinutes > 0
-                ? Date.now() + (candidate.expiryInMinutes * 60 * 1000)
-                : null;
-            }
-
-            dispatch(
-              restoreSessionFromStorage({
-                accessToken: candidate.accessToken,
-                expiryTime,
-                username:
-                  typeof candidate.username === "string"
-                    ? candidate.username
-                    : "",
-                roles: Array.isArray(candidate.roles)
-                  ? candidate.roles.filter(
-                    (role): role is string => typeof role === "string"
-                  )
-                  : [],
-              })
-            );
-            storageValid = true;
-          } else {
-            localStorage.removeItem(AUTH_STORAGE_KEY);
-          }
-        }
-      } catch {
-        localStorage.removeItem(AUTH_STORAGE_KEY);
-      }
+    if (isLoggedOut || logoutFlag) {
+      console.log("[AuthHydrator] User logged out, skipping hydration");
+      return;
     }
 
-    // Refresh only when RT cookie exists but storage is missing or invalid.
-    if (!storageValid) {
-      dispatch(refreshToken());
-    }
-  }, [dispatch]);
+    // STEP 1: Synchronously restore user/roles from localStorage
+    // This makes user data available to route guards immediately
+    console.log("[AuthHydrator] Hydrating user/roles from localStorage");
+    dispatch(hydrateFromLocalStorage());
+
+    // STEP 2: Async token refresh in background
+    // This gets fresh token from RT cookie
+    console.log("[AuthHydrator] Attempting token refresh on mount");
+    dispatch(refreshToken());
+  }, [dispatch, isLoggedOut]);
 
   return null;
 };
@@ -144,11 +66,9 @@ const Providers = ({ children }: { children: React.ReactNode }) => {
   const storeRef = useRef<AppStore | undefined>(undefined);
 
   if (!storeRef.current) {
-    const storedSession = loadStoredSession();
-    const preloadedState = storedSession
-      ? { auth: buildAuthStateFromStoredSession(storedSession) }
-      : undefined;
-    storeRef.current = makeStore(preloadedState);
+    // Create store with empty auth state
+    // Token will be populated by AuthHydrator via refresh (RT cookie)
+    storeRef.current = makeStore();
 
     // Set store instance for token refresh handler
     setStoreForTokenRefresh(storeRef.current);
