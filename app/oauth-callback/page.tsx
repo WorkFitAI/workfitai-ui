@@ -103,13 +103,15 @@ function OAuthCallbackContent() {
         persistSession(storedSession);
 
         // 🚨 CRITICAL: Update Redux auth state (source of truth for React components)
-        dispatch(setOAuthLoginSuccess({
-          accessToken: data.accessToken,
-          expiryTime,
-          username: data.username,
-          roles: data.roles,
-          companyId: data.companyId ?? undefined,
-        }));
+        dispatch(
+          setOAuthLoginSuccess({
+            accessToken: data.accessToken,
+            expiryTime,
+            username: data.username,
+            roles: data.roles,
+            companyId: data.companyId ?? undefined,
+          })
+        );
 
         clearLogoutFlag();
 
