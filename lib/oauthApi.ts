@@ -63,6 +63,19 @@ export interface OAuthError {
   errorDescription?: string;
 }
 
+/**
+ * OAuth Exchange Response
+ * Returned by GET /auth/oauth/exchange?session=xxx
+ * Same format as login response
+ */
+export interface OAuthExchangeResponse {
+  accessToken: string;
+  username: string;
+  roles: string[];
+  companyId?: string | null;
+  expiresIn: number; // milliseconds until expiry
+}
+
 // ============================================================================
 // OAUTH STATE MANAGEMENT
 // ============================================================================
@@ -123,13 +136,13 @@ export const getOAuthAuthorizationUrl = async (
     console.log(`[OAuth] Requesting authorization URL for ${provider}...`);
 
     // Backend returns wrapped response: {status, message, data}
-    const response = await authClient.post<{
+    const response = await authClient.get<{
       status: number;
       message: string;
       data: OAuthAuthorizeResponse;
       source?: string;
       timestamp?: string;
-    }>(`/oauth/authorize/${provider}`, options);
+    }>(`/oauth/authorize/${provider}`, { params: options });
 
     console.log(`[OAuth] Received authorization URL:`, response.data);
 
@@ -154,46 +167,6 @@ export const getOAuthAuthorizationUrl = async (
 };
 
 /**
- * Step 2: Handle OAuth callback
- * GET /oauth/callback/{provider}?code=...&state=...
- */
-export const handleOAuthCallback = async (
-  provider: string,
-  code: string,
-  state: string,
-  redirectUri?: string
-): Promise<OAuthCallbackResponse> => {
-  try {
-    const params = new URLSearchParams({ code, state });
-    if (redirectUri) {
-      params.append("redirectUri", redirectUri);
-    }
-
-    // Backend returns wrapped response: {status, message, data}
-    const response = await authClient.get<{
-      status: number;
-      message: string;
-      data: OAuthCallbackResponse;
-      source?: string;
-      timestamp?: string;
-    }>(`/oauth/callback/${provider.toLowerCase()}?${params.toString()}`);
-
-    // Unwrap the data field
-    return response.data.data;
-  } catch (error) {
-    const axiosError = error as AxiosError<{ message?: string; error?: string; error_description?: string }>;
-    const errorData = axiosError.response?.data;
-
-    throw new Error(
-      errorData?.message ||
-      errorData?.error_description ||
-      errorData?.error ||
-      "OAuth callback failed"
-    );
-  }
-};
-
-/**
  * Initiate OAuth login/register flow
  * This is the main entry point for OAuth
  */
@@ -209,25 +182,57 @@ export const initiateOAuth = async (provider: OAuthProvider): Promise<void> => {
 };
 
 /**
- * Process OAuth callback and get tokens
- * Called from the callback page
+ * Exchange OAuth session for tokens
+ *
+ * Called from /oauth-callback page after backend redirects with session ID.
+ * Backend retrieves tokens from Redis, deletes session (one-time use),
+ * sets refresh token cookie, and returns access token.
+ *
+ * @param sessionId - Session ID from URL (e.g., "oauth_sess_abc123")
+ * @returns Token data (same format as login response)
+ * @throws Error if session invalid/expired
  */
-export const processOAuthCallback = async (
-  provider: string,
-  code: string,
-  state: string
-): Promise<OAuthCallbackResponse> => {
-  // Validate CSRF state
-  if (!validateOAuthState(state)) {
-    clearOAuthState();
-    throw new Error("Invalid OAuth state - possible CSRF attack");
+export const exchangeOAuthSession = async (
+  sessionId: string
+): Promise<OAuthExchangeResponse> => {
+  try {
+    console.log('[OAuth] Exchanging session for tokens:', sessionId);
+
+    const response = await authClient.get<{
+      status: string;
+      message: string;
+      data: OAuthExchangeResponse;
+    }>(`/oauth/exchange`, {
+      params: { session: sessionId },
+      withCredentials: true, // CRITICAL: receive refresh token cookie
+    });
+
+    console.log('[OAuth] Exchange successful:', {
+      username: response.data.data.username,
+      roles: response.data.data.roles,
+      hasToken: !!response.data.data.accessToken,
+    });
+
+    return response.data.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+
+    console.error('[OAuth] Exchange failed:', {
+      status: axiosError.response?.status,
+      message: axiosError.response?.data?.message,
+    });
+
+    // Handle specific error cases
+    if (axiosError.response?.status === 400) {
+      throw new Error('OAuth session expired or invalid. Please try signing in again.');
+    }
+
+    throw new Error(
+      axiosError.response?.data?.message ||
+      axiosError.response?.data?.error ||
+      'Failed to complete OAuth authentication'
+    );
   }
-
-  // Clear stored state
-  clearOAuthState();
-
-  // Exchange code for tokens
-  return handleOAuthCallback(provider, code, state);
 };
 
 // ============================================================================
@@ -293,11 +298,11 @@ export const linkOAuthProvider = async (
   try {
     // This endpoint requires Authorization header
     // Backend will detect authenticated user and switch to LINK mode
-    const response = await authClient.post<{
+    const response = await authClient.get<{
       status: number;
       message: string;
       data: OAuthAuthorizeResponse;
-    }>(`/oauth/authorize/${provider}`, options);
+    }>(`/oauth/authorize/${provider}`, { params: options });
 
     return response.data.data;
   } catch (error) {

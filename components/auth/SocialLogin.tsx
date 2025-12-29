@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { initiateOAuth, type OAuthProvider } from "@/lib/oauthApi";
+import { getOAuthAuthorizationUrl, storeOAuthState, type OAuthProvider } from "@/lib/oauthApi";
 import { showToast } from "@/lib/toast";
 
 interface SocialLoginProps {
@@ -42,46 +42,37 @@ export default function SocialLogin({
   };
 
   const handleClick = async (): Promise<void> => {
-    if (disabled || loading) {
-      console.log("[OAuth Button] Click ignored - disabled or loading");
-      return;
-    }
+    if (disabled || loading) return;
 
-    // If custom onClick is provided, use it
+    // If custom onClick provided, use it
     if (onClick) {
       onClick();
       return;
     }
 
-    // Default OAuth flow with retry
-    console.log(`[OAuth Button] Initiating ${provider} OAuth flow...`);
+    console.log(`[OAuth] Initiating ${provider} OAuth flow...`);
     setLoading(true);
 
     try {
-      const oauthProvider: OAuthProvider = provider.toUpperCase() as OAuthProvider;
+      // Get authorization URL from backend
+      const providerUpper = provider.toUpperCase() as OAuthProvider;
+      const response = await getOAuthAuthorizationUrl(providerUpper);
 
-      // Small delay to ensure component state is updated
-      await new Promise(resolve => setTimeout(resolve, 50));
+      console.log('[OAuth] Received auth URL, storing state and redirecting...');
 
-      console.log(`[OAuth Button] Calling initiateOAuth for ${oauthProvider}...`);
-      await initiateOAuth(oauthProvider);
-      // Note: initiateOAuth will redirect, so we won't reach here normally
-      console.log("[OAuth Button] OAuth initiated successfully (should redirect)");
+      // Store state for CSRF validation
+      storeOAuthState(response.state, providerUpper);
+
+      // Redirect to OAuth provider
+      // After auth, backend redirects to /oauth-callback?session=xxx
+      window.location.href = response.authorizationUrl;
+
     } catch (error) {
-      console.error(`[OAuth Button] OAuth initiation failed:`, error);
+      console.error('[OAuth] Failed to initiate OAuth:', error);
       setLoading(false);
 
-      const errorMessage = error instanceof Error ? error.message : "Unknown error";
-      const isNetworkError = errorMessage.includes("network") || errorMessage.includes("Network");
-
-      let displayMessage = errorMessage;
-      if (isNetworkError) {
-        displayMessage = "Network error. Please check your connection and try again.";
-      } else if (errorMessage.includes("Failed to initiate")) {
-        displayMessage = `Unable to connect to ${provider} OAuth. Please try again.`;
-      }
-
-      showToast.error(displayMessage);
+      const message = error instanceof Error ? error.message : 'Failed to initiate sign-in';
+      showToast.error(message);
     }
   };
 
@@ -95,10 +86,7 @@ export default function SocialLogin({
       {loading ? (
         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
       ) : (
-        <img
-          src={getIcon()}
-          alt={`Sign in with ${provider}`}
-        />
+        <img src={getIcon()} alt={`Sign in with ${provider}`} />
       )}
       <strong>{loading ? "Redirecting..." : (text || getDefaultText())}</strong>
     </button>
