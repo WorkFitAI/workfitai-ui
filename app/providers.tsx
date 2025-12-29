@@ -48,13 +48,21 @@ const AuthHydrator = () => {
       return;
     }
 
+    // Check if user has a previous session before attempting refresh
+    // This avoids unnecessary /auth/refresh calls for first-time visitors
+    const storedSession = localStorage.getItem("auth_session");
+    if (!storedSession) {
+      console.log("[AuthHydrator] No previous session, skipping refresh");
+      return;
+    }
+
     // STEP 1: Synchronously restore user/roles from localStorage
     // This makes user data available to route guards immediately
     console.log("[AuthHydrator] Hydrating user/roles from localStorage");
     dispatch(hydrateFromLocalStorage());
 
     // STEP 2: Async token refresh in background
-    // This gets fresh token from RT cookie
+    // This gets fresh token from RT cookie (only if had previous session)
     console.log("[AuthHydrator] Attempting token refresh on mount");
     dispatch(refreshToken());
   }, [dispatch, isLoggedOut]);

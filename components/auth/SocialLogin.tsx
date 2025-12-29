@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { initiateOAuth, type OAuthProvider } from "@/lib/oauthApi";
+import { getOAuthAuthorizationUrl, storeOAuthState, type OAuthProvider } from "@/lib/oauthApi";
 import { showToast } from "@/lib/toast";
 
 interface SocialLoginProps {
@@ -44,21 +44,34 @@ export default function SocialLogin({
   const handleClick = async (): Promise<void> => {
     if (disabled || loading) return;
 
-    // If custom onClick is provided, use it
+    // If custom onClick provided, use it
     if (onClick) {
       onClick();
       return;
     }
 
-    // Default OAuth flow
+    console.log(`[OAuth] Initiating ${provider} OAuth flow...`);
     setLoading(true);
+
     try {
-      const oauthProvider: OAuthProvider = provider.toUpperCase() as OAuthProvider;
-      await initiateOAuth(oauthProvider);
-      // Note: initiateOAuth will redirect, so we won't reach here
+      // Get authorization URL from backend
+      const providerUpper = provider.toUpperCase() as OAuthProvider;
+      const response = await getOAuthAuthorizationUrl(providerUpper);
+
+      console.log('[OAuth] Received auth URL, storing state and redirecting...');
+
+      // Store state for CSRF validation
+      storeOAuthState(response.state, providerUpper);
+
+      // Redirect to OAuth provider
+      // After auth, backend redirects to /oauth-callback?session=xxx
+      window.location.href = response.authorizationUrl;
+
     } catch (error) {
+      console.error('[OAuth] Failed to initiate OAuth:', error);
       setLoading(false);
-      const message = error instanceof Error ? error.message : "Failed to sign in";
+
+      const message = error instanceof Error ? error.message : 'Failed to initiate sign-in';
       showToast.error(message);
     }
   };
@@ -73,10 +86,7 @@ export default function SocialLogin({
       {loading ? (
         <span className="spinner-border spinner-border-sm me-2" role="status" aria-hidden="true" />
       ) : (
-        <img
-          src={getIcon()}
-          alt={`Sign in with ${provider}`}
-        />
+        <img src={getIcon()} alt={`Sign in with ${provider}`} />
       )}
       <strong>{loading ? "Redirecting..." : (text || getDefaultText())}</strong>
     </button>

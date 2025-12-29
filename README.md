@@ -118,11 +118,18 @@ app/
 - **Typed hooks**: `useAppDispatch()`, `useAppSelector()`
 
 ### Authentication Flow
-- **Access tokens**: JWT in Redux + localStorage
+- **Access tokens**: JWT in memory (axios client) + Redux state (NO localStorage - XSS protection)
 - **Refresh tokens**: HttpOnly cookies (server-managed)
 - **Device tracking**: Unique device ID for session security
 - **OTP verification**: Email-based verification for new users
 - **Role-based registration**: Different flows for Candidate/HR/HR Manager
+- **OAuth flow**:
+  - **Backend-driven**: Server handles OAuth callback and returns `oauth-callback.html` with authentication data
+  - **Popup flow**: Opens OAuth provider in popup → Backend processes callback → Returns HTML → postMessage to parent → Close popup
+  - **Redirect flow**: Opens OAuth provider in current window → Backend processes callback → Returns HTML → Stores data in sessionStorage → Redirects to Next.js callback page
+  - **Unified processing**: Both flows use same backend HTML template and same `handleAuthSuccess()` handler
+  - **Providers**: Google, GitHub
+- **Security**: Origin validation, postMessage communication, timeout protection, CSRF state validation
 
 ### API Integration
 - **Base URL**: `http://localhost:9085`
@@ -207,15 +214,18 @@ workfitai-ui/
 │
 ├── lib/                 # Utility libraries
 │   ├── authApi.ts       # Auth API client
+│   ├── authHandlers.ts  # Unified auth success/error handlers
 │   ├── jobApi.ts        # Job API client
 │   ├── deviceId.ts      # Device ID generation
 │   └── validation.ts    # Form validation
 │
 ├── types/               # TypeScript types
-│   └── index.ts         # Domain models
+│   ├── index.ts         # Domain models
+│   └── oauth.ts         # OAuth message types + guards
 │
 ├── hooks/               # Custom React hooks
-│   └── useDebounce.ts   # Debounce hook
+│   ├── useDebounce.ts   # Debounce hook
+│   └── useOAuthPopup.ts # OAuth popup lifecycle management
 │
 ├── public/              # Static assets
 │   └── assets/
@@ -440,6 +450,6 @@ Private - All rights reserved
 
 For issues, questions, or feature requests, contact the development team.
 
-**Last Updated**: 2025-12-27
-**Current Branch**: hotfix
+**Last Updated**: 2025-12-29
+**Current Branch**: feature/user-profile
 **Maintained by**: WorkfitAI Development Team

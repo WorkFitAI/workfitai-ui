@@ -63,6 +63,19 @@ export interface OAuthError {
   errorDescription?: string;
 }
 
+/**
+ * OAuth Exchange Response
+ * Returned by GET /auth/oauth/exchange?session=xxx
+ * Same format as login response
+ */
+export interface OAuthExchangeResponse {
+  accessToken: string;
+  username: string;
+  roles: string[];
+  companyId?: string | null;
+  expiresIn: number; // milliseconds until expiry
+}
+
 // ============================================================================
 // OAUTH STATE MANAGEMENT
 // ============================================================================
@@ -120,61 +133,35 @@ export const getOAuthAuthorizationUrl = async (
   options: OAuthAuthorizeRequest = {}
 ): Promise<OAuthAuthorizeResponse> => {
   try {
-    // Backend returns wrapped response: {status, message, data}
-    const response = await authClient.post<{
-      status: number;
-      message: string;
-      data: OAuthAuthorizeResponse;
-      source?: string;
-      timestamp?: string;
-    }>(`/oauth/authorize/${provider}`, options);
-
-    // Unwrap the data field
-    return response.data.data;
-  } catch (error) {
-    const axiosError = error as AxiosError<{ message?: string }>;
-    throw new Error(
-      axiosError.response?.data?.message || "Failed to initiate OAuth flow"
-    );
-  }
-};
-
-/**
- * Step 2: Handle OAuth callback
- * GET /oauth/callback/{provider}?code=...&state=...
- */
-export const handleOAuthCallback = async (
-  provider: string,
-  code: string,
-  state: string,
-  redirectUri?: string
-): Promise<OAuthCallbackResponse> => {
-  try {
-    const params = new URLSearchParams({ code, state });
-    if (redirectUri) {
-      params.append("redirectUri", redirectUri);
-    }
+    console.log(`[OAuth] Requesting authorization URL for ${provider}...`);
 
     // Backend returns wrapped response: {status, message, data}
     const response = await authClient.get<{
       status: number;
       message: string;
-      data: OAuthCallbackResponse;
+      data: OAuthAuthorizeResponse;
       source?: string;
       timestamp?: string;
-    }>(`/oauth/callback/${provider.toLowerCase()}?${params.toString()}`);
+    }>(`/oauth/authorize/${provider}`, { params: options });
+
+    console.log(`[OAuth] Received authorization URL:`, response.data);
 
     // Unwrap the data field
     return response.data.data;
   } catch (error) {
-    const axiosError = error as AxiosError<{ message?: string; error?: string; error_description?: string }>;
-    const errorData = axiosError.response?.data;
+    const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+    console.error(`[OAuth] Failed to get authorization URL:`, {
+      status: axiosError.response?.status,
+      message: axiosError.response?.data?.message,
+      error: axiosError.response?.data?.error,
+      fullError: axiosError,
+    });
 
     throw new Error(
-      errorData?.message ||
-      errorData?.error_description ||
-      errorData?.error ||
-      "OAuth callback failed"
+      axiosError.response?.data?.message ||
+      axiosError.response?.data?.error ||
+      axiosError.message ||
+      "Failed to initiate OAuth flow. Please check your network connection."
     );
   }
 };
@@ -195,25 +182,57 @@ export const initiateOAuth = async (provider: OAuthProvider): Promise<void> => {
 };
 
 /**
- * Process OAuth callback and get tokens
- * Called from the callback page
+ * Exchange OAuth session for tokens
+ *
+ * Called from /oauth-callback page after backend redirects with session ID.
+ * Backend retrieves tokens from Redis, deletes session (one-time use),
+ * sets refresh token cookie, and returns access token.
+ *
+ * @param sessionId - Session ID from URL (e.g., "oauth_sess_abc123")
+ * @returns Token data (same format as login response)
+ * @throws Error if session invalid/expired
  */
-export const processOAuthCallback = async (
-  provider: string,
-  code: string,
-  state: string
-): Promise<OAuthCallbackResponse> => {
-  // Validate CSRF state
-  if (!validateOAuthState(state)) {
-    clearOAuthState();
-    throw new Error("Invalid OAuth state - possible CSRF attack");
+export const exchangeOAuthSession = async (
+  sessionId: string
+): Promise<OAuthExchangeResponse> => {
+  try {
+    console.log('[OAuth] Exchanging session for tokens:', sessionId);
+
+    const response = await authClient.get<{
+      status: string;
+      message: string;
+      data: OAuthExchangeResponse;
+    }>(`/oauth/exchange`, {
+      params: { session: sessionId },
+      withCredentials: true, // CRITICAL: receive refresh token cookie
+    });
+
+    console.log('[OAuth] Exchange successful:', {
+      username: response.data.data.username,
+      roles: response.data.data.roles,
+      hasToken: !!response.data.data.accessToken,
+    });
+
+    return response.data.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string; error?: string }>;
+
+    console.error('[OAuth] Exchange failed:', {
+      status: axiosError.response?.status,
+      message: axiosError.response?.data?.message,
+    });
+
+    // Handle specific error cases
+    if (axiosError.response?.status === 400) {
+      throw new Error('OAuth session expired or invalid. Please try signing in again.');
+    }
+
+    throw new Error(
+      axiosError.response?.data?.message ||
+      axiosError.response?.data?.error ||
+      'Failed to complete OAuth authentication'
+    );
   }
-
-  // Clear stored state
-  clearOAuthState();
-
-  // Exchange code for tokens
-  return handleOAuthCallback(provider, code, state);
 };
 
 // ============================================================================
@@ -262,4 +281,126 @@ export const getProviderIcon = (provider: OAuthProvider): string => {
     default:
       return "/assets/imgs/template/icons/icon-google.svg";
   }
+};
+
+// ============================================================================
+// OAUTH ACCOUNT MANAGEMENT (LINK/UNLINK)
+// ============================================================================
+
+/**
+ * Link OAuth provider to existing account
+ * Requires authentication (Bearer token)
+ */
+export const linkOAuthProvider = async (
+  provider: OAuthProvider,
+  options: OAuthAuthorizeRequest = {}
+): Promise<OAuthAuthorizeResponse> => {
+  try {
+    // This endpoint requires Authorization header
+    // Backend will detect authenticated user and switch to LINK mode
+    const response = await authClient.get<{
+      status: number;
+      message: string;
+      data: OAuthAuthorizeResponse;
+    }>(`/oauth/authorize/${provider}`, { params: options });
+
+    return response.data.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to link OAuth provider"
+    );
+  }
+};
+
+/**
+ * Unlink OAuth provider from account
+ * Requires authentication (Bearer token)
+ */
+export const unlinkOAuthProvider = async (
+  provider: OAuthProvider
+): Promise<void> => {
+  try {
+    await authClient.delete(`/oauth/unlink/${provider}`);
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to unlink OAuth provider"
+    );
+  }
+};
+
+/**
+ * Get user's authentication status
+ * Returns available auth methods (password + OAuth providers)
+ */
+export interface AuthStatusResponse {
+  userId: string;
+  hasPassword: boolean;
+  oauthProviders: OAuthProvider[];
+  canUnlinkOAuth: boolean;
+  message: string;
+}
+
+export const getAuthStatus = async (): Promise<AuthStatusResponse> => {
+  try {
+    const response = await authClient.get<{
+      status: number;
+      message: string;
+      data: AuthStatusResponse;
+    }>("/oauth/auth-status");
+
+    return response.data.data;
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to get auth status"
+    );
+  }
+};
+
+/**
+ * Set password for OAuth-only users
+ * Allows OAuth users to add password authentication
+ */
+export interface SetPasswordRequest {
+  newPassword: string;
+}
+
+export interface SetPasswordResponse {
+  message: string;
+}
+
+export const setPassword = async (
+  newPassword: string
+): Promise<SetPasswordResponse> => {
+  try {
+    const response = await authClient.post<{
+      status: number;
+      message: string;
+      data?: SetPasswordResponse;
+    }>("/set-password", { newPassword });
+
+    return response.data.data || { message: response.data.message };
+  } catch (error) {
+    const axiosError = error as AxiosError<{ message?: string }>;
+    throw new Error(
+      axiosError.response?.data?.message || "Failed to set password"
+    );
+  }
+};
+
+/**
+ * Initiate OAuth link flow
+ * Similar to initiateOAuth but for linking accounts
+ */
+export const initiateLinkOAuth = async (provider: OAuthProvider): Promise<void> => {
+  // Get authorization URL (with Bearer token, backend will detect LINK mode)
+  const response = await linkOAuthProvider(provider);
+
+  // Store state for CSRF validation
+  storeOAuthState(response.state, provider);
+
+  // Redirect to provider's authorization page
+  window.location.href = response.authorizationUrl;
 };
