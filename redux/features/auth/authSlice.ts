@@ -123,7 +123,7 @@ export interface StoredSession {
   companyId?: string;
 }
 
-interface AuthSuccess {
+export interface AuthSuccess {
   accessToken: string;
   expiryTime: number | null; // Absolute timestamp (ms)
   message: string | null;
@@ -154,7 +154,7 @@ const getErrorType = (error: unknown): AuthErrorType => {
   return "generic";
 };
 
-const persistSession = (session: StoredSession | null) => {
+export const persistSession = (session: StoredSession | null) => {
   if (typeof window === "undefined") return;
 
   if (!session) {
@@ -219,7 +219,7 @@ const setLogoutFlag = () => {
   }
 };
 
-const clearLogoutFlag = () => {
+export const clearLogoutFlag = () => {
   if (typeof window !== "undefined") {
     localStorage.removeItem(LOGOUT_FLAG_KEY);
   }
@@ -252,7 +252,7 @@ export const isCompleteStoredSession = (
   return hasToken && hasExpiry && hasUsername && hasRoles;
 };
 
-const toStoredSession = (auth: AuthSuccess): StoredSession => ({
+export const toStoredSession = (auth: AuthSuccess): StoredSession => ({
   accessToken: auth.accessToken,
   expiryTime: auth.expiryTime,
   username: auth.user?.username ?? "",
@@ -325,7 +325,7 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
   return { username, role, roles, companyId };
 };
 
-const parseAuthResponse = (
+export const parseAuthResponse = (
   response: ApiResponse<AuthResponseData>
 ): AuthSuccess => {
   if (!response.data) {
@@ -344,7 +344,7 @@ const parseAuthResponse = (
     expiryTime: calculateExpiryTime(expiryInMs, expiryInMinutes),
     message: response.message ?? null,
     user,
-    tokenType: response.tokenType,
+    tokenType: response.tokenType ?? "Opaque",
     source: response.source,
   };
 };

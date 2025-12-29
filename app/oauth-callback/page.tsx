@@ -3,9 +3,17 @@
 import { useEffect, useState, Suspense } from "react";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useAppDispatch } from "@/redux/hooks";
-import { handleAuthSuccess, handleAuthError, handleOAuthLinkSuccess } from "@/lib/authHandlers";
+
 import { exchangeOAuthSession, clearOAuthState } from "@/lib/oauthApi";
 import { showToast } from "@/lib/toast";
+import { setAccessToken } from "@/lib/axios-client";
+import {
+  clearLogoutFlag,
+  parseAuthResponse,
+  persistSession,
+  setOAuthLoginSuccess,
+  toStoredSession,
+} from "@/redux/features/auth/authSlice";
 
 type CallbackStatus = "loading" | "success" | "error";
 
@@ -29,7 +37,8 @@ function OAuthCallbackContent() {
           console.error("[OAuth Callback] Provider error:", errorMsg);
           setStatus("error");
           setErrorMessage(errorMsg);
-          handleAuthError(errorMsg);
+          console.error("[Auth Handler] Auth error:", error);
+          showToast.error(error);
           clearOAuthState();
           setTimeout(() => router.push("/signin"), 3000);
           return;
@@ -40,7 +49,8 @@ function OAuthCallbackContent() {
         if (linkStatus === "link_success") {
           console.log("[OAuth Callback] Link success");
           setStatus("success");
-          handleOAuthLinkSuccess("Account linked successfully!");
+          console.log("[Auth Handler] OAuth link success");
+          showToast.success("Account linked successfully!");
           clearOAuthState();
           setTimeout(() => router.push("/profile/settings"), 2000);
           return;
@@ -57,33 +67,88 @@ function OAuthCallbackContent() {
         // Call exchange API
         const data = await exchangeOAuthSession(sessionId);
 
-        console.log("[OAuth Callback] Exchange successful:", {
-          username: data.username,
-          roles: data.roles,
-        });
+        console.log("[OAuth Callback] Exchange successful:", data);
 
         setStatus("success");
 
         // Clear stored OAuth state
         clearOAuthState();
 
-        // Process EXACTLY like loginUser.fulfilled
-        handleAuthSuccess(
-          {
-            accessToken: data.accessToken,
+        // Calculate expiry time (absolute timestamp)
+        const expiryTime = data.expiresIn ? Date.now() + data.expiresIn : null;
+
+        // Store token in axios in-memory store (not localStorage)
+        setAccessToken(
+          data.accessToken,
+          data.expiresIn ?? undefined,
+          data.username,
+          data.roles,
+          data.companyId
+        );
+
+        // Build AuthSuccess-compatible object for toStoredSession
+        const authSuccess = {
+          accessToken: data.accessToken,
+          expiryTime,
+          message: null,
+          user: {
             username: data.username,
             roles: data.roles,
             companyId: data.companyId ?? undefined,
-            expiresIn: data.expiresIn,
           },
-          dispatch,
-          router
-        );
+        };
 
+        // Store minimal session info (username, roles - no token)
+        const storedSession = toStoredSession(authSuccess);
+        persistSession(storedSession);
+
+        // 🚨 CRITICAL: Update Redux auth state (source of truth for React components)
+        dispatch(setOAuthLoginSuccess({
+          accessToken: data.accessToken,
+          expiryTime,
+          username: data.username,
+          roles: data.roles,
+          companyId: data.companyId ?? undefined,
+        }));
+
+        clearLogoutFlag();
+
+        showToast.success("Successfully signed in!");
+
+        const roles = data.roles || [];
+
+        // Wait briefly for state to propagate
+        setTimeout(() => {
+          if (roles.includes("ADMIN")) {
+            window.location.href = "/admin/users";
+          } else if (roles.includes("HR_MANAGER")) {
+            window.location.href = "/hr-manager";
+          } else if (roles.includes("HR")) {
+            window.location.href = "/hr/applications";
+          } else {
+            router.push("/");
+          }
+        }, 100);
+
+        // Process EXACTLY like loginUser.fulfilled
+        // handleAuthSuccess(
+        //   {
+        //     accessToken: data.accessToken,
+        //     username: data.username,
+        //     roles: data.roles,
+        //     companyId: data.companyId ?? undefined,
+        //     expiresIn: data.expiresIn,
+        //   },
+        //   dispatch,
+        //   router
+        // );
       } catch (error) {
         console.error("[OAuth Callback] Error:", error);
         setStatus("error");
-        const message = error instanceof Error ? error.message : "OAuth authentication failed";
+        const message =
+          error instanceof Error
+            ? error.message
+            : "OAuth authentication failed";
         setErrorMessage(message);
         showToast.error(message);
         clearOAuthState();
@@ -103,16 +168,36 @@ function OAuthCallbackContent() {
               <span className="visually-hidden">Loading...</span>
             </div>
             <h4>Completing sign-in...</h4>
-            <p className="text-muted">Please wait while we verify your account</p>
+            <p className="text-muted">
+              Please wait while we verify your account
+            </p>
           </div>
         )}
 
         {status === "success" && (
           <div className="oauth-success">
             <div className="success-icon">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="#10B981" strokeWidth="2" />
-                <path d="M8 12l2 2 4-4" stroke="#10B981" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="#10B981"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M8 12l2 2 4-4"
+                  stroke="#10B981"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                />
               </svg>
             </div>
             <h4>Sign-in successful!</h4>
@@ -123,9 +208,26 @@ function OAuthCallbackContent() {
         {status === "error" && (
           <div className="oauth-error">
             <div className="error-icon">
-              <svg width="64" height="64" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <circle cx="12" cy="12" r="10" stroke="#EF4444" strokeWidth="2" />
-                <path d="M15 9l-6 6M9 9l6 6" stroke="#EF4444" strokeWidth="2" strokeLinecap="round" />
+              <svg
+                width="64"
+                height="64"
+                viewBox="0 0 24 24"
+                fill="none"
+                xmlns="http://www.w3.org/2000/svg"
+              >
+                <circle
+                  cx="12"
+                  cy="12"
+                  r="10"
+                  stroke="#EF4444"
+                  strokeWidth="2"
+                />
+                <path
+                  d="M15 9l-6 6M9 9l6 6"
+                  stroke="#EF4444"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                />
               </svg>
             </div>
             <h4>Authentication failed</h4>
@@ -141,7 +243,7 @@ function OAuthCallbackContent() {
           display: flex;
           align-items: center;
           justify-content: center;
-          background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+          background: #ffffff;
           padding: 20px;
         }
         .oauth-callback-card {
@@ -153,18 +255,24 @@ function OAuthCallbackContent() {
           width: 100%;
           box-shadow: 0 20px 40px rgba(0, 0, 0, 0.15);
         }
-        .oauth-loading, .oauth-success, .oauth-error {
+        .oauth-loading,
+        .oauth-success,
+        .oauth-error {
           display: flex;
           flex-direction: column;
           align-items: center;
           gap: 16px;
         }
-        .oauth-loading h4, .oauth-success h4, .oauth-error h4 {
+        .oauth-loading h4,
+        .oauth-success h4,
+        .oauth-error h4 {
           margin: 8px 0 0 0;
           color: #1f2937;
           font-size: 1.25rem;
         }
-        .oauth-loading p, .oauth-success p, .oauth-error p {
+        .oauth-loading p,
+        .oauth-success p,
+        .oauth-error p {
           margin: 0;
           font-size: 0.875rem;
         }
@@ -172,14 +280,23 @@ function OAuthCallbackContent() {
           width: 48px;
           height: 48px;
         }
-        .success-icon, .error-icon {
+        .success-icon,
+        .error-icon {
           animation: scaleIn 0.3s ease-out;
         }
         @keyframes scaleIn {
-          from { transform: scale(0); opacity: 0; }
-          to { transform: scale(1); opacity: 1; }
+          from {
+            transform: scale(0);
+            opacity: 0;
+          }
+          to {
+            transform: scale(1);
+            opacity: 1;
+          }
         }
-        .small { font-size: 0.75rem; }
+        .small {
+          font-size: 0.75rem;
+        }
       `}</style>
     </div>
   );
@@ -189,19 +306,23 @@ export default function OAuthCallbackPage() {
   return (
     <Suspense
       fallback={
-        <div style={{
-          minHeight: "100vh",
-          display: "flex",
-          alignItems: "center",
-          justifyContent: "center",
-          background: "linear-gradient(135deg, #667eea 0%, #764ba2 100%)",
-        }}>
-          <div style={{
-            background: "white",
-            borderRadius: "16px",
-            padding: "48px",
-            textAlign: "center",
-          }}>
+        <div
+          style={{
+            minHeight: "100vh",
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "#ffffff",
+          }}
+        >
+          <div
+            style={{
+              background: "white",
+              borderRadius: "16px",
+              padding: "48px",
+              textAlign: "center",
+            }}
+          >
             <div className="spinner-border text-primary" role="status">
               <span className="visually-hidden">Loading...</span>
             </div>
