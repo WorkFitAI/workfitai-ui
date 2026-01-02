@@ -7,6 +7,7 @@ import { createApplication } from '@/redux/features/application/applicationSlice
 import { checkIfApplied } from '@/lib/applicationApi';
 import ApplicationForm from '@/components/application/ApplicationForm';
 import type { CreateApplicationRequest } from '@/types/application/application';
+import { showToast } from '@/lib/toast';
 
 interface ApplySectionProps {
   jobId: string;
@@ -37,9 +38,9 @@ const ApplySection = ({ jobId }: ApplySectionProps): React.ReactElement => {
       await dispatch(createApplication(data)).unwrap();
       setHasApplied(true);
       setShowApplicationForm(false);
-      alert('Application submitted successfully!');
-    } catch {
-      alert('Failed to submit application. Please try again.');
+      showToast.success('Application submitted successfully! We will review your application and get back to you soon.');
+    } catch (error) {
+      showToast.error('Failed to submit application. Please try again.');
     }
   };
 

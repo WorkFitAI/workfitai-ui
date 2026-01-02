@@ -74,8 +74,8 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
       // Handle 403 Forbidden - redirect to unauthorized page WITHOUT logging out
       // 403 means user is authenticated but lacks permission - don't clear their session
       if (error.response?.status === 403) {
-        if (typeof document !== 'undefined') {
-          document.location.href = '/unauthorized';
+        if (typeof document !== "undefined") {
+          document.location.href = "/unauthorized";
         }
         return Promise.reject(error);
       }
@@ -99,17 +99,14 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
         // If already refreshing, queue this request
         if (getIsRefreshing()) {
           return new Promise((resolve, reject) => {
-            addToRefreshQueue(
-              (token) => {
-                if (token && originalRequest) {
-                  originalRequest.headers.Authorization = `Bearer ${token}`;
-                  resolve(instance(originalRequest));
-                } else {
-                  reject(error);
-                }
-              },
-              reject
-            );
+            addToRefreshQueue((token) => {
+              if (token && originalRequest) {
+                originalRequest.headers.Authorization = `Bearer ${token}`;
+                resolve(instance(originalRequest));
+              } else {
+                reject(error);
+              }
+            }, reject);
           });
         }
 
@@ -123,15 +120,15 @@ export const createApiClient = (baseURL: string): AxiosInstance => {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return instance(originalRequest);
           } else {
-            // Refresh failed, redirect to unauthorized page
+            // Refresh failed, redirect to signin (user needs to re-authenticate)
             if (typeof document !== "undefined") {
-              document.location.href = "/unauthorized";
+              document.location.href = "/signin";
             }
           }
         } catch (refreshError) {
-          // Refresh error, redirect to unauthorized page
+          // Refresh error, redirect to signin (user needs to re-authenticate)
           if (typeof document !== "undefined") {
-            document.location.href = "/unauthorized";
+            document.location.href = "/signin";
           }
           return Promise.reject(refreshError);
         }

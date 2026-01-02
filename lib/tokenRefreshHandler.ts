@@ -47,6 +47,11 @@ export const getCurrentAccessToken = (): string | null => {
 
 /**
  * Update token from API response (used by Redux thunks)
+ * @param accessToken - The new access token
+ * @param expiryInMs - Duration in milliseconds until expiry (will be converted to absolute timestamp)
+ * @param username - Username
+ * @param roles - User roles
+ * @param companyId - Company ID
  */
 export const updateTokenFromResponse = (
   accessToken: string,
@@ -55,7 +60,9 @@ export const updateTokenFromResponse = (
   roles: string[],
   companyId: string | null
 ): void => {
-  setAccessToken(accessToken, expiryInMs, username, roles, companyId);
+  // Convert duration to absolute timestamp
+  const expiryTime = expiryInMs ? Date.now() + expiryInMs : undefined;
+  setAccessToken(accessToken, expiryTime, username, roles, companyId);
 };
 
 /**

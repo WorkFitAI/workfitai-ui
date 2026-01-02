@@ -18,6 +18,7 @@ import { selectAuthUser } from "@/redux/features/auth/authSlice";
 import CVCard from "@/components/cv/CVCard";
 import UploadCVModal from "@/components/cv/UploadCVModal";
 import { useAuthErrorRedirect } from "@/util/useAuthErrorRedirect";
+import { showToast } from "@/lib/toast";
 
 export default function MyCVsPage(): React.ReactElement {
   useAuthErrorRedirect();
@@ -62,6 +63,7 @@ export default function MyCVsPage(): React.ReactElement {
   const handleUpload = async (file: File): Promise<void> => {
     const result = await dispatch(uploadCV(file));
     if (uploadCV.fulfilled.match(result)) {
+      showToast.success('CV uploaded successfully!');
       // Refresh the list after successful upload
       if (user?.username) {
         dispatch(
@@ -74,16 +76,21 @@ export default function MyCVsPage(): React.ReactElement {
         );
         setCurrentPage(1);
       }
+    } else {
+      showToast.error('Failed to upload CV. Please try again.');
     }
   };
 
   const handleDelete = async (cvId: string): Promise<void> => {
     const result = await dispatch(deleteCV(cvId));
     if (deleteCV.fulfilled.match(result)) {
+      showToast.success('CV deleted successfully!');
       // If current page becomes empty after deletion, go to previous page
       if (cvs.length === 1 && currentPage > 1) {
         setCurrentPage(currentPage - 1);
       }
+    } else {
+      showToast.error('Failed to delete CV. Please try again.');
     }
   };
 

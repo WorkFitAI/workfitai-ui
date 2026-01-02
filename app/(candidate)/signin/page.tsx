@@ -80,27 +80,22 @@ function SigninContent() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    const handleRedirect = async () => {
-      if (accessToken && roles.length > 0) {
-        // Wait briefly to ensure localStorage persistence completes
-        await new Promise(resolve => setTimeout(resolve, 50));
-
-        if (roles.includes("ADMIN")) {
-          document.location.href = "/admin/users";
-        } else if (roles.includes("HR_MANAGER")) {
-          document.location.href = "/hr-manager";
-        } else if (roles.includes("HR")) {
-          document.location.href = "/hr/applications";
-        } else {
-          router.replace("/");
-        }
-      } else if (accessToken) {
-        // Fallback if no roles yet
+    if (accessToken && roles.length > 0) {
+      // Use router.replace for client-side navigation
+      // This preserves the in-memory token (document.location.href would cause full reload and lose it)
+      if (roles.includes("ADMIN")) {
+        router.replace("/admin/users");
+      } else if (roles.includes("HR_MANAGER")) {
+        router.replace("/hr-manager");
+      } else if (roles.includes("HR")) {
+        router.replace("/hr/applications");
+      } else {
         router.replace("/");
       }
-    };
-
-    handleRedirect();
+    } else if (accessToken) {
+      // Fallback if no roles yet
+      router.replace("/");
+    }
   }, [accessToken, roles, router]);
 
   // Handle 403 Forbidden errors (pending approval)

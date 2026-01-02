@@ -75,12 +75,15 @@ function OAuthCallbackContent() {
         clearOAuthState();
 
         // Calculate expiry time (absolute timestamp)
-        const expiryTime = data.expiresIn ? Date.now() + data.expiresIn : null;
+        const expiryTime = data.expiryInMs
+          ? Date.now() + data.expiryInMs
+          : null;
 
         // Store token in axios in-memory store (not localStorage)
+        // Note: setAccessToken expects absolute timestamp, not duration
         setAccessToken(
           data.accessToken,
-          data.expiresIn ?? undefined,
+          expiryTime ?? undefined,
           data.username,
           data.roles,
           data.companyId
@@ -119,16 +122,17 @@ function OAuthCallbackContent() {
 
         const roles = data.roles || [];
 
-        // Wait briefly for state to propagate
+        // Use router.replace for client-side navigation to preserve in-memory token
+        // window.location.href would cause full page reload and lose the token
         setTimeout(() => {
           if (roles.includes("ADMIN")) {
-            window.location.href = "/admin/users";
+            router.replace("/admin/users");
           } else if (roles.includes("HR_MANAGER")) {
-            window.location.href = "/hr-manager";
+            router.replace("/hr-manager");
           } else if (roles.includes("HR")) {
-            window.location.href = "/hr/applications";
+            router.replace("/hr/applications");
           } else {
-            router.push("/");
+            router.replace("/");
           }
         }, 100);
 

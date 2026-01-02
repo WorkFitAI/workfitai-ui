@@ -34,17 +34,23 @@ let isLoggedOut = false;
 
 /**
  * Set access token in memory
+ * @param token - The access token
+ * @param expiryTime - Absolute timestamp (ms since epoch) when token expires, or null for no expiry
+ * @param username - Username
+ * @param roles - User roles
+ * @param companyId - Company ID
  */
 export const setAccessToken = (
   token: string | null,
-  expiryMs?: number,
+  expiryTime?: number,
   username?: string,
   roles?: string[],
   companyId?: string | null
 ): void => {
   tokenStore = {
     accessToken: token,
-    expiryTime: expiryMs ? Date.now() + expiryMs : null,
+    // expiryTime is already an absolute timestamp, use it directly
+    expiryTime: expiryTime ?? null,
     username: username ?? tokenStore.username,
     roles: roles ?? tokenStore.roles,
     companyId: companyId !== undefined ? companyId : tokenStore.companyId,

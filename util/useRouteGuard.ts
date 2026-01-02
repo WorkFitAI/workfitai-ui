@@ -7,6 +7,7 @@ import {
   selectAuthUser,
   selectIsTokenValid,
   selectTokenExpiryTime,
+  selectAuthStatus,
   clearExpiredSession,
   AUTH_STORAGE_KEY,
 } from "@/redux/features/auth/authSlice";
@@ -28,7 +29,14 @@ const ROUTE_CONFIG = {
   },
   // Candidate routes (all authenticated users can access)
   candidate: {
-    paths: ["/candidate", "/my-applications", "/application", "/profile", "/settings", "/my-cvs"],
+    paths: [
+      "/candidate",
+      "/my-applications",
+      "/application",
+      "/profile",
+      "/settings",
+      "/my-cvs",
+    ],
     allowedRoles: ["CANDIDATE", "HR", "HR_MANAGER", "ADMIN"] as string[],
   },
 };
@@ -71,6 +79,7 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
   const user = useAppSelector(selectAuthUser);
   const isTokenValid = useAppSelector(selectIsTokenValid);
   const expiryTime = useAppSelector(selectTokenExpiryTime);
+  const authStatus = useAppSelector(selectAuthStatus);
 
   // Track if initial hydration is complete
   const [hydrated, setHydrated] = useState(false);
@@ -112,6 +121,7 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
       user: user?.username,
       userRole: user?.role,
       isTokenValid,
+      authStatus,
       expiryTime,
       now: Date.now(),
       hydrated,
@@ -119,7 +129,10 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
 
     // Skip guard if disabled or for public routes
     if (disabled || isPublicRoute(pathname)) {
-      console.log("[RouteGuard] Guard disabled or public route, skipping checks for", pathname);
+      console.log(
+        "[RouteGuard] Guard disabled or public route, skipping checks for",
+        pathname
+      );
       return;
     }
 
@@ -129,8 +142,31 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
       return;
     }
 
-    // Check token expiry first
-    if (expiryTime && expiryTime <= Date.now()) {
+    // CRITICAL: Wait for token refresh to complete before making auth decisions
+    // This prevents redirect loops where the guard redirects before refresh completes
+    // AuthHydrator dispatches refreshToken() which sets status to "loading"
+    if (authStatus === "loading") {
+      console.log(
+        "[RouteGuard] Auth status loading (refresh in progress), waiting..."
+      );
+      return;
+    }
+
+    // Check if user session exists (from localStorage hydration)
+    // For OAuth users who don't have RT cookie, we still have user data from localStorage
+    // Allow them to navigate - they'll be redirected when API call fails
+    if (!user) {
+      console.log("[RouteGuard] No user session, redirecting to signin");
+      if (!disableRedirect) {
+        router.push(unauthenticatedPath);
+      }
+      return;
+    }
+
+    // Check token expiry - but only if we have a token
+    // OAuth users may not have token after page reload (no RT cookie)
+    // In that case, we let them stay - API interceptor will redirect on 401
+    if (isTokenValid && expiryTime && expiryTime <= Date.now()) {
       console.log("[RouteGuard] Token expired, clearing session");
       // Clear Redux auth state
       dispatch(clearExpiredSession());
@@ -143,14 +179,9 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
       return;
     }
 
-    // Check if user is authenticated
-    if (!isTokenValid || !user) {
-      console.log("[RouteGuard] User not authenticated, redirecting to signin");
-      if (!disableRedirect) {
-        router.push(unauthenticatedPath);
-      }
-      return;
-    }
+    // Note: We intentionally don't redirect if !isTokenValid but user exists
+    // This allows OAuth users without RT cookie to navigate the UI
+    // The API interceptor (axios-client) will redirect on 401 when they try API calls
 
     // Check role-based access
     const userRole = user.role;
@@ -165,21 +196,41 @@ export const useRouteGuard = (options: UseRouteGuardOptions = {}) => {
     // Check if user has permission for current route
     const hasPermission = checkRoutePermission(pathname, userRole);
     if (!hasPermission) {
-      console.log(`[RouteGuard] User (${userRole}) lacks permission for ${pathname}`);
+      console.log(
+        `[RouteGuard] User (${userRole}) lacks permission for ${pathname}`
+      );
       if (!disableRedirect) {
         router.push(unauthorizedPath);
       }
       return;
     }
 
-    console.log(`[RouteGuard] Access granted for ${pathname} (role: ${userRole})`);
-  }, [pathname, user, isTokenValid, expiryTime, router, dispatch, unauthorizedPath, unauthenticatedPath, disableRedirect, disabled, hydrated]);
+    console.log(
+      `[RouteGuard] Access granted for ${pathname} (role: ${userRole})`
+    );
+  }, [
+    pathname,
+    user,
+    isTokenValid,
+    authStatus,
+    expiryTime,
+    router,
+    dispatch,
+    unauthorizedPath,
+    unauthenticatedPath,
+    disableRedirect,
+    disabled,
+    hydrated,
+  ]);
 
   return {
     user,
     isTokenValid,
     isAuthenticated: !!user && isTokenValid,
-    hasPermission: user && isTokenValid ? checkRoutePermission(pathname, user.role || "") : false,
+    hasPermission:
+      user && isTokenValid
+        ? checkRoutePermission(pathname, user.role || "")
+        : false,
   };
 };
 
@@ -239,7 +290,9 @@ export const useHasRole = (requiredRole: string | string[]): boolean => {
   }
 
   const userRole = user.role || "";
-  const requiredRoles = Array.isArray(requiredRole) ? requiredRole : [requiredRole];
+  const requiredRoles = Array.isArray(requiredRole)
+    ? requiredRole
+    : [requiredRole];
 
   return requiredRoles.includes(userRole);
 };

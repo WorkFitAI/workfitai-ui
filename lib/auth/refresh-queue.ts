@@ -95,8 +95,17 @@ export const refreshAccessToken = async (): Promise<string | null> => {
       const data = await response.json();
       const { accessToken, expiryInMs, username, roles, companyId } = data.data;
 
-      // Update in-memory store
-      setAccessToken(accessToken, expiryInMs, username, roles, companyId);
+      // Calculate absolute expiry time from duration
+      const expiryTime = expiryInMs ? Date.now() + expiryInMs : null;
+
+      // Update in-memory store (expiryTime is absolute timestamp)
+      setAccessToken(
+        accessToken,
+        expiryTime ?? undefined,
+        username,
+        roles,
+        companyId
+      );
 
       // Process queued requests
       processQueue(null, accessToken);
@@ -111,8 +120,8 @@ export const refreshAccessToken = async (): Promise<string | null> => {
 
       // Redirect to unauthorized page on refresh failure
       // User is still "logged in" but needs to re-authenticate
-      if (typeof window !== 'undefined') {
-        window.location.href = '/unauthorized';
+      if (typeof window !== "undefined") {
+        window.location.href = "/unauthorized";
       }
 
       return null;

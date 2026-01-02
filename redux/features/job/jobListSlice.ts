@@ -13,10 +13,8 @@ interface FetchArgs {
 
 const buildQuery = ({ page = 1, size = 12, filter, sort, role }: FetchArgs) => {
     const base =
-        role === "ADMIN"
-            ? "/admin/jobs"
-            : role === "HR" || role === "HR_MANAGER"
-                ? "/hr/jobs"
+        role === "ADMIN" || role === "HR" || role === "HR_MANAGER"
+            ? "/jobs"
                 : "/public/jobs";
     let query = `${base}?page=${page - 1}&size=${size}`;
 
