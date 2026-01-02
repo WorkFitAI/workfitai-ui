@@ -73,7 +73,7 @@ const CVCard = ({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
-      showToast.success('CV downloaded successfully!');
+      showToast.success("CV downloaded successfully!");
     } catch (error) {
       console.error("Failed to download CV:", error);
       showToast.error("Failed to download CV. Please try again.");
