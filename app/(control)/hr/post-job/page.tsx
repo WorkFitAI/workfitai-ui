@@ -17,7 +17,6 @@ export default function CreateJobPage() {
         title: "Job posted successfully!",
         duration: 10000,
       });
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars
     } catch (error) {
       showToast({
         type: "error",

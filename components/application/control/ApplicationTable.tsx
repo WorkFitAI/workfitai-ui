@@ -501,7 +501,7 @@ const ApplicationTable = ({
               <DatePicker
                 id="date-from"
                 selected={dateFrom}
-                onChange={(date) => setDateFrom(date)}
+                onChange={(date: Date | null) => setDateFrom(date)}
                 maxDate={dateTo || undefined}
                 dateFormat="MMM dd, yyyy"
                 placeholderText="Select start date"
@@ -531,7 +531,7 @@ const ApplicationTable = ({
               <DatePicker
                 id="date-to"
                 selected={dateTo}
-                onChange={(date) => setDateTo(date)}
+                onChange={(date: Date | null) => setDateTo(date)}
                 minDate={dateFrom || undefined}
                 dateFormat="MMM dd, yyyy"
                 placeholderText="Select end date"

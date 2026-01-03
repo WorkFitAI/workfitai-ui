@@ -49,7 +49,6 @@ export const showToast = {
 };
 
 // Helper to extract error message from API response
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
 export const getErrorMessage = (error: any): string => {
   if (error?.response?.data?.message) {
     return error.response.data.message;

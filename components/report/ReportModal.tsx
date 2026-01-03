@@ -60,7 +60,6 @@ export default function ReportModal({
       setFiles([]);
       onSuccess?.();
       onClose();
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (err: any) {
       toast.error(err?.message || "Submit failed");
     } finally {
@@ -129,6 +128,7 @@ export default function ReportModal({
                       <div className="position-relative">
                         <img
                           src={URL.createObjectURL(file)}
+                          alt={`Preview ${index + 1}`}
                           className="img-fluid rounded-3"
                           style={{
                             height: 120,
