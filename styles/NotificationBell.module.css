@@ -1,0 +1,131 @@
+.bellContainer {
+    position: relative;
+    display: inline-flex;
+}
+
+.bellButton {
+    background: none;
+    border: none;
+    cursor: pointer;
+    position: relative;
+    padding: 0.625rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+    border-radius: 12px;
+}
+
+.bellButton:hover {
+    background: rgba(59, 130, 246, 0.06);
+    transform: translateY(-2px);
+}
+
+.bellButton:active {
+    transform: scale(0.92) translateY(0);
+}
+
+.bellIcon {
+    font-size: 1.375rem;
+    color: #475569;
+    transition: all 0.3s;
+}
+
+.bellButton:hover .bellIcon {
+    color: #3b82f6;
+    animation: ring 0.5s ease-in-out;
+}
+
+@keyframes ring {
+
+    0%,
+    100% {
+        transform: rotate(0deg);
+    }
+
+    10%,
+    30% {
+        transform: rotate(-10deg);
+    }
+
+    20%,
+    40% {
+        transform: rotate(10deg);
+    }
+
+    50% {
+        transform: rotate(0deg);
+    }
+}
+
+.badge {
+    position: absolute;
+    top: 0.125rem;
+    right: 0.125rem;
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    color: white;
+    border-radius: 9999px;
+    padding: 0.125rem 0.4rem;
+    font-size: 0.625rem;
+    font-weight: 700;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    line-height: 1;
+    box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4), 0 0 0 2px white;
+    animation: badgePulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    letter-spacing: -0.02em;
+}
+
+@keyframes badgePulse {
+
+    0%,
+    100% {
+        transform: scale(1);
+        box-shadow: 0 2px 8px rgba(239, 68, 68, 0.4), 0 0 0 2px white;
+    }
+
+    50% {
+        transform: scale(1.05);
+        box-shadow: 0 2px 12px rgba(239, 68, 68, 0.6), 0 0 0 2px white;
+    }
+}
+
+.connectionIndicator {
+    position: absolute;
+    bottom: 0.125rem;
+    right: 0.125rem;
+    width: 0.625rem;
+    height: 0.625rem;
+    background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+    border-radius: 9999px;
+    border: 2.5px solid white;
+    box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    animation: blink 2s ease-in-out infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    100% {
+        opacity: 1;
+        box-shadow: 0 0 8px rgba(16, 185, 129, 0.6);
+    }
+
+    50% {
+        opacity: 0.6;
+        box-shadow: 0 0 4px rgba(16, 185, 129, 0.4);
+    }
+}
+
+.connectionIndicator.disconnected {
+    background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+    box-shadow: 0 0 8px rgba(245, 158, 11, 0.6);
+}
+
+.connectionIndicator.error {
+    background: linear-gradient(135deg, #ef4444 0%, #dc2626 100%);
+    box-shadow: 0 0 8px rgba(239, 68, 68, 0.6);
+}

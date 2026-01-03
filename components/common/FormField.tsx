@@ -1,0 +1,92 @@
+import React from "react";
+
+type Option = {
+  label: string;
+  value: string;
+};
+
+interface FormFieldProps<T extends object> {
+  label: string;
+  name: keyof T;
+  value: T[keyof T];
+  onChange: (
+    e: React.ChangeEvent<
+      HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement
+    >
+  ) => void;
+  required?: boolean;
+  rows?: number;
+  type?: string;
+  placeholder?: string;
+  options?: Option[];
+  disabled?: boolean;
+  readOnly?: boolean;
+}
+
+export default function FormField<T extends object>({
+  label,
+  name,
+  value,
+  onChange,
+  required,
+  rows,
+  type = "text",
+  placeholder,
+  options,
+  disabled,
+  readOnly,
+}: FormFieldProps<T>) {
+  return (
+    <div className="mb-3">
+      <label className="form-label">
+        {label}
+        {required && <span className="text-danger"> *</span>}
+      </label>
+
+      {options ? (
+        <select
+          name={name as string}
+          className="form-select form-select-lg ml-0"
+          style={{ fontSize: "14px", borderRadius: "8px" }}
+          value={value as string}
+          onChange={onChange}
+          required={required}
+          disabled={disabled}
+        >
+          <option value="">Select</option>
+          {options.map((opt) => (
+            <option key={opt.value} value={opt.value}>
+              {opt.label}
+            </option>
+          ))}
+        </select>
+      ) : rows ? (
+        <textarea
+          name={name as string}
+          className="form-control ml-0"
+          style={{ fontSize: "14px", borderRadius: "8px" }}
+          rows={rows}
+          value={value as string}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          readOnly={readOnly}
+          disabled={disabled}
+        />
+      ) : (
+        <input
+          name={name as string}
+          type={type}
+          className="form-control ml-0"
+          style={{ fontSize: "14px", borderRadius: "8px" }}
+          value={value as string | number}
+          onChange={onChange}
+          placeholder={placeholder}
+          required={required}
+          readOnly={readOnly}
+          disabled={disabled}
+        />
+      )}
+    </div>
+  );
+}
