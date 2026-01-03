@@ -17,16 +17,21 @@ const Layout = ({ children }: LayoutProps) => {
   const pathname = usePathname();
 
   // Determine if this is a protected route
-  const isProtectedRoute = pathname && (
-    pathname.startsWith("/candidate") ||
-    pathname.startsWith("/my-applications") ||
-    pathname.startsWith("/application") ||
-    pathname.startsWith("/profile") ||
-    pathname.startsWith("/settings") ||
-    pathname.startsWith("/my-cvs")
-  );
+  // Protected routes require authentication AND role-based authorization
+  const isProtectedRoute =
+    pathname &&
+    (pathname.startsWith("/my-applications") ||
+      pathname.startsWith("/application") ||
+      pathname.startsWith("/profile") ||
+      pathname.startsWith("/settings") ||
+      pathname.startsWith("/my-cvs"));
 
-  console.log("Layout: isProtectedRoute =", isProtectedRoute, "for pathname =", pathname);
+  console.log(
+    "Layout: isProtectedRoute =",
+    isProtectedRoute,
+    "for pathname =",
+    pathname
+  );
 
   // Always call hooks unconditionally to maintain consistent hook order
   // Use disabled option to skip guard logic for non-protected routes
@@ -49,7 +54,11 @@ const Layout = ({ children }: LayoutProps) => {
   return (
     <>
       <div className="body-overlay-1" onClick={handleRemove} />
-      <Header handleOpen={handleOpen} handleRemove={handleRemove} openClass={openClass} />
+      <Header
+        handleOpen={handleOpen}
+        handleRemove={handleRemove}
+        openClass={openClass}
+      />
       <Sidebar openClass={openClass} />
       <main className="main">{children}</main>
       <Footer />

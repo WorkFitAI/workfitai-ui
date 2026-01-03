@@ -27,16 +27,14 @@ const ROUTE_CONFIG = {
     paths: ["/hr-manager", "/hr"],
     allowedRoles: ["HR_MANAGER", "HR", "ADMIN"] as string[],
   },
-  // Candidate routes (all authenticated users can access)
-  candidate: {
-    paths: [
-      "/candidate",
-      "/my-applications",
-      "/application",
-      "/profile",
-      "/settings",
-      "/my-cvs",
-    ],
+  // Candidate-only routes (applications, CVs, candidate-specific features)
+  candidateOnly: {
+    paths: ["/my-applications", "/application", "/my-cvs"],
+    allowedRoles: ["CANDIDATE"] as string[],
+  },
+  // Shared authenticated routes (profile, settings - all roles can access)
+  authenticated: {
+    paths: ["/profile", "/settings"],
     allowedRoles: ["CANDIDATE", "HR", "HR_MANAGER", "ADMIN"] as string[],
   },
 };
