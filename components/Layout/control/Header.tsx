@@ -1,4 +1,3 @@
-/* eslint-disable @next/next/no-html-link-for-pages */
 "use client";
 import { Menu } from "@headlessui/react";
 import Link from "next/link";

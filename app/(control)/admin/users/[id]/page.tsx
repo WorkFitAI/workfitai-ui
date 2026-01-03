@@ -63,7 +63,6 @@ export default function UserDetailPage() {
       } else {
         setError(response.message || "Failed to load user");
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
     } catch (error: any) {
       setError(getErrorMessage(error));
       showToast.error(getErrorMessage(error));
@@ -360,7 +359,6 @@ function InfoItem({
   label,
   value,
 }: {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   icon: any;
   label: string;
   value?: string | null;

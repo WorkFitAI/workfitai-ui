@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import type { CV } from "@/types/cv";
 import { downloadCV } from "@/lib/cvApi";
+import { showToast } from "@/lib/toast";
 
 interface CVCardProps {
   cv: CV;
@@ -72,9 +73,10 @@ const CVCard = ({
       link.click();
       document.body.removeChild(link);
       window.URL.revokeObjectURL(url);
+      showToast.success("CV downloaded successfully!");
     } catch (error) {
       console.error("Failed to download CV:", error);
-      alert("Failed to download CV. Please try again.");
+      showToast.error("Failed to download CV. Please try again.");
     } finally {
       setDownloading(false);
     }

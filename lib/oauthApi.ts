@@ -73,7 +73,7 @@ export interface OAuthExchangeResponse {
   username: string;
   roles: string[];
   companyId?: string | null;
-  expiresIn: number; // milliseconds until expiry
+  expiryInMs: number; // milliseconds until expiry
 }
 
 // ============================================================================

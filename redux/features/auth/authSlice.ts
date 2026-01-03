@@ -13,7 +13,11 @@ import {
 } from "@/lib/authApi";
 import { getDeviceId } from "@/lib/deviceId";
 import { getUserGeolocation } from "@/lib/geolocation";
-import { setAccessToken, resetAxiosAuth } from "@/lib/axios-client";
+import {
+  setAccessToken,
+  resetAxiosAuth,
+  clearAccessTokenSilent,
+} from "@/lib/axios-client";
 import { showToast } from "@/lib/toast";
 import type { RootState } from "@/redux/store";
 
@@ -160,7 +164,7 @@ export const persistSession = (session: StoredSession | null) => {
   if (!session) {
     localStorage.removeItem(AUTH_STORAGE_KEY);
     // 🚨 CRITICAL: Also remove username for WebSocket cleanup
-    localStorage.removeItem('username');
+    localStorage.removeItem("username");
     return;
   }
 
@@ -171,7 +175,7 @@ export const persistSession = (session: StoredSession | null) => {
   // 🚨 CRITICAL: Store username separately for WebSocket authentication
   // WebSocket needs username in X-Username header for Spring user session tracking
   if (session.username) {
-    localStorage.setItem('username', session.username);
+    localStorage.setItem("username", session.username);
   }
 
   // Store minimal session info (no token) for UI state restoration
@@ -195,7 +199,7 @@ const clearRefreshTokenCookie = () => {
   // Attempt to clear RT cookie for various paths (only works if not HttpOnly)
   const cookiePaths = ["/", "/auth", "/api"];
 
-  cookiePaths.forEach(path => {
+  cookiePaths.forEach((path) => {
     // Clear without domain (most common case)
     document.cookie = `RT=; path=${path}; max-age=0; SameSite=Lax`;
     document.cookie = `RT=; path=${path}; max-age=0; SameSite=None; Secure`;
@@ -203,7 +207,9 @@ const clearRefreshTokenCookie = () => {
   });
 
   // Log for debugging
-  console.log("[Auth] RT cookie clear attempted (HttpOnly cookies require backend Set-Cookie)");
+  console.log(
+    "[Auth] RT cookie clear attempted (HttpOnly cookies require backend Set-Cookie)"
+  );
 };
 
 const LOGOUT_FLAG_KEY = "auth_logged_out";
@@ -293,15 +299,26 @@ export const buildAuthStateFromStoredSession = (
  * Supports both expiryInMs (milliseconds) and expiryInMinutes (legacy)
  * Returns null if no expiry (never expires)
  */
-const calculateExpiryTime = (expiryInMs?: number, expiryInMinutes?: number): number | null => {
+const calculateExpiryTime = (
+  expiryInMs?: number,
+  expiryInMinutes?: number
+): number | null => {
   // Prefer expiryInMs (backend sends this)
-  if (typeof expiryInMs === "number" && !Number.isNaN(expiryInMs) && expiryInMs > 0) {
+  if (
+    typeof expiryInMs === "number" &&
+    !Number.isNaN(expiryInMs) &&
+    expiryInMs > 0
+  ) {
     return Date.now() + expiryInMs;
   }
 
   // Fallback to expiryInMinutes (legacy)
-  if (typeof expiryInMinutes === "number" && !Number.isNaN(expiryInMinutes) && expiryInMinutes > 0) {
-    return Date.now() + (expiryInMinutes * 60 * 1000);
+  if (
+    typeof expiryInMinutes === "number" &&
+    !Number.isNaN(expiryInMinutes) &&
+    expiryInMinutes > 0
+  ) {
+    return Date.now() + expiryInMinutes * 60 * 1000;
   }
 
   return null; // No expiry or invalid
@@ -317,10 +334,13 @@ const normalizeUser = (data?: AuthResponseData): AuthUserProfile | null => {
   // Derive role from roles array
   // Support both formats: "ROLE_CANDIDATE" and "CANDIDATE"
   let role: string | undefined = undefined;
-  if (roles.includes("ROLE_CANDIDATE") || roles.includes("CANDIDATE")) role = "CANDIDATE";
+  if (roles.includes("ROLE_CANDIDATE") || roles.includes("CANDIDATE"))
+    role = "CANDIDATE";
   else if (roles.includes("ROLE_HR") || roles.includes("HR")) role = "HR";
-  else if (roles.includes("ROLE_HR_MANAGER") || roles.includes("HR_MANAGER")) role = "HR_MANAGER";
-  else if (roles.includes("ROLE_ADMIN") || roles.includes("ADMIN")) role = "ADMIN";
+  else if (roles.includes("ROLE_HR_MANAGER") || roles.includes("HR_MANAGER"))
+    role = "HR_MANAGER";
+  else if (roles.includes("ROLE_ADMIN") || roles.includes("ADMIN"))
+    role = "ADMIN";
 
   return { username, role, roles, companyId };
 };
@@ -491,7 +511,13 @@ export const checkApprovalStatus = createAsyncThunk<
 });
 
 export const loginUser = createAsyncThunk<
-  AuthSuccess | { require2FA: true; tempToken: string; method: 'TOTP' | 'EMAIL'; message: string },
+  | AuthSuccess
+  | {
+      require2FA: true;
+      tempToken: string;
+      method: "TOTP" | "EMAIL";
+      message: string;
+    },
   LoginPayload,
   { rejectValue: AuthRejectPayload }
 >("auth/login", async (payload, { rejectWithValue }) => {
@@ -520,7 +546,10 @@ export const loginUser = createAsyncThunk<
         require2FA: true,
         tempToken: response.data.tempToken,
         method: response.data.method,
-        message: response.data.message || response.message || "2FA verification required",
+        message:
+          response.data.message ||
+          response.message ||
+          "2FA verification required",
       };
     }
 
@@ -560,7 +589,10 @@ export const refreshToken = createAsyncThunk<
 
     const parsed = parseAuthResponse(response);
     const fallbackUser = getState().auth.user;
-    const storedSession = toStoredSession({ ...parsed, user: parsed.user ?? fallbackUser ?? null });
+    const storedSession = toStoredSession({
+      ...parsed,
+      user: parsed.user ?? fallbackUser ?? null,
+    });
 
     // Store token in axios in-memory store (not localStorage)
     setAccessToken(
@@ -575,9 +607,13 @@ export const refreshToken = createAsyncThunk<
     persistSession(storedSession);
     return { ...parsed, user: parsed.user ?? fallbackUser ?? null };
   } catch (error) {
-    // Clear in-memory token on refresh failure
-    resetAxiosAuth();
-    clearPersistedSession();
+    // Clear in-memory token on refresh failure, but DON'T mark as logged out
+    // OAuth users don't have RT cookie, so refresh will always fail
+    // Using clearAccessTokenSilent() instead of resetAxiosAuth()
+    clearAccessTokenSilent();
+    // DON'T clear persisted session - user might still have valid session data
+    // for UI purposes (e.g., OAuth login where RT cookie wasn't set)
+    // Only logout action should clear persisted session
     return rejectWithValue({
       message:
         error instanceof Error ? error.message : "Unable to refresh session",
@@ -606,7 +642,9 @@ export const logoutUser = createAsyncThunk<
         deviceId,
         accessToken: token,
       });
-      console.log("[Auth] Backend logout successful, RT cookie should be cleared by Set-Cookie header");
+      console.log(
+        "[Auth] Backend logout successful, RT cookie should be cleared by Set-Cookie header"
+      );
     } catch (error) {
       // Log but don't fail - we still want to clear local state
       console.warn("[Auth] Logout API call failed:", error);
@@ -692,7 +730,15 @@ const authSlice = createSlice({
       }>
     ) => {
       // Set auth state after successful OAuth login
-      const { accessToken, expiryTime, username, roles, companyId, email, avatarUrl } = action.payload;
+      const {
+        accessToken,
+        expiryTime,
+        username,
+        roles,
+        companyId,
+        email,
+        avatarUrl,
+      } = action.payload;
       state.accessToken = accessToken;
       state.expiryTime = expiryTime;
       state.user = {
@@ -794,7 +840,7 @@ const authSlice = createSlice({
       .addCase(loginUser.fulfilled, (state, action) => {
         state.status = "idle";
         // Only update state for normal login (not 2FA)
-        if (!('require2FA' in action.payload)) {
+        if (!("require2FA" in action.payload)) {
           state.accessToken = action.payload.accessToken;
           state.expiryTime = action.payload.expiryTime;
           state.user = action.payload.user ?? null;
@@ -834,18 +880,19 @@ const authSlice = createSlice({
         state.status = "idle";
         state.accessToken = null;
         state.expiryTime = null;
-        state.user = null;
+        // DON'T clear user - keep hydrated user data for UI purposes
+        // The user was restored from localStorage by hydrateFromLocalStorage
+        // and should remain visible even if token refresh fails
+        // state.user = null; // REMOVED - keep user for UI
         state.error = action.payload?.message ?? "Refresh token failed";
-        state.errorType = action.payload?.errorType ?? "generic";
+        // DON'T set errorType for refresh failures - this is a background operation
+        // Setting errorType would trigger useAuthErrorRedirect on public pages
+        // which would redirect to signin even when the user is just browsing
+        state.errorType = null;
 
-        // Only show notification if user hasn't explicitly logged out
-        if (!state.isLoggedOut) {
-          // Show user-friendly notification about session expiry
-          showToast.warning("Your session has expired. Please sign in again.", {
-            toastId: "session-expired", // Prevent duplicate toasts
-            autoClose: 7000,
-          });
-        }
+        // DON'T show toast for background refresh failures
+        // Users will discover their session is invalid when they try to access protected content
+        // This prevents annoying toasts for OAuth users who don't have RT cookie
       })
       .addCase(logoutUser.pending, (state) => {
         state.status = "loading";
@@ -872,7 +919,14 @@ const authSlice = createSlice({
   },
 });
 
-export const { restoreSessionFromStorage, hydrateFromLocalStorage, clearAuthError, updateUserAvatar, clearExpiredSession, setOAuthLoginSuccess } = authSlice.actions;
+export const {
+  restoreSessionFromStorage,
+  hydrateFromLocalStorage,
+  clearAuthError,
+  updateUserAvatar,
+  clearExpiredSession,
+  setOAuthLoginSuccess,
+} = authSlice.actions;
 
 export const selectAuthToken = (state: RootState) => state.auth.accessToken;
 export const selectAuthStatus = (state: RootState) => state.auth.status;
@@ -884,7 +938,8 @@ export const selectPendingApproval = (state: RootState) =>
   state.auth.pendingApproval;
 export const selectApprovalType = (state: RootState) => state.auth.approvalType;
 export const selectUserRole = (state: RootState) => state.auth.user?.role;
-export const selectUserCompanyId = (state: RootState) => state.auth.user?.companyId;
+export const selectUserCompanyId = (state: RootState) =>
+  state.auth.user?.companyId;
 
 // Memoized selector to prevent unnecessary rerenders when roles array doesn't change
 const EMPTY_ROLES: string[] = [];
@@ -918,6 +973,7 @@ export const selectIsTokenValid = (state: RootState): boolean => {
 /**
  * Get token expiry time (absolute timestamp)
  */
-export const selectTokenExpiryTime = (state: RootState) => state.auth.expiryTime;
+export const selectTokenExpiryTime = (state: RootState) =>
+  state.auth.expiryTime;
 
 export default authSlice.reducer;

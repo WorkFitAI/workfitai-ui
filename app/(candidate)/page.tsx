@@ -1,5 +1,4 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 import { useEffect, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
@@ -22,6 +21,7 @@ export default function Home() {
   const [recommendedJobs, setRecommendedJobs] = useState<Job[]>([]);
   const [loadingRecommendations, setLoadingRecommendations] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [useFallbackJobs, setUseFallbackJobs] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -31,16 +31,34 @@ export default function Home() {
     if (role === "CANDIDATE") {
       const loadRecommendations = async () => {
         setLoadingRecommendations(true);
+        setUseFallbackJobs(false);
         try {
           const response = await fetchRecommendations(10);
-          if (response.data?.recommendations) {
+          if (
+            response.data?.recommendations &&
+            response.data.totalResults > 0
+          ) {
             // Map recommendations to Job array
             const jobs = response.data.recommendations.map((rec) => rec.job);
             setRecommendedJobs(jobs);
+            setUseFallbackJobs(false);
+          } else {
+            // No recommendations returned, fallback to fetching all jobs
+            console.log("No recommendations available, fetching all jobs");
+            setUseFallbackJobs(true);
+            dispatch(
+              fetchAllJobs({
+                page: 1,
+                size: 8,
+                sort: "Newest Post",
+                role: "USER",
+              })
+            );
           }
         } catch (error) {
           console.error("Failed to load recommendations:", error);
           // Fallback to fetching all jobs if recommendations fail
+          setUseFallbackJobs(true);
           dispatch(
             fetchAllJobs({
               page: 1,
@@ -70,14 +88,28 @@ export default function Home() {
 
   // Determine which jobs to display based on role
   const displayJobs =
-    mounted && role === "CANDIDATE" ? recommendedJobs : allJobs;
+    mounted && role === "CANDIDATE"
+      ? useFallbackJobs
+        ? allJobs
+        : recommendedJobs
+      : allJobs;
   const isLoading =
-    mounted && role === "CANDIDATE" ? loadingRecommendations : allJobsLoading;
+    mounted && role === "CANDIDATE"
+      ? useFallbackJobs
+        ? allJobsLoading
+        : loadingRecommendations
+      : allJobsLoading;
   const sectionTitle =
-    mounted && role === "CANDIDATE" ? "Recommended for You" : "Jobs of the day";
+    mounted && role === "CANDIDATE"
+      ? useFallbackJobs
+        ? "Newest Jobs"
+        : "Recommended for You"
+      : "Jobs of the day";
   const sectionSubtitle =
     mounted && role === "CANDIDATE"
-      ? "Jobs tailored to your skills and experience"
+      ? useFallbackJobs
+        ? "Latest job opportunities updated daily"
+        : "Jobs tailored to your skills and experience"
       : "Search and connect with the right candidates faster.";
 
   const handleSearch = (e: React.FormEvent) => {
@@ -201,103 +233,386 @@ export default function Home() {
             </p>
           </div>
           <div className="mt-70">
-            <div className="row">
-              {isLoading ? (
-                <div className="col-12 text-center">
-                  <p>Loading jobs...</p>
-                </div>
-              ) : displayJobs.length > 0 ? (
-                displayJobs.slice(0, 8).map((job: Job) => (
-                  <div
-                    className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-12"
-                    key={job.postId}
-                  >
-                    <div className="card-grid-2 hover-up">
-                      <div className="card-grid-2-image-left">
-                        <span className="flash" />
-                        <div className="image-box">
-                          <Image
-                            src={
-                              job.company?.logoUrl ||
-                              "/assets/imgs/brands/brand-1.png"
-                            }
-                            alt={job.company?.name || "Company"}
-                            width={60}
-                            height={60}
-                            unoptimized
-                            style={{
-                              maxWidth: "60px",
-                              maxHeight: "60px",
-                              objectFit: "contain",
-                            }}
-                          />
+            {mounted && role === "CANDIDATE" && !useFallbackJobs ? (
+              /* Recommended Jobs - Enhanced Design */
+              <div className="row">
+                {isLoading ? (
+                  <div className="col-12 text-center">
+                    <p>Loading recommendations...</p>
+                  </div>
+                ) : displayJobs.length > 0 ? (
+                  displayJobs.slice(0, 8).map((job: Job) => (
+                    <div
+                      className="col-xl-6 col-lg-6 col-md-12 col-sm-12 col-12"
+                      key={job.postId}
+                    >
+                      <div
+                        className="card-grid-2 hover-up"
+                        style={{
+                          backgroundColor: "#F8F9FA",
+                          border: "2px solid #3498DB",
+                          borderRadius: "12px",
+                          position: "relative",
+                          padding: "25px",
+                        }}
+                      >
+                        {/* Recommended Badge */}
+                        <div
+                          style={{
+                            position: "absolute",
+                            top: "15px",
+                            right: "15px",
+                            backgroundColor: "#3498DB",
+                            color: "white",
+                            padding: "5px 15px",
+                            borderRadius: "20px",
+                            fontSize: "12px",
+                            fontWeight: "600",
+                            display: "flex",
+                            alignItems: "center",
+                            gap: "5px",
+                          }}
+                        >
+                          <svg
+                            width="14"
+                            height="14"
+                            viewBox="0 0 24 24"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="2"
+                          >
+                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z" />
+                          </svg>
+                          Recommended
                         </div>
-                        <div className="right-info">
-                          <Link href={`/company/${job.company?.companyNo}`}>
-                            <span className="name-job">
-                              {job.company?.name || "Unknown Company"}
-                            </span>
-                          </Link>
-                          <span className="location-small">
-                            {job.location || "N/A"}
-                          </span>
-                        </div>
-                      </div>
-                      <div className="card-block-info">
-                        <h6>
-                          <Link href={`/job-details/${job.postId}`}>
-                            <span>{job.title}</span>
-                          </Link>
-                        </h6>
-                        <div className="mt-5">
-                          <span className="card-briefcase">
-                            {job.employmentType}
-                          </span>
-                          <span className="card-time">
-                            Exp: {new Date(job.expiresAt).toLocaleDateString()}
-                          </span>
-                        </div>
-                        <p className="font-sm color-text-paragraph mt-15">
-                          {job.shortDescription}
-                        </p>
-                        <div className="mt-30">
-                          {job.skillNames?.slice(0, 3).map((skill, index) => (
-                            <Link href="/jobs-list" key={index}>
-                              <span className="btn btn-grey-small mr-5">
-                                {skill}
-                              </span>
-                            </Link>
-                          ))}
-                        </div>
-                        <div className="card-2-bottom mt-30">
-                          <div className="row">
-                            <div className="col-lg-7 col-7">
-                              <span className="card-text-price">
-                                {job.salaryMin} - {job.salaryMax}
-                              </span>
-                              <span className="text-muted">
-                                {job.currency || ""}
-                              </span>
-                            </div>
-                            <div className="col-lg-5 col-5 text-end">
-                              <Link href={`/job-details/${job.postId}`}>
-                                <div className="btn btn-apply-now">
-                                  Apply now
-                                </div>
+
+                        <div className="row">
+                          {/* Company Logo Section */}
+                          <div className="col-md-3 col-sm-12 text-center mb-3 mb-md-0">
+                            <div
+                              style={{
+                                backgroundColor: "white",
+                                borderRadius: "10px",
+                                padding: "15px",
+                                border: "1px solid #E9ECEF",
+                                height: "100%",
+                                display: "flex",
+                                flexDirection: "column",
+                                alignItems: "center",
+                                justifyContent: "center",
+                              }}
+                            >
+                              <Image
+                                src={
+                                  job.company?.logoUrl ||
+                                  "/assets/imgs/brands/brand-1.png"
+                                }
+                                alt={job.company?.name || "Company"}
+                                width={80}
+                                height={80}
+                                unoptimized
+                                style={{
+                                  maxWidth: "80px",
+                                  maxHeight: "80px",
+                                  objectFit: "contain",
+                                  marginBottom: "10px",
+                                }}
+                              />
+                              <Link href={`/company/${job.company?.companyNo}`}>
+                                <span
+                                  style={{
+                                    fontSize: "13px",
+                                    color: "#2D3E50",
+                                    fontWeight: "600",
+                                    textAlign: "center",
+                                    display: "block",
+                                  }}
+                                >
+                                  {job.company?.name || "Unknown Company"}
+                                </span>
                               </Link>
+                            </div>
+                          </div>
+
+                          {/* Job Details Section */}
+                          <div className="col-md-9 col-sm-12">
+                            <div
+                              className="card-block-info"
+                              style={{ padding: "0" }}
+                            >
+                              <h5 style={{ marginBottom: "10px" }}>
+                                <Link href={`/job-details/${job.postId}`}>
+                                  <span
+                                    style={{
+                                      color: "#2D3E50",
+                                      fontWeight: "700",
+                                    }}
+                                  >
+                                    {job.title}
+                                  </span>
+                                </Link>
+                              </h5>
+
+                              <div
+                                style={{
+                                  display: "flex",
+                                  flexWrap: "wrap",
+                                  gap: "10px",
+                                  marginBottom: "15px",
+                                  alignItems: "center",
+                                }}
+                              >
+                                <span
+                                  style={{
+                                    fontSize: "13px",
+                                    color: "#6C757D",
+                                    display: "flex",
+                                    alignItems: "center",
+                                    gap: "5px",
+                                  }}
+                                >
+                                  <svg
+                                    width="14"
+                                    height="14"
+                                    viewBox="0 0 24 24"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                  >
+                                    <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
+                                    <circle cx="12" cy="10" r="3" />
+                                  </svg>
+                                  {job.location || "N/A"}
+                                </span>
+                                <span
+                                  style={{
+                                    backgroundColor: "#3498DB",
+                                    color: "white",
+                                    padding: "3px 10px",
+                                    borderRadius: "5px",
+                                    fontSize: "12px",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  {job.employmentType}
+                                </span>
+                                <span
+                                  style={{
+                                    fontSize: "12px",
+                                    color: "#E74C3C",
+                                    fontWeight: "600",
+                                  }}
+                                >
+                                  Exp:{" "}
+                                  {new Date(job.expiresAt).toLocaleDateString()}
+                                </span>
+                              </div>
+
+                              <p
+                                style={{
+                                  fontSize: "14px",
+                                  color: "#495057",
+                                  marginBottom: "15px",
+                                  lineHeight: "1.6",
+                                }}
+                              >
+                                {job.shortDescription}
+                              </p>
+
+                              {/* Skills */}
+                              <div style={{ marginBottom: "15px" }}>
+                                {job.skillNames
+                                  ?.slice(0, 4)
+                                  .map((skill, index) => (
+                                    <span
+                                      key={index}
+                                      style={{
+                                        display: "inline-block",
+                                        backgroundColor: "white",
+                                        border: "1px solid #CED4DA",
+                                        color: "#495057",
+                                        padding: "5px 12px",
+                                        borderRadius: "20px",
+                                        fontSize: "12px",
+                                        marginRight: "8px",
+                                        marginBottom: "8px",
+                                        fontWeight: "500",
+                                      }}
+                                    >
+                                      {skill}
+                                    </span>
+                                  ))}
+                              </div>
+
+                              {/* Salary and Action */}
+                              <div
+                                style={{
+                                  display: "flex",
+                                  justifyContent: "space-between",
+                                  alignItems: "center",
+                                  paddingTop: "15px",
+                                  borderTop: "1px solid #DEE2E6",
+                                }}
+                              >
+                                <div>
+                                  <span
+                                    style={{
+                                      fontSize: "18px",
+                                      fontWeight: "700",
+                                      color: "#27AE60",
+                                    }}
+                                  >
+                                    {job.salaryMin} - {job.salaryMax}
+                                  </span>
+                                  <span
+                                    style={{
+                                      fontSize: "14px",
+                                      color: "#6C757D",
+                                      marginLeft: "5px",
+                                    }}
+                                  >
+                                    {job.currency || ""}
+                                  </span>
+                                </div>
+                                <Link href={`/job-details/${job.postId}`}>
+                                  <span
+                                    style={{
+                                      backgroundColor: "#3498DB",
+                                      color: "white",
+                                      padding: "10px 25px",
+                                      borderRadius: "8px",
+                                      fontSize: "14px",
+                                      fontWeight: "600",
+                                      cursor: "pointer",
+                                      transition: "all 0.3s ease",
+                                      display: "inline-block",
+                                    }}
+                                    onMouseOver={(e) => {
+                                      e.currentTarget.style.backgroundColor =
+                                        "#2D3E50";
+                                    }}
+                                    onMouseOut={(e) => {
+                                      e.currentTarget.style.backgroundColor =
+                                        "#3498DB";
+                                    }}
+                                  >
+                                    Apply Now
+                                  </span>
+                                </Link>
+                              </div>
                             </div>
                           </div>
                         </div>
                       </div>
                     </div>
+                  ))
+                ) : (
+                  <div className="col-12 text-center">
+                    <p>No recommendations available</p>
                   </div>
-                ))
-              ) : (
-                <div className="col-12 text-center">
-                  <p>No jobs available</p>
-                </div>
-              )}
-            </div>
+                )}
+              </div>
+            ) : (
+              /* Standard Jobs Grid - Original Design */
+              <div className="row">
+                {isLoading ? (
+                  <div className="col-12 text-center">
+                    <p>Loading jobs...</p>
+                  </div>
+                ) : displayJobs.length > 0 ? (
+                  displayJobs.slice(0, 8).map((job: Job) => (
+                    <div
+                      className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-12"
+                      key={job.postId}
+                    >
+                      <div className="card-grid-2 hover-up">
+                        <div className="card-grid-2-image-left">
+                          <span className="flash" />
+                          <div className="image-box">
+                            <Image
+                              src={
+                                job.company?.logoUrl ||
+                                "/assets/imgs/brands/brand-1.png"
+                              }
+                              alt={job.company?.name || "Company"}
+                              width={60}
+                              height={60}
+                              unoptimized
+                              style={{
+                                maxWidth: "60px",
+                                maxHeight: "60px",
+                                objectFit: "contain",
+                              }}
+                            />
+                          </div>
+                          <div className="right-info">
+                            <Link href={`/company/${job.company?.companyNo}`}>
+                              <span className="name-job">
+                                {job.company?.name || "Unknown Company"}
+                              </span>
+                            </Link>
+                            <span className="location-small">
+                              {job.location || "N/A"}
+                            </span>
+                          </div>
+                        </div>
+                        <div className="card-block-info">
+                          <h6>
+                            <Link href={`/job-details/${job.postId}`}>
+                              <span>{job.title}</span>
+                            </Link>
+                          </h6>
+                          <div className="mt-5">
+                            <span className="card-briefcase">
+                              {job.employmentType}
+                            </span>
+                            <span className="card-time">
+                              Exp:{" "}
+                              {new Date(job.expiresAt).toLocaleDateString()}
+                            </span>
+                          </div>
+                          <p className="font-sm color-text-paragraph mt-15">
+                            {job.shortDescription}
+                          </p>
+                          <div className="mt-30">
+                            {job.skillNames?.slice(0, 3).map((skill, index) => (
+                              <Link href="/jobs-list" key={index}>
+                                <span className="btn btn-grey-small mr-5">
+                                  {skill}
+                                </span>
+                              </Link>
+                            ))}
+                          </div>
+                          <div className="card-2-bottom mt-30">
+                            <div className="row">
+                              <div className="col-lg-7 col-7">
+                                <span className="card-text-price">
+                                  {job.salaryMin} - {job.salaryMax}
+                                </span>
+                                <span className="text-muted">
+                                  {job.currency || ""}
+                                </span>
+                              </div>
+                              <div className="col-lg-5 col-5 text-end">
+                                <Link href={`/job-details/${job.postId}`}>
+                                  <div className="btn btn-apply-now">
+                                    Apply now
+                                  </div>
+                                </Link>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                ) : (
+                  <div className="col-12 text-center">
+                    <p>No jobs available</p>
+                  </div>
+                )}
+              </div>
+            )}
             <div className="text-center mt-40">
               <Link href="/jobs-list">
                 <span className="btn btn-brand-1 btn-icon-load mt--30 hover-up">

@@ -120,7 +120,7 @@ export default function Sidebar() {
                       ? "dashboard2 active"
                       : "dashboard2"
                   }
-                  href="/hr-manager/approvals/hr"
+                  href="/hr-manager/company-page"
                 >
                   <img
                     src="/assets/control/imgs/page/dashboard/jobs.svg"

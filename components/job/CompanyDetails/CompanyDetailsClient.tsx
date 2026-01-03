@@ -1,7 +1,6 @@
 "use client";
-/* eslint-disable @next/next/no-img-element */
 import Link from "next/link";
-import Layout from "@/components/layout/Layout";
+import Layout from "@/components/Layout/Layout";
 import React, { useState, useEffect } from "react";
 import { fetchCompanyDetails, fetchCompanyJobs } from "@/lib/jobApi";
 import { Company } from "@/types/job/company";
