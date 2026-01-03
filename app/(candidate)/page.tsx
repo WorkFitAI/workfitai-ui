@@ -87,12 +87,13 @@ export default function Home() {
   }, [dispatch, role]);
 
   // Determine which jobs to display based on role
+  // Add safety check to ensure displayJobs is always an array
   const displayJobs =
     mounted && role === "CANDIDATE"
       ? useFallbackJobs
-        ? allJobs
-        : recommendedJobs
-      : allJobs;
+        ? allJobs || []
+        : recommendedJobs || []
+      : allJobs || [];
   const isLoading =
     mounted && role === "CANDIDATE"
       ? useFallbackJobs
@@ -240,7 +241,7 @@ export default function Home() {
                   <div className="col-12 text-center">
                     <p>Loading recommendations...</p>
                   </div>
-                ) : displayJobs.length > 0 ? (
+                ) : displayJobs && displayJobs.length > 0 ? (
                   displayJobs.slice(0, 8).map((job: Job) => (
                     <div
                       className="col-xl-6 col-lg-6 col-md-12 col-sm-12 col-12"
@@ -382,7 +383,7 @@ export default function Home() {
                                     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
                                     <circle cx="12" cy="10" r="3" />
                                   </svg>
-                                  {job.location || "N/A"}
+                                  {job.company?.address || "N/A"}
                                 </span>
                                 <span
                                   style={{
@@ -519,7 +520,7 @@ export default function Home() {
                   <div className="col-12 text-center">
                     <p>Loading jobs...</p>
                   </div>
-                ) : displayJobs.length > 0 ? (
+                ) : displayJobs && displayJobs.length > 0 ? (
                   displayJobs.slice(0, 8).map((job: Job) => (
                     <div
                       className="col-xl-3 col-lg-4 col-md-6 col-sm-12 col-12"
@@ -552,7 +553,7 @@ export default function Home() {
                               </span>
                             </Link>
                             <span className="location-small">
-                              {job.location || "N/A"}
+                              {job.company?.address || "N/A"}
                             </span>
                           </div>
                         </div>

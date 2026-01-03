@@ -31,7 +31,8 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   // Only display user if hydrated AND token is valid
-  const displayUser = hasHydrated && accessToken && isTokenValid ? authUser : null;
+  const displayUser =
+    hasHydrated && accessToken && isTokenValid ? authUser : null;
 
   const displayName = displayUser?.fullName ?? displayUser?.username ?? "User";
   const role = displayUser?.role;
@@ -117,16 +118,61 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
                       <span>Jobs List</span>
                     </Link>
                   </li>
-                  <li>
-                    <Link href="/my-applications">
-                      <span>My Applications</span>
-                    </Link>
-                  </li>
-                  <li>
-                    <Link href="/my-cvs">
-                      <span>My CVs</span>
-                    </Link>
-                  </li>
+                  {/* Candidate-only navigation items */}
+                  {role === "CANDIDATE" && (
+                    <>
+                      <li>
+                        <Link href="/my-applications">
+                          <span>My Applications</span>
+                        </Link>
+                      </li>
+                      <li>
+                        <Link href="/my-cvs">
+                          <span>My CVs</span>
+                        </Link>
+                      </li>
+                    </>
+                  )}
+                  {/* Candidate-only navigation items */}
+                  {role === "HR" && (
+                    <>
+                      <li>
+                        <a href="/hr/applications">
+                          <span>Manage Applications</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/hr/post-job">
+                          <span>Post Job</span>
+                        </a>
+                      </li>
+                    </>
+                  )}
+                  {/* Candidate-only navigation items */}
+                  {role === "HR_MANAGER" && (
+                    <>
+                      <li>
+                        <a href="/hr-manager">
+                          <span>Dashboard</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/hr-manager/company-page">
+                          <span>Company Page</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/hr/applications">
+                          <span>Manage Applications</span>
+                        </a>
+                      </li>
+                      <li>
+                        <a href="/hr/post-job">
+                          <span>Post Job</span>
+                        </a>
+                      </li>
+                    </>
+                  )}
                 </ul>
               </nav>
               <div
@@ -146,11 +192,8 @@ const Header = ({ handleOpen, handleRemove, openClass }: HeaderProps) => {
             <div className="header-right" suppressHydrationWarning>
               {displayUser ? (
                 <>
-                  <div
-                    className="header-user"
-                    ref={menuRef}
-                  >
-                    <NotificationBell/>
+                  <div className="header-user" ref={menuRef}>
+                    <NotificationBell />
                     <button
                       type="button"
                       className={`header-user__button ${
