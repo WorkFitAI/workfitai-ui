@@ -130,16 +130,10 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
                         <ChangePasswordForm />
                     </div>
                 )}
-
-                {!showPasswordForm && (
-                    <p className="text-muted">
-                        <i className="fi-rr-info"></i> Last changed: Not available
-                    </p>
-                )}
             </div>
 
             {/* 2FA Section */}
-            <div className="settings-section mt-4">
+            <div className="settings-section mt-0">
                 <div className="settings-section-header">
                     <div className="settings-section-title">
                         <i className="fi-rr-shield-check"></i>
@@ -302,7 +296,7 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
                 )}
             </div>
 
-            {/* Danger Zone */}
+            {/* Danger Zone
             <div className="settings-section mt-4 danger-zone">
                 <div className="settings-section-header">
                     <div className="settings-section-title">
@@ -336,7 +330,7 @@ export default function SecuritySettings({ twoFactorStatus }: SecuritySettingsPr
                         </button>
                     </div>
                 </div>
-            </div>
+            </div> */}
         </div>
     );
 }

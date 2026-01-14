@@ -105,7 +105,7 @@ function OAuthCallbackContent() {
         const storedSession = toStoredSession(authSuccess);
         persistSession(storedSession);
 
-        // 🚨 CRITICAL: Update Redux auth state (source of truth for React components)
+        // CRITICAL: Update Redux auth state (source of truth for React components)
         dispatch(
           setOAuthLoginSuccess({
             accessToken: data.accessToken,

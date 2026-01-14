@@ -212,7 +212,13 @@ export default function ProfilePage() {
 
                 {/* Settings Grid - 2x2 layout */}
                 <div className="row mt-4 g-4">
-                    {/* Row 1: Basic Info & Notifications */}
+                    <div className="col-lg-6">
+
+                    </div>
+                    <div className="col-lg-6">
+
+                    </div>
+                    {/* Row 1: Basic Info & Notifications
                     <div className="col-lg-6">
                         <div className="settings-card">
                             <div className="settings-card-header">
@@ -228,9 +234,9 @@ export default function ProfilePage() {
                                 <NotificationSettingsForm />
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
-                    {/* Row 2: Privacy & Security */}
+                    {/* Row 2: Privacy & Security
                     <div className="col-lg-6">
                         <div className="settings-card">
                             <div className="settings-card-header">
@@ -246,7 +252,7 @@ export default function ProfilePage() {
                                 <PrivacySettingsForm />
                             </div>
                         </div>
-                    </div>
+                    </div> */}
 
                     <div className="col-12">
                         <div className="settings-card">

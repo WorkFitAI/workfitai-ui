@@ -6,6 +6,9 @@ import AuthLayout from "@/components/auth/AuthLayout";
 import FormButton from "@/components/auth/FormButton";
 import FormError from "@/components/auth/FormError";
 import { Suspense } from "react";
+import { setAccessToken } from "@/lib/auth/token-store";
+import { clearLogoutFlag, persistSession, toStoredSession } from "@/redux/features/auth/authSlice";
+import { showToast } from "@/lib/toast";
 
 function Verify2FAContent() {
     const router = useRouter();
@@ -65,20 +68,56 @@ function Verify2FAContent() {
                 throw new Error(data.message || "Xác thực không thành công");
             }
 
-            // Store access token
-            if (data.data?.accessToken) {
-                localStorage.setItem("accessToken", data.data.accessToken);
-            }
+            // Calculate expiry time (absolute timestamp)
+            const expiryTime = data.expiryInMs
+                ? Date.now() + data.expiryInMs
+                : null;
+            
+            // Store token in axios in-memory store (not localStorage)
+            // Note: setAccessToken expects absolute timestamp, not duration
+            setAccessToken(
+                data.accessToken,
+                expiryTime ?? undefined,
+                data.username,
+                data.roles,
+                data.companyId
+            );
+            
+            // Build AuthSuccess-compatible object for toStoredSession
+            const authSuccess = {
+                accessToken: data.accessToken,
+                expiryTime,
+                message: null,
+                user: {
+                    username: data.username,
+                    roles: data.roles,
+                    companyId: data.companyId ?? undefined,
+                },
+            };
+            
+            // Store minimal session info (username, roles - no token)
+            const storedSession = toStoredSession(authSuccess);
+            persistSession(storedSession);
+            
+            clearLogoutFlag();
+            
+            showToast.success("Successfully signed in!");
 
-            // Redirect based on role
-            const roles = data.data?.roles || [];
-            if (roles.includes("ADMIN")) {
-                router.replace("/admin");
-            } else if (roles.includes("HR")) {
+            const roles = data.roles || [];
+
+            // Use router.replace for client-side navigation to preserve in-memory token
+            // window.location.href would cause full page reload and lose the token
+            setTimeout(() => {
+              if (roles.includes("ADMIN")) {
+                router.replace("/admin/users");
+              } else if (roles.includes("HR_MANAGER")) {
+                router.replace("/hr-manager");
+              } else if (roles.includes("HR")) {
                 router.replace("/hr/applications");
-            } else {
+              } else {
                 router.replace("/");
-            }
+              }
+            }, 100);
         } catch (err) {
             setError(err instanceof Error ? err.message : "Có lỗi xảy ra");
         } finally {

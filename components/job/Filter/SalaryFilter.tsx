@@ -32,6 +32,7 @@ export default function SalaryFilter() {
     { label: "$600 - $800", min: 600, max: 800, count: 98 },
     { label: "$800 - $1000", min: 800, max: 1000, count: 14 },
     { label: "$1000 - $2000", min: 1000, max: 2000, count: 25 },
+    { label: "$2000 - $5000", min: 2000, max: 5000, count: 25 },
   ];
 
   const handleToggle = (min?: number, max?: number) => {

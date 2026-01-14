@@ -107,7 +107,7 @@ export default function ProfileOverview({ profile, isOwnProfile, onAvatarClick }
                             </div>
                         </div>
 
-                        {/* Stats */}
+                        {/* Stats
                         <div className="profile-stats-enhanced">
                             <div className="stat-item">
                                 <div className="stat-icon bg-primary">
@@ -136,7 +136,7 @@ export default function ProfileOverview({ profile, isOwnProfile, onAvatarClick }
                                     <span>Views</span>
                                 </div>
                             </div>
-                        </div>
+                        </div> */}
                     </div>
                 </div>
             </div>
